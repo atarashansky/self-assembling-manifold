@@ -28,7 +28,7 @@ python setup.py install
 ```
 
 # Usage:
-Please see the Jupyter notebook in the 'tutorial' folder for a basic tutorial. If you need to install jupyter, please run
+Please see the Jupyter notebook in the 'tutorial' folder for a basic tutorial. If you installed a fresh environment, do not forget to install jupyter into that environment! Please run
 ```
 pip install jupyter
 ```
