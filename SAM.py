@@ -202,7 +202,7 @@ class SAM(object):
         if(genes is not None):
             genes=np.array(genes)
             
-            if type(genes[0]) == np.str_:    
+            if str(genes.dtype)[:2]=='<U' or str(genes.dtype)=='object':    
                 idx=np.where((np.in1d(self.filtered_dataset.columns.values,genes)))[0]
             else:
                 idx = genes
@@ -213,8 +213,8 @@ class SAM(object):
         
         if(cells is not None):
             cells=np.array(cells)
-            
-            if type(cells[0]) == np.str_:    
+            print(str(cells.dtype)[:2])
+            if str(cells.dtype)[:2]=='<U' or str(cells.dtype)=='object':    
                 idx2=np.where(np.in1d(self.filtered_dataset.index.values,cells))[0]
             else:
                 idx2 = cells
