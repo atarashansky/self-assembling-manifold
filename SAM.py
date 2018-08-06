@@ -431,14 +431,15 @@ class SAM(object):
             self.run_tsne()
         else:
             self.dt = None
-        
+
+        self.analysis_performed=True
+
         self.corr_bin_genes(number_of_features=2000);
         
         elapsed=time.time()-tinit
         
         print('Elapsed time: ' + str(elapsed) + ' seconds')
         
-        self.analysis_performed=True
         
     def save(self,savename,dirname=None,exc=None):
         """Saves all SAM attributes to a Pickle file.
