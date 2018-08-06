@@ -23,7 +23,8 @@ pip install sam-algorithm
 Development version install:
 ```
 git clone https://github.com/atarashansky/self-assembling-manifold.git
-pip install ./self-assembling-manifold
+cd self-assembling-manifold
+python setup.py install
 ```
 
 # Usage:
