@@ -10,7 +10,7 @@ Download Anacodna from here:
 Create and activate a new environment with python3.6 as follows:
 ```
 conda create -n environment_name python=3.6
-conda activate environment_name
+source activate environment_name
 ```
 
 Having activated the environment, SAM can be downloaded from the PyPI repository using pip or, for the development version, downloaded from the github directly.
