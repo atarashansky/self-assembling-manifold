@@ -4,7 +4,7 @@ setup(
 
     name='sam-algorithm', 
 
-    version='0.1.1',  
+    version='0.1.2',  
 
     description='The Self-Assembling-Manifold algorithm', 
 
