@@ -20,7 +20,7 @@ setup(
 
     keywords='scrnaseq analysis manifold reconstruction',  
 
-    py_modules=["source/SAM","source/utilities"],
+    py_modules=["SAM","utilities"],
     
     install_requires=['pandas','numpy','scikit-learn','matplotlib','scipy']
 )
