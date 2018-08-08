@@ -718,7 +718,7 @@ class SAM(object):
             if(c is None):
                 plt.scatter(dt[:,0],dt[:,1],**kwargs)
             else:            
-                if(type(c[0]) is str):
+                if(type(c[0]) is str or type(c[0]) is np.str_):
                     i = ut.convert_annotations(c)    
                     ui,ai=np.unique(i,return_index=True)
                     cax=plt.scatter(dt[:,0],dt[:,1],c=i,cmap=cmap,**kwargs)        
