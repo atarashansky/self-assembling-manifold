@@ -34,5 +34,9 @@ pip install jupyter
 ```
 in your conda environment.
 
+# Citation:
+If using the SAM algorithm, please cite the following preprint:
+https://www.biorxiv.org/content/early/2018/07/07/364166
+
 # Adding extra functionality:
 In its current form, this is just a lightweight implementation of the SAM algorithm. If there is any added functionality you would like to see added for downstream analysis, such as cell clustering, differential gene expression analysis, data exporting, etc, please let me know by submitting a new issue describing your request and I will do my best to add that feature.
