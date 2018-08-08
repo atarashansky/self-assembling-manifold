@@ -2,7 +2,7 @@
 The Self-Assembling-Manifold (SAM) algorithm.
 
 # Disclaimer:
-In its current form, this is a lightweight / barebones implementation of just the SAM algorithm. If there is any added functionality you would like to see added for downstream analysis, such as cell clustering, differential gene expression analysis, data exporting, etc, please let me know by submitting a new issue describing your request and I will do my best to add that feature.
+In its current form, this is a lightweight implementation of the SAM algorithm. If there is any added functionality you would like to see added for downstream analysis, such as cell clustering, differential gene expression analysis, data exporting, etc, please let me know by submitting a new issue describing your request and I will do my best to add that feature.
 
 # Installation:
 SAM runs using python3.6 and has not yet been tested for backwards compatibility. Python can be installed using Anaconda.
