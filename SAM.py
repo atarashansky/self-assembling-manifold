@@ -257,10 +257,14 @@ class SAM(object):
         Loads the cell annoations specified by 'ann_name' during the creation
         of the SAM object.
 
-        """        
-        aname = self.ann_name        
+        """      
+        if(ann_name is None):
+            aname = self.ann_name        
+        else:
+            aname=ann_name
 
-        if(aname):            
+
+        if(aname): 
             ann = pd.read_csv(aname,header=None)                
             if(ann.size!=self.dataset.shape[0]):
                 ann = pd.read_csv(aname,index_col=0,header=None)
@@ -277,7 +281,7 @@ class SAM(object):
             self.ann=ann
             self.ann_int=ut.convert_annotations(self.ann)  
             
-    def dispersion_ranking_NN(self,dist):
+    def dispersion_ranking_NN(self,dist,num_norm_avg=50):
         """Computes the spatial dispersion factors for each gene.
         
         Given a cell distance matrix, this function calculates the k-nearest
@@ -318,7 +322,9 @@ class SAM(object):
         D_avg=nnm.dot(self.D)/np.sum(nnm,axis=1).reshape(self.D.shape[0],1)
         
         dispersions=D_avg.var(0)/D_avg.mean(0)
-        
+        ma=np.sort(dispersions)[-num_norm_avg:].mean()
+        dispersions[dispersions>=ma]=ma
+
         weights = ut.normalizer(dispersions**0.5)
         
         indices=np.argsort(-weights)
@@ -328,7 +334,7 @@ class SAM(object):
         return indices,weights,nnm,D_avg
 
 
-    def run(self,max_iter=15,stopping_condition=1e-4,verbose=True,projection=True,npcs=None):
+    def run(self,max_iter=15,stopping_condition=1e-5,verbose=True,projection=True,n_genes=None,npcs=150):
         """Runs the Self-Assembling Manifold algorithm.
         
         Parameters
@@ -354,8 +360,11 @@ class SAM(object):
             selected. For large datasets (>5000 cells), we recommend 'npcs' to 
             be lowered (e.g. npcs = 500) if runtime is an issue. Otherwise,
             selecting all principal components should be fine.
-        """  
         
+        n_genes - int, optional, default None
+            Improve runtime by selecting only the top 'n_genes' weighted genes
+            when computing PCA. If None, use all genes.
+        """  
         if(not self.k):            
             self.k = int(self.D.shape[0]**0.5)
         
@@ -391,20 +400,24 @@ class SAM(object):
         i=0 
         
         err=ut.distance_matrix_error(new,old)
-
         while (err > stopping_condition and i < max_iter):
-
+            
             conv=err
             if(verbose):
                 print('Iteration: ' + str(i) + ', Convergence: ' + str(conv))
 
             i+=1 
             old=new
-            
+            if(ngenes is None):
+                gkeep=np.arange(W.size)
+            else:
+                gkeep=np.sort(np.argsort(-W.flatten())[:ngenes])
+                
             weighted_data = self.D*W.flatten()[None,:]
             self.weighted_data=weighted_data
-
-            g_weighted,pca=ut.weighted_PCA(Normalizer().fit_transform(weighted_data))
+            self.D_sub=self.D[:,gkeep]
+            self.weighted_sub = self.weighted_data[:,gkeep]
+            g_weighted,pca=ut.weighted_PCA(Normalizer().fit_transform(self.weighted_sub))
 
             self.wPCA_data=g_weighted
             self.pca=pca
@@ -419,7 +432,6 @@ class SAM(object):
             self.nnm_adj=EDM
             self.weights=W.flatten()
             new=dist
-            
             err=ut.distance_matrix_error(new,old)
 
         self.ranked_genes=self.gene_names[self.indices]
@@ -497,7 +509,7 @@ class SAM(object):
                 except:
                     0; # do nothing
     
-    def plot_top_genes(self,n_genes=5,average_exp=True):
+    def plot_top_genes(self,n_genes=5,**kwargs):
         """Plots expression patterns of the top ranked genes.
         
         Parameters
@@ -505,22 +517,14 @@ class SAM(object):
         n_genes - int, optional, default 5
             The number of top ranked genes to display.
         
-        average_exp - bool, optional, default True
-            If True, the plots use the k-nearest-neighbor-averaged expression 
-            values to smooth out noisy expression patterns and improves
-            visualization.        
+        **kwargs - keyword arguments in 'show_gene_expression' and 'scatter' are eligible
         """
-        if (not self.analysis_performed):
-            print("Please run the SAM analysis first using 'run' after loading the data.")
-        elif (self.dt is None):
-            print("Please create a 2D projection first using 'run_tsne'. ")
-        else:
-            for i in range(n_genes):
-                self.show_gene_expression(self.indices[i],average_exp=average_exp)
+        for i in range(n_genes):
+            self.show_gene_expression(self.indices[i],**kwargs)
        
 
 
-    def plot_correlated_groups(self,group=None,n_genes=5, average_exp=True):
+    def plot_correlated_groups(self,group=None,n_genes=5,**kwargs):
         """Plots orthogonal expression patterns.
         
         In the default mode, plots orthogonal gene expression patterns. A
@@ -538,28 +542,20 @@ class SAM(object):
             The number of top ranked genes to display within a correlated
             group if 'group' is specified.
         
-        average_exp - bool, optional, default True
-            If True, the plots use the k-nearest-neighbor-averaged expression 
-            values to smooth out noisy expression patterns and improves
-            visualization.        
+        **kwargs - keyword arguments in 'show_gene_expression' and 'scatter' are eligible
         """        
-        if (not self.analysis_performed):
-            print("Please run the SAM analysis first using 'run' after loading the data.")
-        elif (self.dt is None):
-            print("Please create a 2D projection first using 'run_tsne'. ")
+        self.corr_bin_genes(number_of_features=2000);
+            
+        if(group is None):
+            for i in range(len(self.gene_groups)):
+                self.show_gene_expression(self.gene_groups[i][0],**kwargs)
         else:
-            self.corr_bin_genes(number_of_features=2000);
-                
-            if(group is None):
-                for i in range(len(self.gene_groups)):
-                    self.show_gene_expression(self.gene_groups[i][0],average_exp=average_exp)
-            else:
-                for i in range(n_genes):
-                    self.show_gene_expression(self.gene_groups[group][i],average_exp=average_exp)
+            for i in range(n_genes):
+                self.show_gene_expression(self.gene_groups[group][i],**kwargs)
              
                
 
-    def plot_correlated_genes(self,name,n_genes=5,average_exp=True):       
+    def plot_correlated_genes(self,name,n_genes=5,**kwargs):       
         """Plots gene expression patterns correlated with the input gene.
         
         Parameters
@@ -574,22 +570,19 @@ class SAM(object):
         average_exp - bool, optional, default True
             If True, the plots use the k-nearest-neighbor-averaged expression 
             values to smooth out noisy expression patterns and improves
-            visualization.        
-        """               
-        if (not self.analysis_performed):
-            print("Please run the SAM analysis first using 'run' after loading the data.")
-        elif (self.dt is None):
-            print("Please create a 2D projection first using 'run_tsne'. ")
-        else:        
-            name=np.where(self.gene_names==name)[0]
-            if(name.size==0):
-                print("Gene note found in the filtered dataset. Note that genes are case sensitive.")
-                return  
-            sds,_=self.corr_bin_genes(input_gene=name,number_of_features=2000)
+            visualization.   
 
-            for i in range(1,n_genes+1):
-                self.show_gene_expression(sds[0][i],average_exp=average_exp)
-            return self.gene_names[sds[0][1:]]
+        **kwargs - keyword arguments in 'show_gene_expression' and 'scatter' are eligible
+        """               
+        name=np.where(self.gene_names==name)[0]
+        if(name.size==0):
+            print("Gene note found in the filtered dataset. Note that genes are case sensitive.")
+            return  
+        sds,_=self.corr_bin_genes(input_gene=name,number_of_features=2000)
+
+        for i in range(1,n_genes+1):
+            self.show_gene_expression(sds[0][i],**kwargs)
+        return self.gene_names[sds[0][1:]]
 
 
     def corr_bin_genes(self,number_of_features=None,input_gene=None):
@@ -668,7 +661,7 @@ class SAM(object):
         dt=man.TSNE(metric=metric,**kwargs).fit_transform(self.dist)
         self.dt=dt
             
-    def scatter(self,projection = None,c=None,cmap='rainbow',new_figure=True,colorbar=True,**kwargs):
+    def scatter(self,projection = None,c=None,cmap='rainbow',axes=None,colorbar=True,**kwargs):
         """Display a scatter plot.
         
         Displays a scatter plot using the SAM projection or another input
@@ -713,29 +706,35 @@ class SAM(object):
             else:
                 dt=projection
 
-            if(new_figure):
+            if(axes is None):
                 plt.figure();
+                axes = plt.gca();
+
             if(c is None):
                 plt.scatter(dt[:,0],dt[:,1],**kwargs)
             else:            
-                if(type(c[0]) is str or type(c[0]) is np.str_):
+                if((type(c[0]) is str or type(c[0]) is np.str_) and (type(c) is np.ndarray or type(c) is list)): 
                     i = ut.convert_annotations(c)    
                     ui,ai=np.unique(i,return_index=True)
-                    cax=plt.scatter(dt[:,0],dt[:,1],c=i,cmap=cmap,**kwargs)        
+                    cax=axes.scatter(dt[:,0],dt[:,1],c=i,cmap=cmap,**kwargs)        
 
                     if(colorbar):
                         cbar = plt.colorbar(cax, ticks=ui)
                         cbar.ax.set_yticklabels(c[ai])
                 else:
+                    if not (type(c) is np.ndarray or type(c) is list):
+                        colorbar = False
                     i = c
-                    plt.scatter(dt[:,0],dt[:,1],c=i,cmap=cmap,**kwargs)                    
 
+                    cax=axes.scatter(dt[:,0],dt[:,1],c=i,cmap=cmap,**kwargs)
+                    
                     if(colorbar):
-                        plt.colorbar();                       
+                        plt.colorbar(cax);
 
 
 
-    def show_gene_expression(self,gene,projection = None,new_figure=True,average_exp=True,colorbar=True,**kwargs):
+
+    def show_gene_expression(self,gene,average_exp=True,**kwargs):
         """Display a gene's expressions.
         
         Displays a scatter plot using the SAM projection or another input
@@ -743,62 +742,36 @@ class SAM(object):
         
         Parameters
         ----------
-        
-        projection - ndarray of floats, optional, default None
-            An N x 2 matrix, where N is the number of data points. If not 
-            specified, use the SAM projection instead. Otherwise, display the 
-            input projection.
-        
-        new_figure - bool, optional, default True
-            If True, creates a new figure. Otherwise, outputs the scatter plot
-            to currently active matplotlib axes.
+        gene - string or int 
+            a case-sensitive string indicating the gene expression pattern
+            to display or the integer corresponding to the gene's column index
+            in the filtered dataset.
         
         average_exp - bool, optional, default True
             If True, the plots use the k-nearest-neighbor-averaged expression 
             values to smooth out noisy expression patterns and improves
-            visualization. 
+            visualization.  
         
-        colorbar - bool, optional default True
-            If True, display a colorbar indicating which values / annotations
-            correspond to which color in the scatter plot.
-            
-        Keyword arguments - 
-            All other keyword arguments that can be passed into 
-            matplotlib.pyplot.scatter can be used.
+        **kwargs - keyword arguments in 'scatter' are eligible
+
         """
         
-        if (not self.analysis_performed):
-            print("Please run the SAM analysis first using 'run' after loading the data.")
+        if(type(gene)==str or type(gene)==np.str_):
+            idx=np.where(self.gene_names==gene)[0]
+            name=gene
+            if(idx.size==0):
+                print("Gene note found in the filtered dataset. Note that genes are case sensitive.")
+                return
         else:
-            if(projection is None):
-                if(self.dt is None):
-                    print("Please create a 2D projection first using 'run_tsne'. ")            
-                    return ;
-                else:
-                    dt=self.dt
-            else:
-                dt = projection
-
-
-            if(type(gene)==str or type(gene)==np.str_):
-                idx=np.where(self.gene_names==gene)[0]
-                name=gene
-                if(idx.size==0):
-                    print("Gene note found in the filtered dataset. Note that genes are case sensitive.")
-                    return
-            else:
-                idx=gene
-                name=self.gene_names[idx]
-
-            if(new_figure):
-                plt.figure(); 
-            if(average_exp):
-                a=self.D_avg[:,idx].flatten()
-            else:
-                a=self.D[:,idx].flatten()
-            
-            plt.scatter(dt[:,0],dt[:,1],c=a,cmap='viridis',**kwargs)
-            plt.title(name)
-            if(colorbar):
-                plt.colorbar();
+            idx=gene
+            name=self.gene_names[idx]
+        
+        if(average_exp):
+            a=self.D_avg[:,idx].flatten()
+        else:
+            a=self.D[:,idx].flatten()
+                
+        self.scatter(c=a,**kwargs)
+        plt.title(name)
+        
 
