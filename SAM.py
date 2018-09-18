@@ -408,10 +408,10 @@ class SAM(object):
 
             i+=1 
             old=new
-            if(ngenes is None):
+            if(n_genes is None):
                 gkeep=np.arange(W.size)
             else:
-                gkeep=np.sort(np.argsort(-W.flatten())[:ngenes])
+                gkeep=np.sort(np.argsort(-W.flatten())[:n_genes])
                 
             weighted_data = self.D*W.flatten()[None,:]
             self.weighted_data=weighted_data
