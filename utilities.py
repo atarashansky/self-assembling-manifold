@@ -6,8 +6,8 @@ from sklearn.decomposition import PCA
 def weighted_PCA(mat,do_weight=True,npcs=None):
     mat = (mat - np.mean(mat,axis=0))
     if(do_weight):
-        if(min(mat.shape)>=10000):
-            print("More than 10,000 cells. Running with 'wpcs' set to < 1000 is recommended.")
+        if(min(mat.shape)>=10000 and npcs is None):
+            print("More than 10,000 cells. Running with 'npcs' set to < 1000 is recommended.")
             
         if(npcs is None):
             ncom=min(mat.shape)

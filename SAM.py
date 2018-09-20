@@ -336,7 +336,7 @@ class SAM(object):
         return indices,weights,nnm,D_avg
 
 
-    def run(self,max_iter=15,stopping_condition=1e-5,verbose=True,projection=True,n_genes=None,npcs=150):
+    def run(self,max_iter=15,stopping_condition=1e-5,verbose=True,projection=True,n_genes=None,npcs=150,num_norm_avg=50):
         """Runs the Self-Assembling Manifold algorithm.
         
         Parameters
@@ -366,6 +366,10 @@ class SAM(object):
         n_genes - int, optional, default None
             Improve runtime by selecting only the top 'n_genes' weighted genes
             when computing PCA. If None, use all genes.
+        
+        num_norm_avg - int, optional, default 50
+            The top 'num_norm_avg' dispersions are averaged to determine the normalization factor
+            when calculating the weights.
         """  
         if(not self.k):            
             self.k = int(self.D.shape[0]**0.5)
@@ -375,6 +379,10 @@ class SAM(object):
         elif(self.k>100):
             self.k = 100
         
+        if(n_genes is not None):
+            if(n_genes < 2*num_norm_avg):
+                n_genes=2*num_norm_avg
+            
         if(self.k > self.D.shape[0]-1):
             print("Warning: chosen k exceeds the number of cells")
             self.k = self.D.shape[0]-2
@@ -390,7 +398,7 @@ class SAM(object):
         dist[np.arange(numcells),np.arange(numcells)]=0
 
 
-        _,dispersions,edm,_=self.dispersion_ranking_NN(dist)
+        _,dispersions,edm,_=self.dispersion_ranking_NN(dist,num_norm_avg=num_norm_avg)
         
         W=dispersions.reshape((1,self.D.shape[1]))
 
@@ -425,7 +433,7 @@ class SAM(object):
             self.pca=pca
 
             dist=ut.compute_distances(g_weighted,self.distance)
-            idx2,dispersions,EDM,_=self.dispersion_ranking_NN(dist)
+            idx2,dispersions,EDM,_=self.dispersion_ranking_NN(dist,num_norm_avg=num_norm_avg)
 
             W = dispersions.reshape((1,self.D.shape[1]))
 
