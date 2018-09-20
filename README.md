@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/iosonofabio/self-assembling-manifold.svg?branch=master)](https://travis-ci.org/iosonofabio/self-assembling-manifold)
+
 # self-assembling-manifold
 The Self-Assembling-Manifold (SAM) algorithm.
 
