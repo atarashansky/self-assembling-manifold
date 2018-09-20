@@ -34,6 +34,27 @@ pip install jupyter
 ```
 in your conda environment.
 
+Basic usage:
+
+Using preloaded Pandas DataFrame:
+```
+from SAM import SAM #import SAM
+sam=SAM(data=dataframe,annotations=ann) #initialize SAM object
+sam.filter_data() #filter data with default parameters
+sam.run() #run with default parameters
+sam.scatter() #display resulting t-SNE plot
+```
+
+Loading data from a file:
+```
+from SAM import SAM #import SAM
+sam=SAM() #initialize SAM object
+sam.load_data_from_file('/path/to/expression_data_file.csv') #load data from a csv file and filter with default parameters
+sam.load_annotations('/path/to/annotations_file.csv')
+sam.run()
+sam.scatter()
+```
+
 # Citation:
 If using the SAM algorithm, please cite the following preprint:
 https://www.biorxiv.org/content/early/2018/07/07/364166

@@ -32,11 +32,11 @@ class SAM(object):
 
     Parameters
     ----------
-    filename : string
-        The path to the data file. 
+    data : pandas.DataFrame, optional, default None
+	A DataFrame of the expression data (cells x genes).
 
-    ann_name : string, optional, default None
-        The path to the cell annotation file, should one exist.
+    annotations : numpy.ndarray, optional, default None
+        A Numpy array of cell annotations.
 
     k : int, optional, default None
         The number of nearest neighbors to identify for each cell. If None,
@@ -49,15 +49,13 @@ class SAM(object):
         
     Attributes
     ----------
-    filename: The path to the data file.
+    dataset : pandas.DataFrame of the unfiltered expression data (cells x genes)
 
-    ann_name: The path to the cell annotations file (optional).
+    ann : numpy.ndarray of the cell annotations (optional).
 
     k: The number of nearest neighbors to identify for each cell when constructing the nearest neighbor graph.
 
     distance: The distance metric used when constructing the cell-to-cell distance matrix.
-
-    dataset: A Pandas DataFrame containing the original input data (cells x genes).
 
     filtered_dataset: A Pandas DataFrame containing the filtered data (cells x genes).
 
