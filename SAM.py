@@ -74,7 +74,11 @@ class SAM(object):
     D_avg: The k-nearest-neighbor-averaged expression data.
 
     weighted_data: The rescaled expression data.
+    
+    D_sub: If the 'n_genes' parameter is set, D_sub is the subsetted gene expression matrix. Otherwise, it is equal to 'D'.
 
+    weighted_sub: If the 'n_genes' parameter is set, weighted_sub is the subsetted weighted expression matrix. Otherwise, it is equal to 'weighted_data'.
+    
     wPCA_data: The weighted PCA matrix.
 
     pca: The sklearn pca object.
