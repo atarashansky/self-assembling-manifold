@@ -32,8 +32,8 @@ class SAM(object):
 
     Parameters
     ----------
-    data : pandas.DataFrame, optional, default None
-	A DataFrame of the expression data (cells x genes).
+    counts : pandas.DataFrame, optional, default None
+    	A DataFrame of the gene expression counts (cells x genes).
 
     annotations : numpy.ndarray, optional, default None
         A Numpy array of cell annotations.
@@ -49,7 +49,7 @@ class SAM(object):
         
     Attributes
     ----------
-    dataset : pandas.DataFrame of the unfiltered expression data (cells x genes)
+    dataset : pandas.DataFrame of the unfiltered raw expression counts (cells x genes)
 
     ann : numpy.ndarray of the cell annotations (optional).
 
@@ -101,16 +101,23 @@ class SAM(object):
     
     """
     
-    def __init__(self,data=None,annotations=None,k=None,distance='correlation'):
-        self.dataset=data
+    def __init__(self,counts=None,annotations=None,k=None,distance='correlation'):
+        self.dataset=counts
         self.ann = annotations
+        
         if(self.ann is not None):
             self.ann_int=ut.convert_annotations(self.ann)
+            
+        if(self.dataset is not None):
+            self.filtered_dataset = self.remove_zero_columns(self.dataset)
+            self.log_transform(self.filtered_dataset)
+            self.load_attributes_from_data(self.filtered_dataset)
+        
         self.k=k
         self.distance=distance
         self.analysis_performed=False
   
-    def load_data_from_file(self,filename,sep=',',**kwargs):
+    def load_data_from_file(self,filename,do_filtering=True,transpose=True,sep=',',**kwargs):
         """Reads the specified tabular data file and stores the data in a Pandas DataFrame.
 
         This is a wrapper function that loads the file specified by 'filename' and 
@@ -119,11 +126,20 @@ class SAM(object):
         Parameters
         ----------
         filename - string
-            The path to the tabular data file.
+            The path to the tabular raw expression counts file.
             
         sep - string, optional, default ','
             The delimeter used to read the input data table. By default assumes the input table is delimited by commas.
         
+        do_filtering - bool, optional, default True
+            If True, filters the data with default parameters using 'filter_data'.
+            Otherwise, loads the data without filtering (aside from removing genes
+            with no expression at all).
+            
+        transpose - bool, optional, default True
+            By default, assumes file is (genes x cells). Set this to False if the file
+            has dimensions (cells x genes)
+            
         Keyword arguments
         -----------------
         
@@ -161,9 +177,33 @@ class SAM(object):
        
         """
         df = pd.read_csv(filename,sep=sep, index_col=0) 
-        self.dataset=df.T  
-        self.filter_data(**kwargs)
+        if(transpose):
+            self.dataset=df.T  
+        else:
+            self.dataset=df
+        
+        if(do_filtering):
+            self.filter_data(**kwargs)
+        else:
+            self.filtered_dataset=self.remove_zero_columns(self.dataset)
+            self.log_transform(self.filtered_dataset)
+            self.load_attributes_from_data(self.filtered_dataset)
     
+    def remove_zero_columns(self,data):
+        return data.iloc[:,data.values.sum(0)>0]
+    
+    def load_attributes_from_data(self,data):    
+        self.D=data.values.copy()
+        self.gene_names=np.array(list(data.columns.values))
+        self.cell_names=np.array(list(data.index.values))
+
+    def log_transform(self,data,in_place=True):
+        if(in_place):
+            np.add(data.values,1,out=data.values);
+            np.log2(data.values,out=data.values);
+        else:
+            return np.log2(data+1)
+        
     def filter_data(self,div=1,downsample=0,genes=None,cells=None,min_expression=1,thresh=0.02,filter_genes=True):              
         """Log-normalizes and filters the expression data.
         
@@ -206,7 +246,7 @@ class SAM(object):
         if(self.dataset is None):
             print('No data loaded')
             return
-        self.filtered_dataset=np.log2(self.dataset/div+1)
+        self.filtered_dataset=self.log_transform(self.dataset/div,in_place=False)
         
         if(genes is not None):
             genes=np.array(genes)
@@ -254,11 +294,9 @@ class SAM(object):
             
         self.filtered_dataset = self.filtered_dataset.iloc[:,keep]        
         self.filtered_dataset[self.filtered_dataset<=min_expression]=0        
-
-        self.D=self.filtered_dataset.values
-
-        self.gene_names=np.array(list(self.filtered_dataset.columns.values))
-        self.cell_names=np.array(list(self.filtered_dataset.index.values))
+        
+        self.load_attributes_from_data(self.filtered_dataset)
+        
      
     def load_annotations(self,aname):   
         """Loads cell annotations.
