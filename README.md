@@ -5,8 +5,8 @@ The Self-Assembling-Manifold (SAM) algorithm.
 ## Requirements
  - `numpy`
  - `pandas`
- - `matplotlib`
  - `scikit-learn`
+ - `matplotlib`
 
 ## Installation
 SAM runs using python3.6 and has not yet been tested for backwards compatibility. Python can be installed using Anaconda.
