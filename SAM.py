@@ -99,21 +99,26 @@ class SAM(object):
     
     """
     
-    def __init__(self,filename,ann_name=None,k=None,distance='correlation'):
-        self.filename=filename
-        self.ann_name=ann_name
+    def __init__(self,data=None,annotations=None,k=None,distance='correlation'):
+        self.dataset=data
+        self.ann = annotations
+        if(self.ann is not None):
+            self.ann_int=ut.convert_annotations(self.ann)
         self.k=k
         self.distance=distance
         self.analysis_performed=False
   
-    def load_data(self,sep=',',**kwargs):
-        """Reads the specified file and stores the data in a Pandas DataFrame.
+    def load_data_from_file(self,filename,sep=',',**kwargs):
+        """Reads the specified tabular data file and stores the data in a Pandas DataFrame.
 
-        This is a wrapper function that loads the file specified by 'filename', 
-        filters the data, and loads cell annotations if 'ann_name' is not None.
+        This is a wrapper function that loads the file specified by 'filename' and 
+        filters the data.
         
         Parameters
         ----------
+        filename - string
+            The path to the tabular data file.
+            
         sep - string, optional, default ','
             The delimeter used to read the input data table. By default assumes the input table is delimited by commas.
         
@@ -153,10 +158,9 @@ class SAM(object):
             filtering operations. 
        
         """
-        df = pd.read_csv(self.filename,sep=sep, index_col=0) 
+        df = pd.read_csv(filename,sep=sep, index_col=0) 
         self.dataset=df.T  
         self.filter_data(**kwargs)
-        self.load_annotations()        
     
     def filter_data(self,div=1,downsample=0,genes=None,cells=None,min_expression=1,thresh=0.02,filter_genes=True):              
         """Log-normalizes and filters the expression data.
@@ -197,6 +201,9 @@ class SAM(object):
             filtering operations. 
        
         """
+        if(self.dataset is None):
+            print('No data loaded')
+            return
         self.filtered_dataset=np.log2(self.dataset/div+1)
         
         if(genes is not None):
@@ -251,35 +258,27 @@ class SAM(object):
         self.gene_names=np.array(list(self.filtered_dataset.columns.values))
         self.cell_names=np.array(list(self.filtered_dataset.index.values))
      
-    def load_annotations(self,ann_name=None):   
+    def load_annotations(self,aname):   
         """Loads cell annotations.
         
-        Loads the cell annoations specified by 'ann_name' during the creation
-        of the SAM object.
+        Loads the cell annoations specified by the 'aname' path.
 
-        """      
-        if(ann_name is None):
-            aname = self.ann_name        
+        """     
+        ann = pd.read_csv(aname,header=None)                
+        if(ann.size!=self.dataset.shape[0]):
+            ann = pd.read_csv(aname,index_col=0,header=None)
+        if(ann.size!=self.dataset.shape[0]):
+            ann = pd.read_csv(aname,index_col=0)
+        if(ann.size!=self.dataset.shape[0]):
+            ann = pd.read_csv(aname)
+
+        if(ann.size!=self.filtered_dataset.shape[0]):
+            ann=ann.values.flatten()[np.where(np.in1d(self.dataset.index.values,self.filtered_dataset.index.values))[0]]
         else:
-            aname=ann_name
+            ann=ann.values.flatten()
 
-
-        if(aname): 
-            ann = pd.read_csv(aname,header=None)                
-            if(ann.size!=self.dataset.shape[0]):
-                ann = pd.read_csv(aname,index_col=0,header=None)
-            if(ann.size!=self.dataset.shape[0]):
-                ann = pd.read_csv(aname,index_col=0)
-            if(ann.size!=self.dataset.shape[0]):
-                ann = pd.read_csv(aname)
-                                       
-            if(ann.size!=self.filtered_dataset.shape[0]):
-                ann=ann.values.flatten()[np.where(np.in1d(self.dataset.index.values,self.filtered_dataset.index.values))[0]]
-            else:
-                ann=ann.values.flatten()
-            
-            self.ann=ann
-            self.ann_int=ut.convert_annotations(self.ann)  
+        self.ann=ann
+        self.ann_int=ut.convert_annotations(self.ann)  
             
     def dispersion_ranking_NN(self,dist,num_norm_avg=50):
         """Computes the spatial dispersion factors for each gene.
@@ -300,6 +299,9 @@ class SAM(object):
         dist - ndarray, float
             Square cell-to-cell distance matrix.
         
+        num_norm_avg - int, optional, default 50
+            The top 'num_norm_avg' dispersions are averaged to determine the normalization factor
+            when calculating the weights.
         
         Returns:
         -------
@@ -378,7 +380,7 @@ class SAM(object):
             self.k = self.D.shape[0]-2
         
         
-        print('RUNNING ' + self.filename)        
+        print('RUNNING SAM')        
         
         numcells=self.D.shape[0]
         tinit=time.time()
