@@ -39,7 +39,8 @@ Basic usage:
 Using preloaded Pandas DataFrame:
 ```
 from SAM import SAM #import SAM
-sam=SAM(data=dataframe,annotations=ann) #initialize SAM object
+sam=SAM(data=dataframe, #pandas.DataFrame
+            annotations=ann) #numpy.ndarray
 sam.filter_data() #filter data with default parameters
 sam.run() #run with default parameters
 sam.scatter() #display resulting t-SNE plot
