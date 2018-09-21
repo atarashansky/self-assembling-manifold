@@ -1,7 +1,16 @@
+[![Build Status](https://travis-ci.org/iosonofabio/self-assembling-manifold.svg?branch=master)](https://travis-ci.org/iosonofabio/self-assembling-manifold)
+
 # self-assembling-manifold
 The Self-Assembling-Manifold (SAM) algorithm.
 
-# Installation:
+
+## Requirements
+ - `numpy`
+ - `pandas`
+ - `scikit-learn`
+ - `matplotlib`
+
+## Installation
 SAM runs using python3.6 and has not yet been tested for backwards compatibility. Python can be installed using Anaconda.
 
 Download Anacodna from here:
@@ -27,7 +36,7 @@ cd self-assembling-manifold
 python setup.py install
 ```
 
-# Usage:
+## Usage
 Please see the Jupyter notebook in the 'tutorial' folder for a basic tutorial. If you installed a fresh environment, do not forget to install jupyter into that environment! Please run
 ```
 pip install jupyter
@@ -56,9 +65,9 @@ sam.run()
 sam.scatter()
 ```
 
-# Citation:
+## Citation
 If using the SAM algorithm, please cite the following preprint:
 https://www.biorxiv.org/content/early/2018/07/07/364166
 
-# Adding extra functionality:
+## Adding extra functionality
 In its current form, this is just a lightweight implementation of the SAM algorithm. If there is any added functionality you would like to see added for downstream analysis, such as cell clustering, differential gene expression analysis, data exporting, etc, please let me know by submitting a new issue describing your request and I will do my best to add that feature.
