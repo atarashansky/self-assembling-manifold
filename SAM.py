@@ -4,8 +4,6 @@ Email: <tarashan@stanford.edu>
 """
 
 
-
-
 """
 TODO: Line-by-line documentation.
 """
