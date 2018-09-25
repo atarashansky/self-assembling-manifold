@@ -190,7 +190,7 @@ class SAM(object):
             self.load_attributes_from_data(self.filtered_dataset)
     
     def remove_zero_columns(self,data):
-        return data.iloc[:,data.values.sum(0)>0]
+        return data.iloc[:,data.values.sum(0)>0].astype('float')
     
     def load_attributes_from_data(self,data):    
         self.D=data.values.copy()
