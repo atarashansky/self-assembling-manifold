@@ -116,6 +116,8 @@ class SAM(object):
         self.k=k
         self.distance=distance
         self.analysis_performed=False
+        
+        self.output_vars = {}
   
     def load_data_from_file(self,filename,do_filtering=True,transpose=True,sep=',',**kwargs):
         """Reads the specified tabular data file and stores the data in a Pandas DataFrame.
@@ -375,7 +377,20 @@ class SAM(object):
 
         return indices,weights,nnm,D_avg
 
-
+    def louvain_clustering(self,res=2):
+        if (not self.analysis_performed):
+            print("Please run the SAM analysis first using 'run' after loading the data.")
+        else:
+            import anndata
+            import scanpy.api as sc
+            adata = anndata.AnnData(self.D, var={'genes':self.gene_names}, obs={'cells':self.cell_names})
+            adata.obsm['X_pca']=self.wPCA_data
+            sc.pp.neighbors(adata,n_neighbors=self.k,metric='correlation')
+            sc.tl.louvain(adata,resolution=res)
+            l=adata.obs['louvain'].values.astype('int')
+            self.cluster_labels=l
+            self.output_vars['louvain_cluster_labels']=self.cluster_labels
+            
     def run(self,max_iter=15,stopping_condition=1e-5,verbose=True,projection=True,n_genes=None,npcs=150,num_norm_avg=50):
         """Runs the Self-Assembling Manifold algorithm.
         
@@ -486,14 +501,20 @@ class SAM(object):
 
         self.ranked_genes=self.gene_names[self.indices]
         
+        self.output_vars['distance_matrix']=self.dist
+        self.output_vars['ranked_gene_indices']=self.indices
+        self.output_vars['ranked_gene_names']=self.ranked_genes
+        self.output_vars['nearest_neighbor_matrix']=self.nnm_adj
+        self.output_vars['gene_weights']=self.weights
+        
+        self.analysis_performed=True
         
         if(projection):
             print('Computing the t-SNE embedding...')
-            self.run_tsne()
+            self.run_tsne()            
         else:
             self.dt = None
 
-        self.analysis_performed=True
 
         self.corr_bin_genes(number_of_features=2000);
         
@@ -708,8 +729,12 @@ class SAM(object):
         with the exception that 'metric' is set to 'precomputed' by default, 
         implying that this function expects a distance matrix by default.        
         """
-        dt=man.TSNE(metric=metric,**kwargs).fit_transform(self.dist)
-        self.dt=dt
+        if (not self.analysis_performed):
+            print("Please run the SAM analysis first using 'run' after loading the data.")
+        else:
+            dt=man.TSNE(metric=metric,**kwargs).fit_transform(self.dist)
+            self.dt=dt
+            self.output_vars['tsne_projection']=self.dt
             
     def scatter(self,projection = None,c=None,cmap='rainbow',axes=None,colorbar=True,**kwargs):
         """Display a scatter plot.
