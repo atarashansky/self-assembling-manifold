@@ -391,6 +391,31 @@ class SAM(object):
             self.cluster_labels=l
             self.output_vars['louvain_cluster_labels']=self.cluster_labels
             
+    
+    def identify_marker_genes(self,n_genes_per_cluster=10,labels=None,n_genes_subset=2000):
+        if(labels is None):
+            try:
+                l = self.cluster_labels
+            except:
+                print('Please generate cluster labels first or set the labels keyword argument.')
+                return
+        else:
+            l = labels
+            
+        import sklearn.linear_model
+        logr=sklearn.linear_model.LogisticRegression(solver='liblinear',multi_class='auto')
+        idd=np.argsort(-self.weights)[:n_genes_subset]
+        logr.fit(self.D[:,idd],l)
+        idx=np.argsort(-(logr.coef_),axis=1)
+        
+        markers = np.zeros((idx.shape[0],n_genes_per_cluster),dtype=self.gene_names.dtype)
+        for i in range(idx.shape[0]):
+            markers[i,:] = self.gene_names[idd[idx[i,:n_genes_per_cluster]]]
+        
+        self.marker_genes = markers
+        self.output_vars['marker_genes']=self.marker_genes
+            
+        
     def run(self,max_iter=15,stopping_condition=1e-5,verbose=True,projection=True,n_genes=None,npcs=150,num_norm_avg=50):
         """Runs the Self-Assembling Manifold algorithm.
         
