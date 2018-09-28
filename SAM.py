@@ -13,7 +13,13 @@ TODO: Line-by-line documentation.
 import warnings
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
-import matplotlib.pyplot as plt
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    print('matplotlib not installed. Plotting functions disabled')
+    PLOTTING=False
+    
 import time
 from sklearn.preprocessing import Normalizer
 import pickle
@@ -391,7 +397,6 @@ class SAM(object):
             self.cluster_labels=l
             self.output_vars['louvain_cluster_labels']=self.cluster_labels
             
-    
     def identify_marker_genes(self,n_genes_per_cluster=10,labels=None,n_genes_subset=2000):
         if(labels is None):
             try:
@@ -796,6 +801,8 @@ class SAM(object):
         """
         if (not self.analysis_performed):
             print("Please run the SAM analysis first using 'run' after loading the data.")
+        elif (not PLOTTING):
+            print("matplotlib not installed!")
         else:
             if(projection is None):
                 if(self.dt is None):
