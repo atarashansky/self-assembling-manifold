@@ -25,6 +25,10 @@ matrix:
       language: generic
       os: osx
 
+branches:
+  only:
+    - master
+
 before_install:
   - ./.travis_before_install.sh
 
