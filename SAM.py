@@ -626,11 +626,25 @@ class SAM(object):
             self.show_gene_expression(self.indices[i],**kwargs)
        
 
-    def save_figure(filename,ax=None,**kwargs):
-        if(ax is None):
-            plt.gca().savefig(filename,**kwargs)
-        else:
-            ax.savefig(filename,**kwargs)
+    def save_figures(self,filename,figs=None,**kwargs):        
+        if(figs is not None):
+            if(type(figs) is list):
+                savetype='pdf'
+            else:
+                savetype='png'
+
+        if(savetype=='pdf'):
+            from matplotlib.backends.backend_pdf import PdfPages
+            pdf = PdfPages(filename)
+
+            if figs is None:
+                figs = [plt.figure(n) for n in plt.get_fignums()]
+
+            for fig in figs:
+                fig.savefig(pdf,format='pdf',**kwargs)
+        elif(savetype=='png'):
+            plt.figure(figs).savefig(**kwargs)
+        
 
     def plot_correlated_groups(self,group=None,n_genes=5,**kwargs):
         """Plots orthogonal expression patterns.
