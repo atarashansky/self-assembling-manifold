@@ -602,6 +602,7 @@ class SAM(object):
             self.__dict__[list(pick_dict.keys())[i]]=pick_dict[list(pick_dict.keys())[i]]
         f.close()
 
+
     def _create_dict(self,exc):
         self.pickle_dict = self.__dict__.copy()
         if(exc):
@@ -625,6 +626,11 @@ class SAM(object):
             self.show_gene_expression(self.indices[i],**kwargs)
        
 
+    def save_figure(filename,ax=None,**kwargs):
+        if(ax is None):
+            plt.gca().savefig(filename,**kwargs)
+        else:
+            ax.savefig(filename,**kwargs)
 
     def plot_correlated_groups(self,group=None,n_genes=5,**kwargs):
         """Plots orthogonal expression patterns.
