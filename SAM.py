@@ -626,24 +626,36 @@ class SAM(object):
             self.show_gene_expression(self.indices[i],**kwargs)
        
 
-    def save_figures(self,filename,figs=None,**kwargs):        
-        if(figs is not None):
-            if(type(figs) is list):
+    def save_figures(self,filename,fig_IDs=None,**kwargs):
+
+        if(fig_IDs is not None):
+            if(type(fig_IDs) is list):
                 savetype='pdf'
             else:
                 savetype='png'
+        else:
+            savetype='pdf'
 
         if(savetype=='pdf'):
             from matplotlib.backends.backend_pdf import PdfPages
+            
+            if(len(filename.split('.'))==1):
+                filename=filename + '.pdf'
+            else:
+                filename='.'.join(filename.split('.')[:-1])+'.pdf'
+            
             pdf = PdfPages(filename)
 
-            if figs is None:
+            if fig_IDs is None:
                 figs = [plt.figure(n) for n in plt.get_fignums()]
+            else:
+                figs = [plt.figure(n) for n in fig_IDs]
 
             for fig in figs:
                 fig.savefig(pdf,format='pdf',**kwargs)
+            pdf.close()
         elif(savetype=='png'):
-            plt.figure(figs).savefig(**kwargs)
+            plt.figure(fig_IDs).savefig(filename,**kwargs)
         
 
     def plot_correlated_groups(self,group=None,n_genes=5,**kwargs):
