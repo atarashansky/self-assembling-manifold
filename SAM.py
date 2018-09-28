@@ -16,6 +16,7 @@ warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 
 try:
     import matplotlib.pyplot as plt
+    PLOTTING=True
 except ImportError:
     print('matplotlib not installed. Plotting functions disabled')
     PLOTTING=False
