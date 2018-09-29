@@ -425,7 +425,7 @@ class SAM(object):
 
         return indices, weights, nnm, D_avg
 
-    def louvain_clustering(self, res=2):
+    def louvain_clustering(self, res=1):
         if (not self.analysis_performed):
             print("Please run the SAM analysis first using 'run' after\
                    loading the data.")
