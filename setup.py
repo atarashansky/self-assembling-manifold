@@ -22,5 +22,5 @@ setup(
 
     py_modules=["SAM","utilities"],
     
-    install_requires=['pandas','numpy','scikit-learn==0.20','matplotlib','scipy','anndata','scanpy']
+    install_requires=['pandas>=0.23','numpy>=1.15','scikit-learn>=0.20','matplotlib>=2.2','scipy>=1.1','anndata>=0.6.6','scanpy>=1.2']
 )
