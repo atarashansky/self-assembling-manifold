@@ -1,5 +1,5 @@
 # Try container-based infrastucture
-sudo: false
+#sudo: false
 
 notifications:
   email: false
