@@ -22,7 +22,7 @@ elif [ $TRAVIS_OS_NAME == 'osx' ]; then
   source $HOME/miniconda/bin/activate
   # Use pip from conda
   conda install -y pip
-  conda install h5py
+  conda install -y h5py
   pip --version
 
 else
