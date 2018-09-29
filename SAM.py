@@ -85,10 +85,10 @@ class SAM(object):
     cell_names: numpy.ndarray
         A vector of the cell names (equivalent to filtered_dataset.index).
 
-    ann: numpy.ndarray
+    annotations: numpy.ndarray
         A vector of cell annotations if they were provided.
 
-    ann_int: numpy.ndarray
+    integer_annotations: numpy.ndarray
         A vector of cell annotations converted to integers.
 
     D_avg: numpy.ndarray
@@ -143,10 +143,10 @@ class SAM(object):
     def __init__(self, counts=None, annotations=None, k=None,
                  distance='correlation'):
         self.dataset = counts
-        self.ann = annotations
+        self.annotations = annotations
 
-        if(self.ann is not None):
-            self.ann_int = ut.convert_annotations(self.ann)
+        if(self.annotations is not None):
+            self.integer_annotations = ut.convert_annotations(self.annotations)
 
         if(self.dataset is not None):
             self.filtered_dataset = self.remove_zero_columns(self.dataset)
@@ -367,8 +367,8 @@ class SAM(object):
         else:
             ann = ann.values.flatten()
 
-        self.ann = ann
-        self.ann_int = ut.convert_annotations(self.ann)
+        self.annotations = ann
+        self.integer_annotations = ut.convert_annotations(self.annotations)
 
     def dispersion_ranking_NN(self, dist, num_norm_avg=50):
         """Computes the spatial dispersion factors for each gene.
