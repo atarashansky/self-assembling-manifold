@@ -1,7 +1,7 @@
 #!/bin/bash
 if [ $TRAVIS_OS_NAME == 'linux' ]; then
   echo "Installing deps for linux"
-  sudo apt-get install libhdf5-dev
+  apt-get install libhdf5-dev
   #sudo add-apt-repository ppa:nschloe/swig-backports -y
   #sudo apt-get -qq update
   #sudo apt-get install -y swig3.0
@@ -21,6 +21,7 @@ elif [ $TRAVIS_OS_NAME == 'osx' ]; then
   source $HOME/miniconda/bin/activate
   # Use pip from conda
   conda install -y pip
+  conda install h5py
   pip --version
 
 else
