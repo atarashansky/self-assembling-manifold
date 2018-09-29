@@ -24,10 +24,6 @@ matrix:
     - env: CC=gcc PYTHON_VERSION='3.7'
       language: generic
       os: osx
-
-branches:
-  only:
-    - master
     
 before_install:
   - ./.travis_before_install.sh
