@@ -13,14 +13,15 @@ fi
 #fi
 
 # deps #FIXME: do better
-pip install numpy
-pip install scipy
-pip install pandas
-pip install scikit-learn
-pip install matplotlib
+python setup.py install
+#pip install numpy
+#pip install scipy
+#pip install pandas
+#pip install scikit-learn
+#pip install matplotlib
 
 # old setuptools also has a bug for extras, but it still compiles
-pip install -v '.'
-if [ $? != 0 ]; then
-    exit 1
-fi
+#pip install -v '.'
+#if [ $? != 0 ]; then
+#    exit 1
+#fi
