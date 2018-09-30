@@ -921,7 +921,7 @@ class SAM(object):
             All other keyword arguments that can be passed into
             matplotlib.pyplot.scatter can be used.
         """
-        if (not self.analysis_performed):
+        if (not self.analysis_performed and projection is None):
             print("Please run the SAM analysis first using 'run' after loading"
                   " the data.")
         elif (not PLOTTING):
