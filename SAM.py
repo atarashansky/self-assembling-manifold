@@ -428,8 +428,8 @@ class SAM(object):
     def louvain_clustering(self, res=1):
         import scipy.sparse as sp
         if (not self.analysis_performed):
-            print("Please run the SAM analysis first using 'run' after\
-                   loading the data.")
+            print("Please run the SAM analysis first using 'run' after "
+                   "loading the data.")
         else:
             import anndata
             import scanpy.api as sc
@@ -444,23 +444,28 @@ class SAM(object):
             self.output_vars['louvain_cluster_labels'] = self.cluster_labels
 
     def identify_marker_genes(self, n_genes_per_cluster=10, labels=None,
-                              n_genes_subset=2000):
+                              n_genes_subset=2000,svm=True):
         if(labels is None):
             try:
                 lbls = self.cluster_labels
             except AttributeError:
-                print('Please generate cluster labels first or set the labels\
-                       keyword argument.')
+                print("Please generate cluster labels first or set the "
+                       "'labels' keyword argument.")
                 return
         else:
             lbls = labels
-
-        import sklearn.linear_model
-        logr = sklearn.linear_model.LogisticRegression(
-            solver='liblinear', multi_class='auto')
+        
+        if(not svm):
+            import sklearn.linear_model
+            obj = sklearn.linear_model.LogisticRegression(
+                solver='liblinear', multi_class='auto')
+        else:
+            import sklearn.svm
+            obj = sklearn.svm.LinearSVC()
+            
         idd = np.argsort(-self.weights)[:n_genes_subset]
-        logr.fit(self.D[:, idd], lbls)
-        idx = np.argsort(-(logr.coef_), axis=1)
+        obj.fit(self.D[:, idd], lbls)
+        idx = np.argsort(-(obj.coef_), axis=1)
 
         markers = np.zeros(
             (idx.shape[0], n_genes_per_cluster), dtype=self.gene_names.dtype)
@@ -673,6 +678,32 @@ class SAM(object):
         """
         for i in range(n_genes):
             self.show_gene_expression(self.indices[i], **kwargs)
+    
+    def save_marker_genes_to_pdf(self,filename,**kwargs):
+        nclusts=self.cluster_labels.max()+1
+        lbls=np.tile(np.arange(nclusts)[:,None],(1,self.marker_genes.shape[1]))
+        lbls=lbls.flatten()
+        lbls_colors=np.zeros_like(self.cluster_labels)
+
+        try:
+            plt.ioff()
+            for i,gene in enumerate(self.marker_genes.flatten()):
+                lbls_colors[:]=0
+                lbls_colors[self.cluster_labels==lbls[i]]=1
+                plt.figure(figsize=(12,5))                
+                ax1=plt.subplot(121)
+                self.show_gene_expression(gene,axes=ax1,**kwargs);
+                ax2=plt.subplot(122)
+                self.scatter(c=lbls_colors,colorbar=False,axes=ax2,**kwargs)
+                plt.set_cmap('rainbow')
+                plt.title('Cluster: ' + str(lbls[i]))
+                        
+            self.save_figures(filename)            
+            plt.close('all')
+            plt.ion()
+            
+        except AttributeError:
+            print("Please run 'identify_marker_genes' first.")
 
     def save_figures(self, filename, fig_IDs=None, **kwargs):
 
@@ -760,8 +791,8 @@ class SAM(object):
         name = np.where(self.gene_names == name)[0]
         if(name.size == 0):
             print(
-                "Gene note found in the filtered dataset. Note that genes\
-                 are case sensitive.")
+                "Gene note found in the filtered dataset. Note that genes "
+                "are case sensitive.")
             return
         sds, _ = self.corr_bin_genes(input_gene=name, number_of_features=2000)
 
@@ -774,8 +805,8 @@ class SAM(object):
 
         """
         if (not self.analysis_performed):
-            print("Please run the SAM analysis first using 'run' after loading\
-                   the data.")
+            print("Please run the SAM analysis first using 'run' after loading"
+                  " the data.")
         else:
 
             idx2 = np.argsort(-self.weights)
@@ -788,8 +819,8 @@ class SAM(object):
                     input_gene = np.where(self.gene_names == input_gene)[0]
                     if(input_gene.size == 0):
                         print(
-                            "Gene note found in the filtered dataset. Note\
-                             that genes are case sensitive.")
+                            "Gene note found in the filtered dataset. Note "
+                            "that genes are case sensitive.")
                         return
                 seeds = [np.array([input_gene])]
                 pw_corr = np.corrcoef(
@@ -849,8 +880,8 @@ class SAM(object):
         implying that this function expects a distance matrix by default.
         """
         if (not self.analysis_performed):
-            print("Please run the SAM analysis first using 'run' after\
-                   loading the data.")
+            print("Please run the SAM analysis first using 'run' after "
+                  "loading the data.")
         else:
             dt = man.TSNE(metric=metric, **kwargs).fit_transform(self.dist)
             self.dt = dt
@@ -891,15 +922,15 @@ class SAM(object):
             matplotlib.pyplot.scatter can be used.
         """
         if (not self.analysis_performed):
-            print("Please run the SAM analysis first using 'run' after loading\
-                   the data.")
+            print("Please run the SAM analysis first using 'run' after loading"
+                  " the data.")
         elif (not PLOTTING):
             print("matplotlib not installed!")
         else:
             if(projection is None):
                 if(self.dt is None):
-                    print("Please create a 2D projection first using\
-                           'run_tsne'.")
+                    print("Please create a 2D projection first using "
+                          "'run_tsne'.")
                     return
                 else:
                     dt = self.dt
@@ -961,8 +992,8 @@ class SAM(object):
             name = gene
             if(idx.size == 0):
                 print(
-                    "Gene note found in the filtered dataset. Note that genes\
-                     are case sensitive.")
+                    "Gene note found in the filtered dataset. Note that genes "
+                    "are case sensitive.")
                 return
         else:
             idx = gene
