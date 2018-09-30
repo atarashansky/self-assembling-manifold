@@ -426,7 +426,6 @@ class SAM(object):
         return indices, weights, nnm, D_avg
 
     def louvain_clustering(self, res=1):
-        import scipy.sparse as sp
         if (not self.analysis_performed):
             print("Please run the SAM analysis first using 'run' after "
                    "loading the data.")
@@ -436,10 +435,9 @@ class SAM(object):
             adata = anndata.AnnData(self.D, var={'genes': self.gene_names},
                                     obs={'cells': self.cell_names})
             adata.obsm['X_pca'] = self.wPCA_data
-            #sc.pp.neighbors(adata, n_neighbors=self.k, metric='correlation',
-            #                method='umap')
-            sc.tl.louvain(adata, resolution=res,
-                          adjacency=sp.csr_matrix(self.nnm_adj))
+            sc.pp.neighbors(adata, n_neighbors=self.k, metric='correlation',
+                            method='umap')
+            sc.tl.louvain(adata, resolution=res)                          
             self.cluster_labels = adata.obs['louvain'].values.astype('int')
             self.output_vars['louvain_cluster_labels'] = self.cluster_labels
 
