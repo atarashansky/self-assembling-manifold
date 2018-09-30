@@ -4,6 +4,7 @@ import pickle
 import pandas as pd
 import utilities as ut
 import sklearn.manifold as man
+import umap as umap
 import warnings
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
@@ -474,7 +475,7 @@ class SAM(object):
         self.output_vars['marker_genes'] = self.marker_genes
 
     def run(self, max_iter=15, stopping_condition=1e-5, verbose=True,
-            projection=True, n_genes=None, npcs=150, num_norm_avg=50):
+            projection=None, n_genes=None, npcs=150, num_norm_avg=50):
         """Runs the Self-Assembling Manifold algorithm.
 
         Parameters
@@ -490,9 +491,9 @@ class SAM(object):
             If True, the iteration number and convergence score will be
             displayed.
 
-        projection - bool, optional, default False
-            If True, performs t-SNE embedding on the cell-cell distance
-            matrix. If False, no 2D projection will be generated.
+        projection - str, optional, default None
+            If 'tsne', generates a t-SNE embedding. If 'umap', generates a UMAP
+            embedding. Otherwise, no embedding will be generated.
 
         npcs - int, optional, default None
             Determines the number of weighted principal
@@ -592,11 +593,13 @@ class SAM(object):
 
         self.analysis_performed = True
 
-        if(projection):
+        if('tsne' in projection):
             print('Computing the t-SNE embedding...')
             self.run_tsne()
-        else:
-            self.dt = None
+        elif('umap' in projection):
+            print('Computing the UMAP embedding...')
+            self.run_umap()
+
 
         self.corr_bin_genes(number_of_features=2000)
 
@@ -882,9 +885,27 @@ class SAM(object):
                   "loading the data.")
         else:
             dt = man.TSNE(metric=metric, **kwargs).fit_transform(self.dist)
-            self.dt = dt
-            self.output_vars['tsne_projection'] = self.dt
+            self.tsne2d = dt
+            self.output_vars['tsne_projection'] = self.tsne2d
+    
+    def run_umap(self, metric=None, **kwargs):
+        """Wrapper for umap-learn.
 
+        See https://github.com/lmcinnes/umap sklearn for the documentation
+        and source code. 
+        """
+        if metric is None:
+            metric=self.distance        
+            
+        if (not self.analysis_performed):
+            print("Please run the SAM analysis first using 'run' after "
+                  "loading the data.")
+        else:
+            umap_obj=umap.UMAP(metric=metric, **kwargs)
+            self.umap2d = umap_obj.fit_transform(self.wPCA_data)
+            self.output_vars['umap_projection'] = self.umap2d
+        return umap_obj
+            
     def scatter(self, projection=None, c=None, cmap='rainbow', axes=None,
                 colorbar=True, **kwargs):
         """Display a scatter plot.
@@ -896,9 +917,10 @@ class SAM(object):
         ----------
 
         projection - ndarray of floats, optional, default None
-            An N x 2 matrix, where N is the number of data points. If not
-            specified, use the SAM projection instead. Otherwise, display the
-            input projection.
+            An N x 2 matrix, where N is the number of data points. If None,
+            use an existing SAM projection (default t-SNE). Can take on values
+            'umap' or 'tsne' to specify either the SAM UMAP embedding or
+            SAM t-SNE embedding.
 
         c - ndarray, optional, default None
             Colors for each cell in the scatter plot. Can be a vectory of
@@ -925,13 +947,28 @@ class SAM(object):
         elif (not PLOTTING):
             print("matplotlib not installed!")
         else:
-            if(projection is None):
-                if(self.dt is None):
-                    print("Please create a 2D projection first using "
-                          "'run_tsne'.")
+            if(projection is 'umap'):
+                try:
+                    dt=self.umap2d
+                except AttributeError:
+                    print('Please create a UMAP projection first.')
                     return
-                else:
-                    dt = self.dt
+            elif(projection is 'tsne'):
+                try:
+                    dt=self.tsne2d
+                except AttributeError:
+                    print('Please create a t-SNE projection first.')
+                    return
+            elif(projection is None):
+                try:
+                    dt=self.tsne2d
+                except AttributeError:
+                    try:
+                        dt=self.umap2d
+                    except AttributeError:                        
+                        print("Please create either a t-SNE or UMAP projection"
+                              "first.")
+                        return
             else:
                 dt = projection
 
