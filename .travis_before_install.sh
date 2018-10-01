@@ -25,7 +25,7 @@ elif [ $TRAVIS_OS_NAME == 'osx' ]; then
   # Use pip from conda
   conda install python.app
   conda install -y pip
-  conda install -y matplotlib
+  #conda install -y matplotlib
   conda install -y h5py
   pip --version
 
