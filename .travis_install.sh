@@ -4,11 +4,9 @@ if [ $TRAVIS_OS_NAME == 'osx' ]; then
   source $HOME/miniconda/bin/activate
   ## Somehow we need this to execute the setup.py at all...
   #pip install numpy
-  pythonw setup.py install
-else
-  python setup.py install
 fi
 
+python setup.py install
 ## setuptools < 18.0 has issues with Cython as a dependency
 #pip install Cython
 #if [ $? != 0 ]; then
