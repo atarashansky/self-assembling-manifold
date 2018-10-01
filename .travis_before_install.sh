@@ -3,6 +3,8 @@ if [ $TRAVIS_OS_NAME == 'linux' ]; then
   echo "Installing deps for linux"
   sudo apt-get update
   sudo apt-get install libhdf5-dev
+  sudo apt-get install libstdc++6
+
   #sudo add-apt-repository ppa:nschloe/swig-backports -y
   #sudo apt-get -qq update
   #sudo apt-get install -y swig3.0
