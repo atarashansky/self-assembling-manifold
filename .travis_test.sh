@@ -11,12 +11,10 @@ echo "python: ${PYTHON}"
 
 echo 'Running tests...'
 
-#echo 'Dataset tests...'
-#${PYTHON} "test/test_dataset.py"
-#if [ $? != 0 ]; then
-#    exit 1
-#fi
-#FIXME
-echo 'No tests for now, skipping...'
+echo 'SAM test...'
+${PYTHON} "test/test_sam.py"
+if [ $? != 0 ]; then
+    exit 1
+fi
 
 echo 'done!'
