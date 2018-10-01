@@ -1,7 +1,8 @@
 #!/bin/bash
 if [ $TRAVIS_OS_NAME == 'linux' ]; then
   echo "Installing deps for linux"
-  #sudo apt-get install libhdf5-dev
+  sudo apt-get update
+  sudo apt-get install libhdf5-dev
   #sudo apt-get install libgcc-5-dev
 
   #sudo add-apt-repository ppa:nschloe/swig-backports -y
