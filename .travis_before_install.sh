@@ -23,6 +23,7 @@ elif [ $TRAVIS_OS_NAME == 'osx' ]; then
   export PATH="$HOME/miniconda/bin:$PATH"
   source $HOME/miniconda/bin/activate
   # Use pip from conda
+  conda install python.app
   conda install -y pip
   conda install -y matplotlib
   conda install -y h5py
