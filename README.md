@@ -9,9 +9,13 @@ The Self-Assembling-Manifold (SAM) algorithm.
  - `pandas`
  - `scikit-learn`
  - `matplotlib`
+ - `scanpy`
+ - `louvain`
+ - `umap-learn`
+ - `numba>=0.37,<0.40`
 
 ## Installation
-SAM runs using python3.6 and has not yet been tested for backwards compatibility. Python can be installed using Anaconda.
+SAM has been most extensively tested using python3.6 but presumably should work on python>=3.5. Python can be installed using Anaconda.
 
 Download Anacodna from here:
     https://www.anaconda.com/download/
@@ -36,21 +40,21 @@ cd self-assembling-manifold
 python setup.py install
 ```
 
-## Usage
+## Tutorial
 Please see the Jupyter notebook in the 'tutorial' folder for a basic tutorial. If you installed a fresh environment, do not forget to install jupyter into that environment! Please run
 ```
 pip install jupyter
 ```
 in your conda environment.
 
-Basic usage:
+## Basic usage
 
-Using preloaded Pandas DataFrame:
+Using a preloaded Pandas DataFrame:
 ```
 from SAM import SAM #import SAM
-sam=SAM(data=dataframe, #pandas.DataFrame
+sam=SAM(counts=dataframe, #pandas.DataFrame
             annotations=ann) #numpy.ndarray
-sam.filter_data() #filter data with default parameters
+sam.filter_data() #filter data with default parameters, optional but recommended.
 sam.run() #run with default parameters
 sam.scatter() #display resulting t-SNE plot
 ```
