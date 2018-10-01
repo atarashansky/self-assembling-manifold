@@ -593,10 +593,10 @@ class SAM(object):
 
         self.analysis_performed = True
 
-        if('tsne' in projection):
+        if(projection is 'tsne'):
             print('Computing the t-SNE embedding...')
             self.run_tsne()
-        elif('umap' in projection):
+        elif(projection is 'umap'):
             print('Computing the UMAP embedding...')
             self.run_umap()
 
