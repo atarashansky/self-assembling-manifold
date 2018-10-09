@@ -18,7 +18,7 @@ except ImportError:
     PLOTTING = False
 
 
-__version__ = '0.1.8'
+__version__ = '0.1.9'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -568,7 +568,8 @@ class SAM(object):
             self.D_sub = self.D[:, gkeep]
             self.weighted_sub = self.weighted_data[:, gkeep]
             g_weighted, pca = ut.weighted_PCA(
-                Normalizer().fit_transform(self.weighted_sub),do_weight=weight_PCs)
+                Normalizer().fit_transform(self.weighted_sub),
+                do_weight=weight_PCs, npcs=npcs)
 
             self.wPCA_data = g_weighted
             self.pca = pca
