@@ -17,6 +17,9 @@ except ImportError:
     print('matplotlib not installed. Plotting functions disabled')
     PLOTTING = False
 
+
+__version__ = '0.1.8'
+
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
 Email: <tarashan@stanford.edu>
@@ -337,7 +340,7 @@ class SAM(object):
 
         if(filter_genes):
             keep = np.where(np.logical_and(np.sum(temp_data, axis=0)/numcells
-                            > thresh, np.sum(temp_data, axis=0)/numcells <=
+                                           > thresh, np.sum(temp_data, axis=0)/numcells <=
                                            1-thresh))[0]
         else:
             keep = np.where(temp_data.sum(0) > 0)[0]
@@ -429,7 +432,7 @@ class SAM(object):
     def louvain_clustering(self, res=1):
         if (not self.analysis_performed):
             print("Please run the SAM analysis first using 'run' after "
-                   "loading the data.")
+                  "loading the data.")
         else:
             import anndata
             import scanpy.api as sc
@@ -438,22 +441,22 @@ class SAM(object):
             adata.obsm['X_pca'] = self.wPCA_data
             sc.pp.neighbors(adata, n_neighbors=self.k, metric='correlation',
                             method='umap')
-            sc.tl.louvain(adata, resolution=res)                          
+            sc.tl.louvain(adata, resolution=res)
             self.cluster_labels = adata.obs['louvain'].values.astype('int')
             self.output_vars['louvain_cluster_labels'] = self.cluster_labels
 
     def identify_marker_genes(self, n_genes_per_cluster=10, labels=None,
-                              n_genes_subset=2000,svm=True):
+                              n_genes_subset=2000, svm=True):
         if(labels is None):
             try:
                 lbls = self.cluster_labels
             except AttributeError:
                 print("Please generate cluster labels first or set the "
-                       "'labels' keyword argument.")
+                      "'labels' keyword argument.")
                 return
         else:
             lbls = labels
-        
+
         if(not svm):
             import sklearn.linear_model
             obj = sklearn.linear_model.LogisticRegression(
@@ -461,21 +464,21 @@ class SAM(object):
         else:
             import sklearn.svm
             obj = sklearn.svm.LinearSVC()
-            
-        idd = np.argsort(-self.weights)[:n_genes_subset]
-        obj.fit(self.D[:, idd], lbls)
+
+        rawD = self.dataset[list(self.ranked_genes[:n_genes_subset])]
+        obj.fit(rawD.values, lbls)
         idx = np.argsort(-(obj.coef_), axis=1)
 
         markers = np.zeros(
             (idx.shape[0], n_genes_per_cluster), dtype=self.gene_names.dtype)
         for i in range(idx.shape[0]):
-            markers[i, :] = self.gene_names[idd[idx[i, :n_genes_per_cluster]]]
+            markers[i, :] = rawD.columns[idx[i, :n_genes_per_cluster]]
 
         self.marker_genes = markers
         self.output_vars['marker_genes'] = self.marker_genes
 
     def run(self, max_iter=15, stopping_condition=1e-5, verbose=True,
-            projection=None, n_genes=None, npcs=150, num_norm_avg=50):
+            projection=None, n_genes=None, npcs=150, num_norm_avg=50,weight_PCs = True):
         """Runs the Self-Assembling Manifold algorithm.
 
         Parameters
@@ -565,7 +568,7 @@ class SAM(object):
             self.D_sub = self.D[:, gkeep]
             self.weighted_sub = self.weighted_data[:, gkeep]
             g_weighted, pca = ut.weighted_PCA(
-                Normalizer().fit_transform(self.weighted_sub))
+                Normalizer().fit_transform(self.weighted_sub),do_weight=weight_PCs)
 
             self.wPCA_data = g_weighted
             self.pca = pca
@@ -599,7 +602,6 @@ class SAM(object):
         elif(projection is 'umap'):
             print('Computing the UMAP embedding...')
             self.run_umap()
-
 
         self.corr_bin_genes(number_of_features=2000)
 
@@ -679,30 +681,31 @@ class SAM(object):
         """
         for i in range(n_genes):
             self.show_gene_expression(self.indices[i], **kwargs)
-    
-    def save_marker_genes_to_pdf(self,filename,**kwargs):
-        nclusts=self.cluster_labels.max()+1
-        lbls=np.tile(np.arange(nclusts)[:,None],(1,self.marker_genes.shape[1]))
-        lbls=lbls.flatten()
-        lbls_colors=np.zeros_like(self.cluster_labels)
+
+    def save_marker_genes_to_pdf(self, filename, **kwargs):
+        nclusts = self.cluster_labels.max()+1
+        lbls = np.tile(np.arange(nclusts)[
+                       :, None], (1, self.marker_genes.shape[1]))
+        lbls = lbls.flatten()
+        lbls_colors = np.zeros_like(self.cluster_labels)
 
         try:
             plt.ioff()
-            for i,gene in enumerate(self.marker_genes.flatten()):
-                lbls_colors[:]=0
-                lbls_colors[self.cluster_labels==lbls[i]]=1
-                plt.figure(figsize=(12,5))                
-                ax1=plt.subplot(121)
-                self.show_gene_expression(gene,axes=ax1,**kwargs);
-                ax2=plt.subplot(122)
-                self.scatter(c=lbls_colors,colorbar=False,axes=ax2,**kwargs)
+            for i, gene in enumerate(self.marker_genes.flatten()):
+                lbls_colors[:] = 0
+                lbls_colors[self.cluster_labels == lbls[i]] = 1
+                plt.figure(figsize=(12, 5))
+                ax1 = plt.subplot(121)
+                self.show_gene_expression(gene, axes=ax1, **kwargs)
+                ax2 = plt.subplot(122)
+                self.scatter(c=lbls_colors, colorbar=False, axes=ax2, **kwargs)
                 plt.set_cmap('rainbow')
                 plt.title('Cluster: ' + str(lbls[i]))
-                        
-            self.save_figures(filename)            
+
+            self.save_figures(filename)
             plt.close('all')
             plt.ion()
-            
+
         except AttributeError:
             print("Please run 'identify_marker_genes' first.")
 
@@ -887,7 +890,7 @@ class SAM(object):
             dt = man.TSNE(metric=metric, **kwargs).fit_transform(self.dist)
             self.tsne2d = dt
             self.output_vars['tsne_projection'] = self.tsne2d
-    
+
     def run_umap(self, metric=None, **kwargs):
         """Wrapper for umap-learn.
 
@@ -895,17 +898,17 @@ class SAM(object):
         and source code. 
         """
         if metric is None:
-            metric=self.distance        
-            
+            metric = self.distance
+
         if (not self.analysis_performed):
             print("Please run the SAM analysis first using 'run' after "
                   "loading the data.")
         else:
-            umap_obj=umap.UMAP(metric=metric, **kwargs)
+            umap_obj = umap.UMAP(metric=metric, **kwargs)
             self.umap2d = umap_obj.fit_transform(self.wPCA_data)
             self.output_vars['umap_projection'] = self.umap2d
         return umap_obj
-            
+
     def scatter(self, projection=None, c=None, cmap='rainbow', axes=None,
                 colorbar=True, **kwargs):
         """Display a scatter plot.
@@ -949,23 +952,23 @@ class SAM(object):
         else:
             if(projection is 'umap'):
                 try:
-                    dt=self.umap2d
+                    dt = self.umap2d
                 except AttributeError:
                     print('Please create a UMAP projection first.')
                     return
             elif(projection is 'tsne'):
                 try:
-                    dt=self.tsne2d
+                    dt = self.tsne2d
                 except AttributeError:
                     print('Please create a t-SNE projection first.')
                     return
             elif(projection is None):
                 try:
-                    dt=self.tsne2d
+                    dt = self.tsne2d
                 except AttributeError:
                     try:
-                        dt=self.umap2d
-                    except AttributeError:                        
+                        dt = self.umap2d
+                    except AttributeError:
                         print("Please create either a t-SNE or UMAP projection"
                               "first.")
                         return
