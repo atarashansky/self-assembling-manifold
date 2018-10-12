@@ -4,7 +4,6 @@ import pickle
 import pandas as pd
 import utilities as ut
 import sklearn.manifold as man
-import umap as umap
 import warnings
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
@@ -477,8 +476,15 @@ class SAM(object):
         self.marker_genes = markers
         self.output_vars['marker_genes'] = self.marker_genes
 
-    def run(self, max_iter=15, stopping_condition=1e-5, verbose=True,
-            projection=None, n_genes=None, npcs=150, num_norm_avg=50,weight_PCs = True):
+    def run(self,
+            max_iter=15,
+            stopping_condition=1e-5,
+            verbose=True,
+            projection=None,
+            n_genes=None,
+            npcs=150,
+            num_norm_avg=50,
+            weight_PCs=True):
         """Runs the Self-Assembling Manifold algorithm.
 
         Parameters
@@ -896,8 +902,10 @@ class SAM(object):
         """Wrapper for umap-learn.
 
         See https://github.com/lmcinnes/umap sklearn for the documentation
-        and source code. 
+        and source code.
         """
+        import umap as umap
+
         if metric is None:
             metric = self.distance
 
