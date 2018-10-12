@@ -17,7 +17,7 @@ except ImportError:
     PLOTTING = False
 
 
-__version__ = '0.1.9'
+__version__ = '0.1.10'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
