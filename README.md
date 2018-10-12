@@ -49,7 +49,7 @@ Please see the Jupyter notebook in the 'tutorial' folder for a basic tutorial. I
 ```
 pip install jupyter
 ```
-in your conda environment.
+in your conda environment. The tutorial assumes that all optional dependencies are installed.
 
 ## Basic usage
 
