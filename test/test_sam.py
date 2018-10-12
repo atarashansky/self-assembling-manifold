@@ -31,5 +31,5 @@ if __name__ == '__main__':
     sam.run()
     sam.run_umap()
     sam.run_tsne()
-    sam.louvain_clustering()
-    sam.identify_marker_genes()
+    #sam.louvain_clustering()
+    #sam.identify_marker_genes()
