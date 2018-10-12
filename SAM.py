@@ -476,8 +476,15 @@ class SAM(object):
         self.marker_genes = markers
         self.output_vars['marker_genes'] = self.marker_genes
 
-    def run(self, max_iter=15, stopping_condition=1e-5, verbose=True,
-            projection=None, n_genes=None, npcs=150, num_norm_avg=50,weight_PCs = True):
+    def run(self,
+            max_iter=15,
+            stopping_condition=1e-5,
+            verbose=True,
+            projection=None,
+            n_genes=None,
+            npcs=150,
+            num_norm_avg=50,
+            weight_PCs=True):
         """Runs the Self-Assembling Manifold algorithm.
 
         Parameters
