@@ -22,5 +22,7 @@ setup(
 
     py_modules=["SAM","utilities"],
     
-    install_requires=['pandas','numpy>=1.15','scikit-learn>=0.20','matplotlib','scipy','anndata','scanpy','louvain','numba>=0.37,<0.40','umap-learn']
+    install_requires=['pandas','numpy>=1.15','scikit-learn>=0.20','matplotlib','scipy','anndata','numba>=0.37,<0.40','umap-learn'],
+
+    extras_require={'louvain': ['scanpy', 'louvain']},
 )
