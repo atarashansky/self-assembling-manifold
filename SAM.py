@@ -882,42 +882,55 @@ class SAM(object):
                         self.gene_names[self.gene_groups[i]])
 
                 return seeds
-
-    def run_tsne(self, metric='precomputed', **kwargs):
+    
+    def run_tsne(self, X=None, metric='precomputed',**kwargs):
         """Wrapper for sklearn's t-SNE implementation.
 
         See sklearn for the t-SNE documentation. All arguments are the same
         with the exception that 'metric' is set to 'precomputed' by default,
         implying that this function expects a distance matrix by default.
         """
-        if (not self.analysis_performed):
+        if(X is not None):
+            dt = man.TSNE(metric=metric,**kwargs).fit_transform(X)
+            self.tsne2d = dt
+            return self.tsne2d.copy()
+        
+        elif(not self.analysis_performed):
             print("Please run the SAM analysis first using 'run' after "
                   "loading the data.")
+        
         else:
-            dt = man.TSNE(metric=metric, **kwargs).fit_transform(self.dist)
+            dt = man.TSNE(metric=metric,**kwargs).fit_transform(self.dist)
             self.tsne2d = dt
-            self.output_vars['tsne_projection'] = self.tsne2d
-
-    def run_umap(self, metric=None, **kwargs):
+            self.output_vars['tsne_projection'] = self.tsne2d        
+            return self.tsne2d.copy()
+    
+    def run_umap(self, X=None, metric=None, **kwargs):
         """Wrapper for umap-learn.
 
         See https://github.com/lmcinnes/umap sklearn for the documentation
         and source code.
         """
+
         import umap as umap
 
         if metric is None:
             metric = self.distance
-
-        if (not self.analysis_performed):
+        
+        if(X is not None):
+            umap_obj = umap.UMAP(metric=metric, **kwargs)
+            self.umap2d = umap_obj.fit_transform(X)            
+            return self.umap2d.copy()
+        
+        elif (not self.analysis_performed):
             print("Please run the SAM analysis first using 'run' after "
                   "loading the data.")
         else:
             umap_obj = umap.UMAP(metric=metric, **kwargs)
             self.umap2d = umap_obj.fit_transform(self.wPCA_data)
-            self.output_vars['umap_projection'] = self.umap2d
-        return umap_obj
-
+            self.output_vars['umap_projection'] = self.umap2d        
+            return self.umap2d.copy()
+        
     def scatter(self, projection=None, c=None, cmap='rainbow', axes=None,
                 colorbar=True, **kwargs):
         """Display a scatter plot.
