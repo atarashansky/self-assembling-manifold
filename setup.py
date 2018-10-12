@@ -12,15 +12,19 @@ setup(
     keywords='scrnaseq analysis manifold reconstruction',
     py_modules=["SAM", "utilities"],
     install_requires=[
-        'pandas',
         'numpy>=1.15',
-        'scikit-learn>=0.20',
-        'matplotlib',
         'scipy',
-        'anndata',
-        'numba>=0.37,<0.40',
-        'umap-learn'],
+        'pandas',
+        'scikit-learn>=0.20'],
     extras_require={
-        'louvain': ['scanpy', 'louvain'],
+        'louvain': [
+            'louvain',
+            'scanpy',
+            'anndata'],
+        'umap': [
+            'numba>=0.37,<0.40',
+            'umap-learn'],
+        'plot': [
+            'matplotlib'],
         },
 )

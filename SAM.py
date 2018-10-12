@@ -4,7 +4,6 @@ import pickle
 import pandas as pd
 import utilities as ut
 import sklearn.manifold as man
-import umap as umap
 import warnings
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
@@ -896,8 +895,10 @@ class SAM(object):
         """Wrapper for umap-learn.
 
         See https://github.com/lmcinnes/umap sklearn for the documentation
-        and source code. 
+        and source code.
         """
+        import umap as umap
+
         if metric is None:
             metric = self.distance
 
