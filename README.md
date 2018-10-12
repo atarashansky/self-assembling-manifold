@@ -16,6 +16,7 @@ The Self-Assembling-Manifold (SAM) algorithm.
  - Clustering
    - `scanpy`
    - `louvain`
+   - `anndata`
 
 ## Installation
 SAM has been most extensively tested using python3.6 but presumably should work on python>=3.5. Python can be installed using Anaconda.
