@@ -19,8 +19,7 @@ setup(
     extras_require={
         'louvain': [
             'louvain',
-            'scanpy',
-            'anndata'],
+            'scanpy'],
         'umap': [
             'numba>=0.37,<0.40',
             'umap-learn'],
