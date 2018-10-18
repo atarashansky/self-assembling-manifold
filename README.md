@@ -16,7 +16,6 @@ The Self-Assembling-Manifold (SAM) algorithm.
  - Clustering
    - `scanpy`
    - `louvain`
-   - `anndata`
  - UMAP
    - `umap-learn`
    - `numba>=0.37,<0.40`
