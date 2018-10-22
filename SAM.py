@@ -481,7 +481,7 @@ class SAM(object):
             stopping_condition=1e-5,
             verbose=True,
             projection=None,
-            n_genes=None,
+            n_genes=2000,
             npcs=150,
             num_norm_avg=50,
             weight_PCs=True):
