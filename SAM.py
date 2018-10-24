@@ -373,7 +373,7 @@ class SAM(object):
         self.annotations = ann
         self.integer_annotations = ut.convert_annotations(self.annotations)
 
-    def dispersion_ranking_NN(self, dist, num_norm_avg=1):
+    def dispersion_ranking_NN(self, dist, num_norm_avg=50):
         """Computes the spatial dispersion factors for each gene.
 
         Given a cell distance matrix, this function calculates the k-nearest
@@ -483,7 +483,7 @@ class SAM(object):
             projection=None,
             n_genes=2000,
             npcs=150,
-            num_norm_avg=1,
+            num_norm_avg=50,
             weight_PCs=True):
         """Runs the Self-Assembling Manifold algorithm.
 
