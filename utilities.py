@@ -14,7 +14,7 @@ def weighted_PCA(mat,do_weight=True,npcs=None):
         if(npcs is None):
             ncom=min(mat.shape)
         else:
-            ncom=npcs
+            ncom=min((min(mat.shape),npcs))
         
         pca = PCA(svd_solver='auto',n_components=ncom)        
         reduced=pca.fit_transform(mat)
