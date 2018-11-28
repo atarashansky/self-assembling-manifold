@@ -3,6 +3,9 @@
 # self-assembling-manifold
 The Self-Assembling-Manifold (SAM) algorithm.
 
+# Update (11/28/2018)
+
+I have added SAMsparse, which uses scipy.sparse matrices to dramatically improve the speed and scalability of SAM applied to large (>8000 cells) datasets. Runs fairly quickly (< 3 minutes) on datasets up to 50,000 cells. SAM.py will eventually be phased out in favor of SAMsparse.py as any leftover kinks get ironed out. An updated tutorial notebook for interfacing with SAMsparse will soon be uploaded, although core usage remains pretty much the same.
 
 ## Requirements
  - `numpy`
