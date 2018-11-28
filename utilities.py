@@ -1,9 +1,55 @@
 import numpy as np
 import scipy as sp
 import os, errno
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA,TruncatedSVD
+import umap.distances as dist
+
+import umap.sparse as sparse
+from umap.rp_tree import rptree_leaf_array, make_forest
+from umap.nndescent import (
+    make_nn_descent,
+)
+
+INT32_MIN = np.iinfo(np.int32).min + 1
+INT32_MAX = np.iinfo(np.int32).max - 1
+
 
 __version__ = '0.2.0'
+
+def nearest_neighbors(X,n_neighbors=15,seed=0,metric='correlation'):
+    
+    distance_func = dist.named_distances[metric]
+
+
+    if metric in ("cosine", "correlation", "dice", "jaccard"):
+        angular = True
+    else:
+        angular=False
+
+    
+    random_state = np.random.RandomState(seed=seed)
+    rng_state = random_state.randint(INT32_MIN, INT32_MAX, 3).astype(np.int64)
+    
+    metric_nn_descent = make_nn_descent(
+        distance_func, tuple({}.values())
+    )
+    
+    n_trees = 5 + int(round((X.shape[0]) ** 0.5 / 20.0))
+    n_iters = max(5, int(round(np.log2(X.shape[0]))))
+
+    rp_forest = make_forest(X, n_neighbors, n_trees, rng_state, angular)
+    leaf_array = rptree_leaf_array(rp_forest)
+    knn_indices, knn_dists = metric_nn_descent(
+        X,
+        n_neighbors,
+        rng_state,
+        max_candidates=60,
+        rp_tree_init=True,
+        leaf_array=leaf_array,
+        n_iters=n_iters,
+        verbose=False,
+    )
+    return knn_indices,knn_dists
 
 def weighted_PCA(mat,do_weight=True,npcs=None):
     mat = (mat - np.mean(mat,axis=0))
@@ -25,6 +71,31 @@ def weighted_PCA(mat,do_weight=True,npcs=None):
         reduced=pca.fit_transform(mat)
         if reduced.shape[1]==1:
             pca = PCA(n_components=2,svd_solver='auto')
+            reduced=pca.fit_transform(mat)
+        reduced_weighted=reduced
+        
+    return reduced_weighted,pca
+
+def weighted_sparse_PCA(mat,do_weight=True,npcs=None):
+
+    if(do_weight):
+        if(min(mat.shape)>=10000 and npcs is None):
+            print("More than 10,000 cells. Running with 'npcs' set to < 1000 is recommended.")
+            
+        if(npcs is None):
+            ncom=min(mat.shape)
+        else:
+            ncom=min((min(mat.shape),npcs))
+        
+        pca = TruncatedSVD(n_components=ncom)        
+        reduced=pca.fit_transform(mat)
+        scaled_eigenvalues=pca.explained_variance_/pca.explained_variance_.max()
+        reduced_weighted=reduced*scaled_eigenvalues[None,:]**0.5
+    else:
+        pca = TruncatedSVD(n_components=npcs,svd_solver='auto')
+        reduced=pca.fit_transform(mat)
+        if reduced.shape[1]==1:
+            pca = TruncatedSVD(n_components=2,svd_solver='auto')
             reduced=pca.fit_transform(mat)
         reduced_weighted=reduced
         
