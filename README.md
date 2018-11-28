@@ -98,6 +98,7 @@ sam.load_annotations('/path/to/annotations_file.csv',delimiter=',')
 sam.run(projection='umap')
 sam.scatter()
 ```
+After loading the data for the first time using 'load_dense_data_from_file', use 'load_sparse_data' in the future to greatly speed up the loading of data. 
 
 ## Citation
 If using the SAM algorithm, please cite the following preprint:
