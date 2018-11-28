@@ -303,8 +303,7 @@ class SAM(object):
 
             self.D = self.D[:, idx]
             self.gene_names = self.gene_names[idx]
-            filter_genes = False
-            
+          
             
         if(cells is not None):
             cells = np.array(cells)
