@@ -916,7 +916,7 @@ class SAM(object):
 
                 return seeds
     
-    def run_tsne(self, X=None, metric='precomputed',**kwargs):
+    def run_tsne(self, X=None, metric='correlation',**kwargs):
         """Wrapper for sklearn's t-SNE implementation.
 
         See sklearn for the t-SNE documentation. All arguments are the same
@@ -932,7 +932,7 @@ class SAM(object):
                   "loading the data.")
         
         else:
-            dt = man.TSNE(metric=metric,**kwargs).fit_transform(self.dist)
+            dt = man.TSNE(metric=metric,**kwargs).fit_transform(self.wPCA_data)
             self.tsne2d = dt
             self.output_vars['tsne_projection'] = self.tsne2d        
             return self.tsne2d.copy()
