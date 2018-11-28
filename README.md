@@ -57,7 +57,7 @@ in your conda environment. The tutorial assumes that all optional dependencies a
 
 ## Basic usage
 
-Using a preloaded Pandas DataFrame:
+###Using a preloaded Pandas DataFrame:
 ```
 from SAM import SAM #import SAM
 sam=SAM(counts=dataframe, #pandas.DataFrame
@@ -67,7 +67,7 @@ sam.runprojection='umap'() #run with default parameters
 sam.scatter() #display resulting UMAP plot
 ```
 
-Loading data from a file:
+###Loading data from a file:
 ```
 from SAM import SAM #import SAM
 sam=SAM() #initialize SAM object
@@ -77,7 +77,7 @@ sam.run(projection='umap')
 sam.scatter()
 ```
 
-Loading data from a file using SAMsparse:
+###Loading data from a file using SAMsparse:
 ```
 from SAMsparse import SAM #import SAM
 sam=SAM() #initialize SAM object
@@ -87,7 +87,7 @@ sam.run(projection='umap')
 sam.scatter()
 ```
 
-Loading a scipy.sparse '.npz' file into SAMsparse (output from load_dense_data_from_file):
+###Loading a scipy.sparse '.npz' file into SAMsparse (output from load_dense_data_from_file):
 ```
 from SAMsparse import SAM #import SAM
 sam=SAM() #initialize SAM object
