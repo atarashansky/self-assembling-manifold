@@ -3,7 +3,7 @@ import scipy as sp
 import os, errno
 from sklearn.decomposition import PCA
 
-__version__ = '0.1.11'
+__version__ = '0.2.0'
 
 def weighted_PCA(mat,do_weight=True,npcs=None):
     mat = (mat - np.mean(mat,axis=0))

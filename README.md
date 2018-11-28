@@ -9,6 +9,8 @@ The Self-Assembling-Manifold (SAM) algorithm.
  - `scipy`
  - `pandas`
  - `scikit-learn`
+ - `umap-learn`
+ - `numba>=0.37,<0.40`
 
 ### Optional dependencies
  - Plotting
@@ -16,9 +18,6 @@ The Self-Assembling-Manifold (SAM) algorithm.
  - Clustering
    - `scanpy`
    - `louvain`
- - UMAP
-   - `umap-learn`
-   - `numba>=0.37,<0.40`
 
 ## Installation
 SAM has been most extensively tested using python3.6 but presumably should work on python>=3.5. Python can be installed using Anaconda.
