@@ -18,6 +18,12 @@ __version__ = '0.2.0'
 
 def nearest_neighbors(X,n_neighbors=15,seed=0,metric='correlation'):
     
+    """
+    Code taken from https://github.com/lmcinnes/umap
+    
+    Major props to UMAP!!
+    """
+    
     distance_func = dist.named_distances[metric]
 
 
