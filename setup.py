@@ -16,7 +16,7 @@ setup(
         'scipy',
         'pandas',
         'scikit-learn>=0.20',
-	'numba>=0.37,<0.40'
+	'numba>=0.37,<0.40',
 	'umap-learn'],
     extras_require={
         'louvain': [
