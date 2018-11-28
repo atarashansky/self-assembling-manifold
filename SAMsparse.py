@@ -482,6 +482,8 @@ class SAM(object):
         
         D_avg = ((nnm/self.k).dot(self.D))
         
+        self.D_avg = D_avg.copy()
+
         mu = D_avg.mean(0)
         Ex2=np.square(mu) 
         D_avg.data=D_avg.data**2
@@ -498,8 +500,6 @@ class SAM(object):
 
         indices = np.argsort(-weights)
         
-        self.D_avg = D_avg
-
         return indices, weights
 
     def run(self,
