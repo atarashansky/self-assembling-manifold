@@ -5,7 +5,7 @@ The Self-Assembling-Manifold (SAM) algorithm.
 
 # Update (11/28/2018)
 
-I have added SAMsparse, which uses scipy.sparse matrices to dramatically improve the speed and scalability of SAM applied to large (>8000 cells) datasets. Runs fairly quickly (< 3 minutes) on datasets up to 50,000 cells. SAM.py will eventually be phased out in favor of SAMsparse.py as any leftover kinks get ironed out. An updated tutorial notebook for interfacing with SAMsparse will soon be uploaded, although core usage remains pretty much the same.
+I have added SAMsparse, which uses scipy.sparse matrices to dramatically improve the speed and scalability of SAM applied to large (>8000 cells) datasets. Runs fairly quickly (< 3 minutes) on datasets up to 50,000 cells. SAM.py will eventually be phased out in favor of SAMsparse.py as any leftover kinks get ironed out. An updated tutorial notebook for interfacing with SAMsparse has been uploaded, under 'tutorial/'. Core usage has essentially remained the same.
 
 ## Requirements
  - `numpy`
@@ -63,8 +63,8 @@ from SAM import SAM #import SAM
 sam=SAM(counts=dataframe, #pandas.DataFrame
             annotations=ann) #numpy.ndarray
 sam.filter_data() #filter data with default parameters, optional but recommended.
-sam.run() #run with default parameters
-sam.scatter() #display resulting t-SNE plot
+sam.runprojection='umap'() #run with default parameters
+sam.scatter() #display resulting UMAP plot
 ```
 
 Loading data from a file:
@@ -73,7 +73,29 @@ from SAM import SAM #import SAM
 sam=SAM() #initialize SAM object
 sam.load_data_from_file('/path/to/expression_data_file.csv') #load data from a csv file and filter with default parameters
 sam.load_annotations('/path/to/annotations_file.csv')
-sam.run()
+sam.run(projection='umap')
+sam.scatter()
+```
+
+Loading data from a file using SAMsparse:
+```
+from SAMsparse import SAM #import SAM
+sam=SAM() #initialize SAM object
+sam.load_dense_data_from_file('/path/to/expression_data_file.csv') #load data from a csv file and filter with default parameters
+sam.load_annotations('/path/to/annotations_file.csv',delimiter=',')
+sam.run(projection='umap')
+sam.scatter()
+```
+
+Loading a scipy.sparse '.npz' file into SAMsparse (output from load_dense_data_from_file):
+```
+from SAMsparse import SAM #import SAM
+sam=SAM() #initialize SAM object
+sam.load_sparse_data('/path/to/sparse_expression_data_file.npz',
+                      /path/to/gene_IDs_file.txt',
+                      /path/to/cell_IDs_file.txt') #load data from a sparse npz file and filter with default parameters
+sam.load_annotations('/path/to/annotations_file.csv',delimiter=',')
+sam.run(projection='umap')
 sam.scatter()
 ```
 
