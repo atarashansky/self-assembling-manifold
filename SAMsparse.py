@@ -600,8 +600,8 @@ class SAM(object):
                 gkeep = np.sort(np.argsort(-W)[:n_genes])
             
             Ds=StandardScaler(with_mean=True).fit_transform(self.D[:,gkeep].toarray())
-            Ds[Ds>10]=10
-            Ds[Ds<-10]=-10
+            Ds[Ds>5]=5
+            Ds[Ds<-5]=-5
             D_sub = Ds*(W[gkeep])
             g_weighted,pca = ut.weighted_PCA(D_sub,npcs=npcs)
             
