@@ -14,7 +14,7 @@ INT32_MIN = np.iinfo(np.int32).min + 1
 INT32_MAX = np.iinfo(np.int32).max - 1
 
 
-__version__ = '0.2.1'
+__version__ = '0.2.2'
 
 def nearest_neighbors(X,n_neighbors=15,seed=0,metric='correlation'):
     
