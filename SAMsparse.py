@@ -510,6 +510,7 @@ class SAM(object):
             npcs=150,
             num_norm_avg=50,
             weight_PCs=True,
+            preprocessing='StandardScaler',
             final_PC=True):
         """Runs the Self-Assembling Manifold algorithm.
 
@@ -598,10 +599,14 @@ class SAM(object):
             else:
                 gkeep = np.sort(np.argsort(-W)[:n_genes])
             
-            Ds=StandardScaler(with_mean=True).fit_transform(self.D[:,gkeep].toarray())
-            Ds[Ds>5]=5
-            Ds[Ds<-5]=-5
-            D_sub = Ds*(W[gkeep])
+            if preprocessing == 'StandardScaler':
+                Ds=StandardScaler(with_mean=True).fit_transform(self.D[:,gkeep].toarray())
+                Ds[Ds>5]=5
+                Ds[Ds<-5]=-5
+                D_sub = Ds*(W[gkeep])
+            else:
+                D_sub = Normalizer().fit_transform(self.D[:,gkeep].toarray()*W[gkeep])
+                
             g_weighted,pca = ut.weighted_PCA(D_sub,npcs=npcs)
             
             self.wPCA_data = g_weighted
