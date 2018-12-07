@@ -1118,7 +1118,7 @@ class SAM(object):
             sc.tl.louvain(adata, resolution=res)
             self.cluster_labels = adata.obs['louvain'].values.astype('int')
             self.output_vars['louvain_cluster_labels'] = self.cluster_labels
-
+    """
     def identify_marker_genes(self, n_genes_per_cluster=10, labels=None,
                               n_genes_subset=2000, svm=True):
         if(labels is None):
@@ -1150,7 +1150,7 @@ class SAM(object):
 
         self.marker_genes = markers
         self.output_vars['marker_genes'] = self.marker_genes
-
+    """
     def identify_marker_genes2(self, n_genes_per_cluster=10, labels=None):
         if(labels is None):
             try:
@@ -1164,9 +1164,11 @@ class SAM(object):
         
         markers = np.zeros(
             (lbls.max()+1, n_genes_per_cluster), dtype=self.gene_names.dtype)        
+        
+        s = self.D.toarray().sum(0)
         for i in range(lbls.max()+1):
-            d = self.D[lbls==i,:]
-            x = np.argsort(-d.sum(0)**2 / self.D.sum(0))
+            d = self.D[lbls==i,:].toarray()
+            x = np.argsort(-d.sum(0)**2 / s)
             markers[i,:]=self.gene_names[x[:n_genes_per_cluster]]
 
         self.marker_genes = markers
