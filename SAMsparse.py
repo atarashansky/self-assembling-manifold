@@ -1048,7 +1048,7 @@ class SAM(object):
                         dt[:, 0], dt[:, 1], c=i, cmap=cmap,s=s,linewidth=linewidth,edgecolor=edgecolor, **kwargs)
 
                     if(colorbar):
-                        cbar = plt.colorbar(cax, ticks=ui)
+                        cbar = plt.colorbar(cax, ax=axes, ticks=ui)
                         cbar.ax.set_yticklabels(c[ai])
                 else:
                     if not (type(c) is np.ndarray or type(c) is list):
@@ -1059,9 +1059,9 @@ class SAM(object):
                         dt[:, 0], dt[:, 1], c=i, cmap=cmap,s=s,linewidth=linewidth,edgecolor=edgecolor, **kwargs)
 
                     if(colorbar):
-                        plt.colorbar(cax)
+                        plt.colorbar(cax, ax=axes)
 
-    def show_gene_expression(self, gene, average_exp=True, **kwargs):
+    def show_gene_expression(self, gene, average_exp=True, axes=None, **kwargs):
         """Display a gene's expressions.
 
         Displays a scatter plot using the SAM projection or another input
@@ -1098,9 +1098,13 @@ class SAM(object):
             a = self.D_avg[:, idx].toarray().flatten()
         else:
             a = self.D[:, idx].toarray().flatten()
-
-        self.scatter(c=a, **kwargs)
-        plt.title(name)
+        
+        if axes is None:
+            plt.figure();
+            axes = plt.gca()
+            
+        self.scatter(c=a,axes=axes, **kwargs)
+        axes.set_title(name)
 
 
     def louvain_clustering(self, res=1):
