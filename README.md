@@ -86,7 +86,7 @@ sam.load_annotations('/path/to/annotations_file.csv')
 sam.run()
 sam.scatter()
 ```
-After loading the data for the first time using 'load_data_from_file', use 'load_sparse_data' in the future to greatly speed up the loading of data. 
+After loading the data for the first time using 'load_data_from_file', a pickle file of the sparse data will be automatically saved in the same location as the original file. Load the pickle file with 'load_sparse_data' in the future to greatly speed up the loading of data. 
 
 ## Citation
 If using the SAM algorithm, please cite the following preprint:
