@@ -19,7 +19,7 @@ except ImportError:
     PLOTTING = False
 
 
-__version__ = '0.3.0'
+__version__ = '0.3.1'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -232,8 +232,10 @@ class SAM(object):
         
         self.filter_data(**kwargs)                        
     
-    def filter_data(self, div=1, downsample=0, genes=None, cells=None,norm='log',
-                    genes_inc=None,min_expression=1, thresh=0.01, filter_genes=True):
+    def filter_data(self, div=1, downsample=0, include_genes=None,
+                    exclude_genes=None, include_cells=None, exclude_cells=None,
+                    norm='log', min_expression=1, thresh=0.01,
+                    filter_genes=True):
         
         """Log-normalizes and filters the expression data.
 
@@ -247,21 +249,28 @@ class SAM(object):
         downsample : float, optional, default 0
             The factor by which to randomly downsample the data. If 0, the
             data will not be downsampled.
-
-        genes : array-like of string or int, optional, default None
-            A vector of gene names or indices that specifies the genes to keep.
-            All other genes will be filtered out. If specified, the usual
-            filtering operations do not occur. Gene names are case-sensitive.
-
-        cells : array-like of string or int, optional, default None
-            A vector of cell names or indices that specifies the cells to keep.
-            All other cells wil lbe filtered out. Cell names are
-            case-sensitive.
         
-        genes_inc: array-like of string
-            A vector of genes that will be guaranteed to be included after all
-            filtering operations (even if they would have otherwise been filtered
-            out).
+        norm : str, optional, default 'log'
+            If 'log', log-normalizes the expression data. If the loaded data is
+            already log-normalized, set norm = None.
+            
+        include_genes : array-like of string, optional, default None
+            A vector of gene names or indices that specifies the genes to keep.
+            All other genes will be filtered out. Gene names are case-sensitive.
+
+        exclude_genes : array-like of string, optional, default None
+            A vector of gene names or indices that specifies the genes to exclude.
+            All other genes will be filtered out. Gene names are case-sensitive.
+
+        include_cells : array-like of string, optional, default None
+            A vector of cell names that specifies the cells to keep.
+            All other cells will be filtered out. Cell names are
+            case-sensitive.
+
+        exclude_cells : array-like of string, optional, default None
+            A vector of cell names that specifies the cells to exclude.
+            All other cells will be filtered out. Cell names are
+            case-sensitive.
         
         min_expression : float, optional, default 1
             The threshold (in log2 TPM) above which a gene is considered
@@ -274,8 +283,10 @@ class SAM(object):
             expressed if its expression value exceeds 'min_expression'.
 
         filter_genes : bool, optional, default True
-            Setting this to False turns off all filtering operations aside from
-            removing genes with zero expression across all cells.
+            Setting this to False turns off filtering operations aside from
+            removing genes with zero expression across all cells. Genes passed
+            in exclude_genes or not passed in include_genes will still be
+            filtered.
 
         """
         if(self.sparse_data is None):
@@ -285,8 +296,6 @@ class SAM(object):
         self.D = self.sparse_data.copy()
         if(norm == 'log'):
             self.D.data = np.log2(self.D.data/div+1)
-        elif(norm == 'FTT'):
-            self.D.data = self.D.data**0.5 + (self.D.data+1)**0.5
         else:
             self.D.data = self.D.data/div
             
@@ -295,30 +304,31 @@ class SAM(object):
         
         
         #"""
-        if(genes is not None):
-            genes = np.array(genes)
-            
-            if str(genes.dtype)[:2] == '<U' or str(genes.dtype) == 'object':
-                idx = np.where(
-                    (np.in1d(self.gene_names, genes)))[0]
-            else:
-                idx = genes
-
+        if(include_genes is not None):
+            include_genes = np.array(include_genes)            
+            idx = np.where(np.in1d(self.gene_names, include_genes))[0]
             self.D = self.D[:, idx]
             self.gene_names = self.gene_names[idx]
             
-            
-        if(cells is not None):
-            cells = np.array(cells)
-            if str(cells.dtype)[:2] == '<U' or str(cells.dtype) == 'object':
-                idx2 = np.where(
-                    np.in1d(self.cell_names, cells))[0]
-            else:
-                idx2 = cells
-
+        if(include_cells is not None):
+            include_cells = np.array(include_cells)            
+            idx2 = np.where(np.in1d(self.cell_names, include_cells))[0]            
             self.D = self.D[idx2, :]
             self.cell_names = self.cell_names[idx2]
 
+        if(exclude_genes is not None):
+            exclude_genes = np.array(exclude_genes)            
+            idx3 = np.where(np.in1d(self.gene_names, exclude_genes,
+                                                            invert=True))[0]
+            self.D = self.D[:, idx3]
+            self.gene_names = self.gene_names[idx3]
+        
+        if(exclude_cells is not None):
+            exclude_cells = np.array(exclude_cells)            
+            idx4 = np.where(np.in1d(self.cell_names, exclude_cells,
+                                                            invert=True))[0]            
+            self.D = self.D[idx4, :]
+            self.cell_names = self.cell_names[idx4]        
 
         if downsample > 0:
             numcells = int(self.D.shape[0]/downsample)
@@ -332,8 +342,8 @@ class SAM(object):
             numcells = self.D.shape[0]
 
 
-        idx3 = np.where(self.D.data <= min_expression)[0]
-        self.D.data[idx3]=0
+        idx5 = np.where(self.D.data <= min_expression)[0]
+        self.D.data[idx5]=0
         self.D.eliminate_zeros()
         
         
@@ -342,19 +352,16 @@ class SAM(object):
             c = np.zeros(self.D.shape[1])
             c[a]=ct
             
-            keep = np.where(np.logical_and(c/self.D.shape[0] > thresh,c/self.D.shape[0] < 1-thresh))[0]
+            keep = np.where(np.logical_and(c/self.D.shape[0] > thresh,
+                                           c/self.D.shape[0] < 1-thresh))[0]
         
         else:
             keep = np.arange(self.D.shape[1])
             
-        
-        if(genes_inc is not None):
-            keep = np.append(keep, np.where(np.in1d(self.gene_names,np.array(genes_inc)))[0])
-            keep = np.unique(keep)       
 
-        self.D=self.D.tocsc()
+        self.D = self.D.tocsc()
         self.D = self.D[:,keep]
-        self.D2=self.D
+        self.D2 = self.D
         
         self.gene_names = self.gene_names[keep]
         

@@ -13,7 +13,7 @@ from umap.nndescent import (
 INT32_MIN = np.iinfo(np.int32).min + 1
 INT32_MAX = np.iinfo(np.int32).max - 1
 
-__version__ = '0.3.0'
+__version__ = '0.3.1'
 
 
 
