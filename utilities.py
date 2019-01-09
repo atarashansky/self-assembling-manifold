@@ -13,16 +13,12 @@ from umap.nndescent import (
 INT32_MIN = np.iinfo(np.int32).min + 1
 INT32_MAX = np.iinfo(np.int32).max - 1
 
+__version__ = '0.3.0'
 
-__version__ = '0.2.2'
+
+
 
 def nearest_neighbors(X,n_neighbors=15,seed=0,metric='correlation'):
-    
-    """
-    Code taken from https://github.com/lmcinnes/umap
-    
-    Major props to UMAP!!
-    """
     
     distance_func = dist.named_distances[metric]
 
@@ -57,7 +53,16 @@ def nearest_neighbors(X,n_neighbors=15,seed=0,metric='correlation'):
     )
     return knn_indices,knn_dists
 
-def weighted_PCA(mat,do_weight=True,npcs=None):
+
+def knndist(nnma):
+    knn=[]
+    for i in range(nnma.shape[0]):
+        knn.append(np.where(nnma[i,:]==1)[0])
+    knn=np.vstack(knn)
+    dist=np.ones(knn.shape)
+    return knn,dist
+
+def weighted_PCA(mat,do_weight=True,npcs=None,solver='auto'):
     mat = (mat - np.mean(mat,axis=0))
     if(do_weight):
         if(min(mat.shape)>=10000 and npcs is None):
@@ -68,15 +73,16 @@ def weighted_PCA(mat,do_weight=True,npcs=None):
         else:
             ncom=min((min(mat.shape),npcs))
         
-        pca = PCA(svd_solver='auto',n_components=ncom)        
+        pca = PCA(svd_solver=solver,n_components=ncom)        
         reduced=pca.fit_transform(mat)
-        scaled_eigenvalues=pca.explained_variance_/pca.explained_variance_.max()
+        scaled_eigenvalues=reduced.var(0)#pca.explained_variance_/pca.explained_variance_.max()
+        scaled_eigenvalues=scaled_eigenvalues/scaled_eigenvalues.max()
         reduced_weighted=reduced*scaled_eigenvalues[None,:]**0.5
     else:
-        pca = PCA(n_components=npcs,svd_solver='auto')
+        pca = PCA(n_components=npcs,svd_solver=solver)
         reduced=pca.fit_transform(mat)
         if reduced.shape[1]==1:
-            pca = PCA(n_components=2,svd_solver='auto')
+            pca = PCA(n_components=2,svd_solver=solver)
             reduced=pca.fit_transform(mat)
         reduced_weighted=reduced
         
@@ -95,7 +101,8 @@ def weighted_sparse_PCA(mat,do_weight=True,npcs=None):
         
         pca = TruncatedSVD(n_components=ncom)        
         reduced=pca.fit_transform(mat)
-        scaled_eigenvalues=pca.explained_variance_/pca.explained_variance_.max()
+        scaled_eigenvalues=reduced.var(0)#pca.explained_variance_/pca.explained_variance_.max()
+        scaled_eigenvalues=scaled_eigenvalues/scaled_eigenvalues.max()
         reduced_weighted=reduced*scaled_eigenvalues[None,:]**0.5
     else:
         pca = TruncatedSVD(n_components=npcs,svd_solver='auto')
@@ -108,10 +115,15 @@ def weighted_sparse_PCA(mat,do_weight=True,npcs=None):
     return reduced_weighted,pca
 
 def transform_wPCA(mat,pca):
-    mat = (mat - np.mean(mat,axis=0))    
-    reduced=pca.transform(mat)
-    scaled_eigenvalues=pca.explained_variance_/pca.explained_variance_.max()
-    reduced_weighted=reduced*scaled_eigenvalues[None,:]**0.5
+    mat = (mat - mat.mean(0))
+    reduced=mat.dot(pca.components_.T)
+    """
+    scale by new variance as opposed to old?
+    """
+    v = pca.explained_variance_
+    #v = reduced.var(0)
+    scaled_eigenvalues=v/v.max()
+    reduced_weighted=np.array(reduced)*scaled_eigenvalues[None,:]**0.5
     return reduced_weighted
          
 def search_string(vec,s):
@@ -125,7 +137,7 @@ def search_string(vec,s):
     if(len(m)>0):
         return vec[np.array(m)],np.array(m)
     else:
-        return []
+        return [-1,-1]
 
 def distance_matrix_error(dist1,dist2):
     s=0
@@ -148,7 +160,11 @@ def to_lower(y):
     for i in range(x.size):    
         x[i]=x[i].lower()
     return x
-    
+def to_upper(y):
+    x=y.copy().flatten()
+    for i in range(x.size):    
+        x[i]=x[i].upper()
+    return x    
 def create_folder(path):
     try:
         os.makedirs(path)
@@ -186,6 +202,7 @@ def compute_distances(A,dm):
 
 def dist_to_nn(d,K):
     E=d.copy()
+    np.fill_diagonal(E,-1)
     M=np.max(E)*2    
     x=np.argsort(E,axis=1)[:,:K]
     E[np.tile(np.arange(E.shape[0]).reshape(E.shape[0],-1),
@@ -193,10 +210,6 @@ def dist_to_nn(d,K):
         
     E[E<M]=0
     E[E>0]=1
-    return E
-
-
-def normalizer(x):
-    return (x - np.min(x)) / (np.max(x) - np.min(x))
+    return E#,x
 
 

@@ -3,16 +3,16 @@
 # self-assembling-manifold
 The Self-Assembling-Manifold (SAM) algorithm.
 
-# Update (11/28/2018)
+# Update (1/8/2019)
 
-I have added SAMsparse, which uses scipy.sparse matrices to dramatically improve the speed and scalability of SAM applied to large (>8000 cells) datasets. Runs fairly quickly (< 5 minutes on a nothing-too-special desktop computer) on datasets tested up to 50,000 cells. SAM.py will eventually be phased out in favor of SAMsparse.py as any leftover kinks get ironed out. An updated tutorial notebook for interfacing with SAMsparse has been uploaded, under 'tutorial/'. Core usage has essentially remained the same. Please submit any issues! I will fix them ASAP.
+What was previously 'SAMsparse' is now just 'SAM'. Refer to the below code snippets or the updated tutorial notebook to see any usage changes (mainly, the loading and filtering functions in SAMsparse changed names to match their counterparts in the old SAM). Other tweaks here and there have been made to the SAM algorithm to improve convergence stability, run-time performance, etc.
 
 ## Requirements
- - `numpy`
+ - `numpy>=1.14,<=1.15.2`
  - `scipy`
  - `pandas`
- - `scikit-learn`
- - `umap-learn`
+ - `scikit-learn==0.20.0`
+ - `umap-learn<=0.3.6`
  - `numba>=0.37,<0.40`
 
 ### Optional dependencies
@@ -57,52 +57,39 @@ in your conda environment. The tutorial assumes that all optional dependencies a
 
 ## Basic usage
 
-### Using a preloaded Pandas DataFrame:
-```
-from SAM import SAM #import SAM
-sam=SAM(counts=dataframe, #pandas.DataFrame
-            annotations=ann) #numpy.ndarray
-sam.filter_data() #filter data with default parameters, optional but recommended.
-sam.runprojection='umap'() #run with default parameters
-sam.scatter() #display resulting UMAP plot
-```
-
 ### Loading data from a file:
 ```
 from SAM import SAM #import SAM
 sam=SAM() #initialize SAM object
 sam.load_data_from_file('/path/to/expression_data_file.csv') #load data from a csv file and filter with default parameters
 sam.load_annotations('/path/to/annotations_file.csv')
-sam.run(projection='umap')
+sam.run()
 sam.scatter()
 ```
 
-### Loading data from a file using SAMsparse:
+### Using a preloaded scipy.sparse matrix, gene IDs, and cell IDs:
 ```
-from SAMsparse import SAM #import SAM
-sam=SAM() #initialize SAM object
-sam.load_dense_data_from_file('/path/to/expression_data_file.csv') #load data from a csv file and filter with default parameters
-sam.load_annotations('/path/to/annotations_file.csv',delimiter=',')
-sam.run(projection='umap')
-sam.scatter()
+from SAM import SAM #import SAM
+sam=SAM(counts=(sparse_matrix,geneIDs,cellIDs)) #tuple
+sam.filter_data() #filter data with default parameters
+sam.run() #run with default parameters
+sam.scatter() #display resulting UMAP plot
 ```
 
-### Loading a scipy.sparse '.npz' file into SAMsparse (output from load_dense_data_from_file):
+### Loading a pickle file into SAM (output from load_data_from_file):
 ```
-from SAMsparse import SAM #import SAM
+from SAM import SAM #import SAM
 sam=SAM() #initialize SAM object
-sam.load_sparse_data('/path/to/sparse_expression_data_file.npz',
-                      /path/to/gene_IDs_file.txt',
-                      /path/to/cell_IDs_file.txt') #load data from a sparse npz file and filter with default parameters
-sam.load_annotations('/path/to/annotations_file.csv',delimiter=',')
-sam.run(projection='umap')
+sam.load_sparse_data('/path/to/sparse_expression_pickle_file.p') #load data from a pickle file and filter with default parameters
+sam.load_annotations('/path/to/annotations_file.csv')
+sam.run()
 sam.scatter()
 ```
-After loading the data for the first time using 'load_dense_data_from_file', use 'load_sparse_data' in the future to greatly speed up the loading of data. 
+After loading the data for the first time using 'load_data_from_file', use 'load_sparse_data' in the future to greatly speed up the loading of data. 
 
 ## Citation
 If using the SAM algorithm, please cite the following preprint:
 https://www.biorxiv.org/content/early/2018/07/07/364166
 
 ## Adding extra functionality
-In its current form, this is just a lightweight implementation of the SAM algorithm. If there is any added functionality you would like to see added for downstream analysis, such as cell clustering, differential gene expression analysis, data exporting, etc, please let me know by submitting a new issue describing your request and I will do my best to add that feature.
+As always, please submit a new issue if you would like to see any functionalities / convenience functions / etc added.
