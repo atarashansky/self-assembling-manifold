@@ -3,7 +3,7 @@
 # self-assembling-manifold
 The Self-Assembling-Manifold (SAM) algorithm.
 
-# Update (1/8/2019)
+# Update (1/8/2019) -- SAM version 0.3.0
 
 What was previously 'SAMsparse' is now just 'SAM'. Refer to the below code snippets or the updated tutorial notebook to see any usage changes (mainly, the loading and filtering functions in SAMsparse changed names to match their counterparts in the old SAM). Other tweaks here and there have been made to the SAM algorithm to improve convergence stability, run-time performance, etc.
 
