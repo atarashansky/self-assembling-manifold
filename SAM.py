@@ -1307,19 +1307,40 @@ class SAM(object):
 
 
     def louvain_clustering(self, res=1):
+        """Runs Louvain clustering using the vtraag implementation. Assumes
+        that 'louvain' optional dependency is installed.
+        
+        Parameters
+        ----------
+        res - float, optional, default 1
+            The resolution parameter which tunes the number of clusters Louvain
+            finds.        
+        
+        """
         if (not self.analysis_performed):
             print("Please run the SAM analysis first using 'run' after "
-                  "loading the data.")
+                  "loading the data.")               
         else:
-            import anndata
-            import scanpy.api as sc
-            adata = anndata.AnnData(self.datalog, var={'genes': self.all_gene_names},
-                                    obs={'cells': self.cell_names})
-            adata.obsm['X_pca'] = self.wPCA_data
-            sc.pp.neighbors(adata, n_neighbors=self.k, metric=self.distance,
-                            method='umap')
-            sc.tl.louvain(adata, resolution=res)
-            self.cluster_labels = adata.obs['louvain'].values.astype('int')
+            import igraph as ig
+            import louvain
+            
+            adjacency = self.nnm_adj
+            sources, targets = adjacency.nonzero()
+            weights = adjacency[sources, targets]
+            if isinstance(weights, np.matrix):
+                weights = weights.A1
+            g = ig.Graph(directed=True)
+            g.add_vertices(adjacency.shape[0])  
+            g.add_edges(list(zip(sources, targets)))
+            try:
+                g.es['weight'] = weights
+            except:
+                pass
+        
+            cl=louvain.find_partition(g,louvain.RBConfigurationVertexPartition,
+                                   resolution_parameter=res)
+            
+            self.cluster_labels = np.array(cl.membership)
             self.output_vars['louvain_cluster_labels'] = self.cluster_labels
 
     def identify_marker_genes_model(self, n_genes_per_cluster=10, labels=None,

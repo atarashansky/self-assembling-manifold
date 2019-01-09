@@ -20,8 +20,7 @@ setup(
 	'umap-learn<=0.3.6'],
     extras_require={
         'louvain': [
-            'louvain',
-            'scanpy'],
+            'louvain'],
         'plot': [
             'matplotlib'],
         },
