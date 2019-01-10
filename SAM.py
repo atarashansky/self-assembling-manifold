@@ -1032,9 +1032,15 @@ class SAM(object):
                 "are case sensitive.")
             return
         sds = self.corr_bin_genes(input_gene=name, number_of_features=2000)
-
-        for i in range(1, n_genes+1):
-            self.show_gene_expression(sds[0][-i], **kwargs)
+        
+        if (n_genes+1 > sds[0].size):
+            x = sds[0].size
+        else:
+            x = n_genes+1
+            
+        for i in range(1,x):
+            self.show_gene_expression(sds[0][i], **kwargs)
+            
         return sds[0][1:]
 
     def corr_bin_genes(self, number_of_features=None, input_gene=None):
