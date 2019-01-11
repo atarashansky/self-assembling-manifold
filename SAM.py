@@ -1072,13 +1072,12 @@ class SAM(object):
                 number_of_features = 5000;
                 
             if(input_gene is not None):
-                if(type(input_gene) is str):
-                    input_gene = np.where(self.all_gene_names == input_gene)[0]
-                    if(input_gene.size == 0):
-                        print(
-                            "Gene note found in the filtered dataset. Note "
-                            "that genes are case sensitive.")
-                        return
+                input_gene = np.where(self.all_gene_names == input_gene)[0]
+                if(input_gene.size == 0):
+                    print(
+                        "Gene note found in the filtered dataset. Note "
+                        "that genes are case sensitive.")
+                    return
                 seeds = [np.array([input_gene])]
                 pw_corr = np.corrcoef(
                     self.D_avg[:, idx2[:number_of_features]].T.toarray())
