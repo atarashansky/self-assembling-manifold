@@ -1025,10 +1025,9 @@ class SAM(object):
             All keyword arguments in 'show_gene_expression' and 'scatter'
             are eligible.
         """
-        name = np.where(self.all_gene_names == name)[0]
-        if(name.size == 0):
+        if((self.all_gene_names==name).sum()==0):
             print(
-                "Gene note found in the filtered dataset. Note that genes "
+                "Gene not found in the filtered dataset. Note that genes "
                 "are case sensitive.")
             return
         sds = self.corr_bin_genes(input_gene=name, number_of_features=2000)
