@@ -139,6 +139,7 @@ class SAM(object):
         if counts is not None:
             self.sparse_data,self.all_gene_names,self.all_cell_names = counts
             self.D = self.sparse_data.copy()
+            self.D2= self.D.copy()
             self.gene_names=self.all_gene_names
             self.cell_names=self.all_cell_names
                   
