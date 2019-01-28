@@ -56,6 +56,8 @@ in your conda environment. The tutorial assumes that all optional dependencies a
 
 ## Basic usage
 
+There are a number of ways to load data into the SAM object:
+
 ### Loading data from a file:
 ```
 from SAM import SAM #import SAM
@@ -75,7 +77,7 @@ sam.run() #run with default parameters
 sam.scatter() #display resulting UMAP plot
 ```
 
-### Loading a pickle file into SAM (output from load_data_from_file):
+### Loading the pickled data (output from `load_data_from_file`) into SAM:
 ```
 from SAM import SAM #import SAM
 sam=SAM() #initialize SAM object
@@ -85,6 +87,20 @@ sam.run()
 sam.scatter()
 ```
 After loading the data for the first time using 'load_data_from_file', a pickle file of the sparse data will be automatically saved in the same location as the original file. Load the pickle file with 'load_sparse_data' in the future to greatly speed up the loading of data. 
+
+### Saving and loading a pickled SAM object (output from `save`):
+from SAM import SAM #import SAM
+
+#Save
+sam=SAM() #initialize SAM object
+sam.load_data_from_file('/path/to/expression_data_file.csv') #load data from a csv file and filter with default parameters
+sam.run()
+sam.save('/desired/output/path') #pickle the SAM object with all its attributes
+
+#Load
+sam = SAM()
+sam.load('/desired/output/path.p') #load the SAM object and all its attributes
+sam.scatter() #visualize UMAP output
 
 ## Citation
 If using the SAM algorithm, please cite the following preprint:
