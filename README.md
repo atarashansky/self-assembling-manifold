@@ -89,6 +89,7 @@ sam.scatter()
 After loading the data for the first time using 'load_data_from_file', a pickle file of the sparse data will be automatically saved in the same location as the original file. Load the pickle file with 'load_sparse_data' in the future to greatly speed up the loading of data. 
 
 ### Saving and loading a pickled SAM object (output from `save`):
+```
 from SAM import SAM #import SAM
 
 #Save
@@ -101,7 +102,7 @@ sam.save('/desired/output/path') #pickle the SAM object with all its attributes
 sam = SAM()
 sam.load('/desired/output/path.p') #load the SAM object and all its attributes
 sam.scatter() #visualize UMAP output
-
+```
 ## Citation
 If using the SAM algorithm, please cite the following preprint:
 https://www.biorxiv.org/content/early/2018/07/07/364166
