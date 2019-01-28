@@ -889,12 +889,14 @@ class SAM(object):
             
         """
         self._create_dict(exc)
-
+        if savename[-2:] != '.p':
+            savename = savename + '.p'
+            
         if(dirname is not None):
             ut.create_folder(dirname+"/")
-            f = open(dirname+"/" + savename + ".p", 'wb')
+            f = open(dirname+"/" + savename, 'wb')
         else:
-            f = open(savename + ".p", 'wb')
+            f = open(savename, 'wb')
 
         pickle.dump(self.pickle_dict, f)
         f.close()
