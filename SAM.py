@@ -19,7 +19,7 @@ except ImportError:
     PLOTTING = False
 
 
-__version__ = '0.3.2'
+__version__ = '0.3.3'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -139,7 +139,6 @@ class SAM(object):
         if counts is not None:
             self.sparse_data,self.all_gene_names,self.all_cell_names = counts
             self.D = self.sparse_data.copy()
-            self.D2= self.D.copy()
             self.gene_names=self.all_gene_names
             self.cell_names=self.all_cell_names
                   
@@ -304,7 +303,7 @@ class SAM(object):
         self.cell_names = self.all_cell_names
         
         
-        #"""
+        
         if(include_genes is not None):
             include_genes = np.array(include_genes)            
             idx = np.where(np.in1d(self.gene_names, include_genes))[0]
@@ -541,7 +540,7 @@ class SAM(object):
 
         return indices, weights    
     
-    def calculate_regression_PCs(self,genes,npcs = None, plot=False):
+    def calculate_regression_PCs(self,genes=None,npcs = None, plot=False):
         """Computes the contribution of the gene IDs in 'genes' to each
         principal component (PC) of the filtered expression data as the mean of
         the absolute value of the corresponding gene loadings. High values
@@ -571,23 +570,27 @@ class SAM(object):
                     
         """
         from sklearn.decomposition import PCA
-        idx = np.where(np.in1d(self.gene_names,genes))[0]
         
         if npcs is None:
             npcs = self.D.shape[0]
             
         pca= PCA(n_components=npcs)
         pc= pca.fit_transform(self.D.toarray())
-        sx = pca.components_[:,idx]
-        x=np.abs(sx).mean(1)
         
         self.regression_pca = pca
         self.regression_pcs = pc
         
-        if plot:
-            plt.figure(); plt.plot(x);
+        if(genes is not None):
+            idx = np.where(np.in1d(self.gene_names,genes))[0]
+            sx = pca.components_[:,idx]
+            x=np.abs(sx).mean(1)
+        
+            if plot:
+                plt.figure(); plt.plot(x);
             
-        return x
+            return x
+        else:
+            return
 
     def regress_genes(self,PCs):
         """Regress out the principal components in 'PCs' from the filtered
@@ -603,7 +606,7 @@ class SAM(object):
         
         ind = [PCs]
         ind = np.array(ind).flatten()
-        y = self.D.toarray() - self.regression_pcs[:,ind].dot(self.regression_pca.components_[ind,:])
+        y = self.D.toarray() - self.regression_pcs[:,ind].dot(self.regression_pca.components_[ind,:]*self.weights_f)
         self.D = sp.csr_matrix(y)    
         
     def kmeans(self,numc,npcs = 15):
@@ -620,9 +623,9 @@ class SAM(object):
         """
         
         from sklearn.cluster import KMeans
-        PCA_data = self.wPCA_data / (self.pca.explained_variance_/self.pca.explained_variance_.max())**0.5
+        PCA_data = (self.D_sub-self.D_sub.mean(0)).dot(self.pca.components_[:npcs,:].T)
         
-        cl = KMeans(n_clusters=numc).fit_predict(Normalizer().fit_transform(PCA_data[:,:npcs]))
+        cl = KMeans(n_clusters=numc).fit_predict(Normalizer().fit_transform(PCA_data[:,:]))
         self.cluster_labels_k = cl
         self.output_vars['kmeans_cluster_labels'] = self.cluster_labels_k     
     
@@ -685,7 +688,7 @@ class SAM(object):
             The top 'num_norm_avg' dispersions are averaged to determine the
             normalization factor when calculating the weights.
         """
-        
+
         if(self.k < 5):
             self.k = 5
         elif(self.k > 100):
@@ -704,16 +707,23 @@ class SAM(object):
 
         numcells = self.D.shape[0]
         
-        if numcells > 3000 and n_genes > 2000:
-            n_genes = 2000;
-        
-        if n_genes > 8000:
+        if numcells > 3000 and n_genes > 3000:
+            n_genes = 3000;
+        elif numcells > 2000 and n_genes > 4500:
+            n_genes = 4500;
+        elif numcells > 1000 and n_genes > 6000:
+            n_genes = 6000
+        elif n_genes > 8000:        
             n_genes = 8000
         
-        if npcs is None and numcells < 3000:
-            npcs = numcells
-        elif npcs is None:
+        if npcs is None and numcells > 3000:
             npcs = 150
+        elif npcs is None and numcells > 2000:
+            npcs = 250
+        elif npcs is None and numcells > 1000:
+            npcs = 350
+        elif npcs is None:
+            npcs = 500
         
         tinit = time.time()
         
@@ -817,13 +827,15 @@ class SAM(object):
             Ds = self.D[:,gkeep].toarray()
             
         
-        D_sub = Ds*(W[gkeep])#.tocsc()
+        D_sub = Ds*(W[gkeep])
         self.D_sub=D_sub            
         if numcells > 3000:
             g_weighted,pca = ut.weighted_PCA(D_sub,npcs=min(npcs,min(self.D.shape)),do_weight=weight_PCs,solver='auto')
         else:
             g_weighted,pca = ut.weighted_PCA(D_sub,npcs=min(npcs,min(self.D.shape)),do_weight=weight_PCs,solver='full')
         
+        if self.distance=='euclidean':
+            g_weighted = Normalizer().fit_transform(g_weighted)
         
         self.wPCA_data = g_weighted
         self.pca = pca
@@ -1026,13 +1038,13 @@ class SAM(object):
             All keyword arguments in 'show_gene_expression' and 'scatter'
             are eligible.
         """
+        
         if((self.all_gene_names==name).sum()==0):
             print(
                 "Gene not found in the filtered dataset. Note that genes "
                 "are case sensitive.")
             return
         sds = self.corr_bin_genes(input_gene=name, number_of_features=2000)
-        
         if (n_genes+1 > sds[0].size):
             x = sds[0].size
         else:
@@ -1040,7 +1052,6 @@ class SAM(object):
             
         for i in range(1,x):
             self.show_gene_expression(sds[0][i], **kwargs)
-            
         return sds[0][1:]
 
     def corr_bin_genes(self, number_of_features=None, input_gene=None):
@@ -1317,8 +1328,44 @@ class SAM(object):
         self.scatter(c=a,axes=axes, **kwargs)
         axes.set_title(name)
 
+    def sparse_knn(self,D):
+        k=self.k
+        D1=D.tocoo()
+        idr = np.argsort(D1.row)
+        D1.row[:]=D1.row[idr]
+        D1.col[:]=D1.col[idr]
+        D1.data[:]=D1.data[idr]
+        
+        _,ind = np.unique(D1.row,return_index=True)
+        ind = np.append(ind,D1.data.size)
+        for i in range(ind.size-1):
+            idx = np.argsort(D1.data[ind[i]:ind[i+1]])
+            if idx.size > k:
+                idx = idx[:-k]
+                D1.data[np.arange(ind[i],ind[i+1])[idx]]=0
+        D1.eliminate_zeros()
+        return D1        
+    
+    def density_clustering(self,X = None, eps = 1,metric='euclidean',**kwargs):
+        from sklearn.cluster import DBSCAN
+        
+        if X is None:
+            X = self.umap2d
+            
+        self.cluster_labels_d = DBSCAN(eps=eps,metric=metric,**kwargs).fit_predict(X)
+        self.output_vars['density_cluster_labels'] = self.cluster_labels_d
 
-    def louvain_clustering(self, res=1):
+    def hdb_density_clustering(self,X = None, metric='euclidean',**kwargs):
+        import hdbscan
+        
+        if X is None:
+            X = self.umap2d
+        
+        clusterer = hdbscan.HDBSCAN(metric=metric,**kwargs)
+        self.cluster_labels_hd = clusterer.fit_predict(X)                    
+        self.output_vars['hdb_density_cluster_labels'] = self.cluster_labels_hd
+        
+    def louvain_clustering(self,X=None, res=1,method='modularity'):
         """Runs Louvain clustering using the vtraag implementation. Assumes
         that 'louvain' optional dependency is installed.
         
@@ -1329,31 +1376,42 @@ class SAM(object):
             finds.        
         
         """
-        if (not self.analysis_performed):
-            print("Please run the SAM analysis first using 'run' after "
-                  "loading the data.")               
-        else:
-            import igraph as ig
-            import louvain
-            
-            adjacency = self.nnm_adj
-            sources, targets = adjacency.nonzero()
-            weights = adjacency[sources, targets]
-            if isinstance(weights, np.matrix):
-                weights = weights.A1
-            g = ig.Graph(directed=True)
-            g.add_vertices(adjacency.shape[0])  
-            g.add_edges(list(zip(sources, targets)))
-            try:
-                g.es['weight'] = weights
-            except:
-                pass
         
-            cl=louvain.find_partition(g,louvain.RBConfigurationVertexPartition,
-                                   resolution_parameter=res)
+        if X is None:
+            X = self.nnm_adj
+            save = True
+        else:
+            if not sp.isspmatrix_csr(X):
+                X = sp.csr_matrix(X)
+            save = False
             
+        import igraph as ig
+        import louvain
+
+        adjacency = self.sparse_knn(X.dot(X.T)/self.k).tocsr()
+        sources, targets = adjacency.nonzero()
+        weights = adjacency[sources, targets]
+        if isinstance(weights, np.matrix):
+            weights = weights.A1
+        g = ig.Graph(directed=True)
+        g.add_vertices(adjacency.shape[0])  
+        g.add_edges(list(zip(sources, targets)))
+        try:
+            g.es['weight'] = weights
+        except:
+            pass
+
+        if method == 'significance':
+            cl=louvain.find_partition(g,louvain.SignificanceVertexPartition)
+        else:
+            cl=louvain.find_partition(g,louvain.RBConfigurationVertexPartition,
+                               resolution_parameter=res)
+        
+        if save:
             self.cluster_labels = np.array(cl.membership)
             self.output_vars['louvain_cluster_labels'] = self.cluster_labels
+        else:
+            return np.array(cl.membership)
 
     def identify_marker_genes_model(self, n_genes_per_cluster=10, labels=None,
                               n_genes_subset=3000, svm=True):
