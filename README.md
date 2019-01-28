@@ -8,12 +8,12 @@ The Self-Assembling-Manifold (SAM) algorithm.
 What was previously 'SAMsparse' is now just 'SAM'. Refer to the below code snippets or the updated tutorial notebook to see any usage changes (mainly, the loading and filtering functions in SAMsparse changed names to match their counterparts in the old SAM). Other tweaks here and there have been made to the SAM algorithm to improve convergence stability, run-time performance, etc.
 
 ## Requirements
- - `numpy>=1.14,<=1.15.2`
+ - `numpy`
  - `scipy`
  - `pandas`
- - `scikit-learn==0.20.0`
- - `umap-learn<=0.3.6`
- - `numba>=0.37,<0.40`
+ - `scikit-learn`
+ - `umap-learn`
+ - `numba`
 
 ### Optional dependencies
  - Plotting
