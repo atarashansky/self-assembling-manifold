@@ -88,7 +88,7 @@ sam.scatter()
 ```
 After loading the data for the first time using 'load_data_from_file', a pickle file of the sparse data will be automatically saved in the same location as the original file. Load the pickle file with 'load_sparse_data' in the future to greatly speed up the loading of data. 
 
-### Saving and loading a pickled SAM object (output from `save`):
+### Saving and loading a pickled SAM object:
 ```
 from SAM import SAM #import SAM
 
