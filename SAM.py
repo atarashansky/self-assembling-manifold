@@ -5,6 +5,7 @@ import pickle
 import pandas as pd
 import utilities as ut
 import sklearn.manifold as man
+import sklearn.utils.sparsefuncs as sf
 import warnings
 
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
@@ -19,7 +20,7 @@ except ImportError:
     PLOTTING = False
 
 
-__version__ = '0.3.3'
+__version__ = '0.3.4'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -518,15 +519,9 @@ class SAM(object):
 
         D_avg = (nnm/self.k).dot(self.D2)
         
-        self.D_avg = D_avg.copy()
+        self.D_avg = D_avg
+        mu,var = sf.mean_variance_axis(D_avg,axis=0)
 
-        mu = D_avg.mean(0)
-        Ex2=np.square(mu) 
-        D_avg.data=D_avg.data**2
-        Ex1=D_avg.mean(0)
-        var = np.array(Ex1-Ex2).flatten()
-        mu = np.array(mu).flatten()
-        
         dispersions = np.zeros(var.size)
         dispersions[mu>0] = var[mu>0]/mu[mu>0]
         
