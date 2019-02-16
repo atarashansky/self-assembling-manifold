@@ -20,7 +20,7 @@ except ImportError:
     PLOTTING = False
 
 
-__version__ = '0.3.4'
+__version__ = '0.3.5'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -37,9 +37,16 @@ class SAM(object):
 
     Parameters
     ----------
-    counts : tuple (scipy.sparse matrix, numpy.array,numpy.array), optional, default None
-        A tuple containing sparse data structure of the gene expression counts
-        (cells x genes), numpy array of gene IDs, and numpy array of cell IDs.
+    counts : tuple or list (scipy.sparse matrix, numpy.ndarray,numpy.ndarray), OR
+        tuple or list (numpy.ndarray, numpy.ndarray,numpy.ndarray), OR
+        pandas.DataFrame
+
+        If a tuple or list, it should contain the gene expression data (scipy.sparse or 
+        numpy.ndarray) matrix (cells x genes), numpy array of gene IDs, and numpy array
+        of cell IDs in that order.
+
+        If a pandas.DataFrame, it should be (cells x genes)
+
         Only use this argument if you want to pass in preloaded data. Otherwise
         use one of the load functions.
 
@@ -137,16 +144,28 @@ class SAM(object):
     def __init__(self, counts=None, annotations=None, k=20,
                  distance='correlation'):
         
-        if counts is not None:
+        if isinstance(counts, tuple) or isinstance(counts,list):
             self.sparse_data,self.all_gene_names,self.all_cell_names = counts
+            if isinstance(self.sparse_data,np.ndarray):
+                self.sparse_data = sp.csr_matrix(self.sparse_data)
             self.D = self.sparse_data.copy()
-            self.gene_names=self.all_gene_names
-            self.cell_names=self.all_cell_names
-                  
-         
-        
+            self.all_gene_names=np.array(list(self.all_gene_names))
+            self.all_cell_names=np.array(list(self.all_cell_names))
+            self.gene_names=self.all_gene_names.copy()
+            self.cell_names=self.all_cell_names.copy()
+        elif isinstance(counts,pd.DataFrame):
+            self.sparse_data = sp.csr_matrix(counts.values)
+            self.all_gene_names = np.array(list(counts.columns.values))
+            self.all_cell_names = np.array(list(counts.index.values))
+            self.D = self.sparse_data.copy()
+            self.gene_names=self.all_gene_names.copy()
+            self.cell_names=self.all_cell_names.copy()
+        elif counts is not None:
+            raise Exception("\'counts\' must be either a tuple/list of (data,gene IDs,cell IDs)"
+                             "or a Pandas DataFrame of cells x genes")
+
         if(annotations is not None):
-            self.annotations = annotations
+            self.annotations = np.array(list(annotations))
             self.integer_annotations = ut.convert_annotations(self.annotations)
 
         self.k = k

@@ -68,15 +68,22 @@ sam.run()
 sam.scatter()
 ```
 
-### Using a preloaded scipy.sparse matrix, gene IDs, and cell IDs:
+### Using preloaded scipy.sparse or numpy expression matrix, gene IDs, and cell IDs:
 ```
 from SAM import SAM #import SAM
-sam=SAM(counts=(sparse_matrix,geneIDs,cellIDs)) #tuple
+sam=SAM(counts=(matrix,geneIDs,cellIDs))
 sam.filter_data() #filter data with default parameters
 sam.run() #run with default parameters
 sam.scatter() #display resulting UMAP plot
 ```
-
+### Using preloaded pandas.DataFrame (cells x genes):
+```
+from SAM import SAM #import SAM
+sam=SAM(counts=dataframe)
+sam.filter_data() #filter data with default parameters
+sam.run() #run with default parameters
+sam.scatter() #display resulting UMAP plot
+```
 ### Loading the pickled data (output from `load_data_from_file`) into SAM:
 ```
 from SAM import SAM #import SAM
