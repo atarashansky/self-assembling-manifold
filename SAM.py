@@ -843,7 +843,7 @@ class SAM(object):
         
         D_sub = Ds*(W[gkeep])
         self.D_sub=D_sub            
-        if numcells > 3000:
+        if numcells > 500:
             g_weighted,pca = ut.weighted_PCA(D_sub,npcs=min(npcs,min(self.D.shape)),do_weight=weight_PCs,solver='auto')
         else:
             g_weighted,pca = ut.weighted_PCA(D_sub,npcs=min(npcs,min(self.D.shape)),do_weight=weight_PCs,solver='full')
