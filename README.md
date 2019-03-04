@@ -18,8 +18,9 @@ What was previously 'SAMsparse' is now just 'SAM'. Refer to the below code snipp
 ### Optional dependencies
  - Plotting
    - `matplotlib`
- - Louvain clustering
+ - Clustering
    - `louvain`
+   - `hdbscan`
 
 ## Installation
 SAM has been most extensively tested using python3.6 but presumably should work on python>=3.5. Python can be installed using Anaconda.
