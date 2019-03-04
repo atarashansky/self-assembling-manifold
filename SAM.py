@@ -1371,15 +1371,36 @@ class SAM(object):
         self.cluster_labels_d = DBSCAN(eps=eps,metric=metric,**kwargs).fit_predict(X)
         self.output_vars['density_cluster_labels'] = self.cluster_labels_d
 
-    def hdb_density_clustering(self,X = None, metric='euclidean',**kwargs):
+    def hdbknn(self,x=None,k=None,**kwargs):    
         import hdbscan
+        if x is None:
+            x = self.nnm_adj.toarray()
+                
+        if k is None:
+            k = self.k
         
-        if X is None:
-            X = self.umap2d
+        if k <10:
+            k = 10
+                        
+        hdb = hdbscan.HDBSCAN(metric='correlation',min_cluster_size=k,**kwargs)
+    
+        cl = hdb.fit_predict(x)
         
-        clusterer = hdbscan.HDBSCAN(metric=metric,**kwargs)
-        self.cluster_labels_hd = clusterer.fit_predict(X)                    
-        self.output_vars['hdb_density_cluster_labels'] = self.cluster_labels_hd
+        idx0 = np.where(cl != -1)[0]
+        idx1 = np.where(cl == -1)[0]
+        if idx1.size > 0 and idx0.size > 0:
+            xcmap = ut.generate_correlation_map(x[idx0,:],x[idx1,:])
+            knn = np.argsort(xcmap.T, axis=1)[:, :k]
+            nnm = np.zeros(xcmap.shape).T
+            nnm[np.tile(np.arange(knn.shape[0])[:, None],
+                        (1, knn.shape[1])).flatten(),
+                knn.flatten()] = 1
+            nnmc = np.zeros((nnm.shape[0], cl.max() + 1))
+            for i in range(cl.max() + 1):
+                nnmc[:, i] = nnm[:, cl[idx0] == i].sum(1)
+    
+            cl[idx1] = np.argmax(nnmc, axis=1)
+        return cl
         
     def louvain_clustering(self,X=None, res=1,method='modularity'):
         """Runs Louvain clustering using the vtraag implementation. Assumes
