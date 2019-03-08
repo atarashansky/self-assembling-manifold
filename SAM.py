@@ -149,6 +149,7 @@ class SAM(object):
             if isinstance(self.sparse_data,np.ndarray):
                 self.sparse_data = sp.csr_matrix(self.sparse_data)
             self.D = self.sparse_data.copy()
+            self.D2=self.D.copy()
             self.all_gene_names=np.array(list(self.all_gene_names))
             self.all_cell_names=np.array(list(self.all_cell_names))
             self.gene_names=self.all_gene_names.copy()
@@ -158,6 +159,7 @@ class SAM(object):
             self.all_gene_names = np.array(list(counts.columns.values))
             self.all_cell_names = np.array(list(counts.index.values))
             self.D = self.sparse_data.copy()
+            self.D2=self.D.copy()
             self.gene_names=self.all_gene_names.copy()
             self.cell_names=self.all_cell_names.copy()
         elif counts is not None:
