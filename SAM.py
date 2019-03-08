@@ -1,3 +1,4 @@
+from anndata import AnnData
 import scipy.sparse as sp
 import time
 from sklearn.preprocessing import Normalizer, StandardScaler
@@ -20,7 +21,7 @@ except ImportError:
     PLOTTING = False
 
 
-__version__ = '0.3.5'
+__version__ = '0.4.0'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -53,26 +54,17 @@ class SAM(object):
     annotations : numpy.ndarray, optional, default None
         A Numpy array of cell annotations.
 
-    k : int, optional, default 20
-        The number of nearest neighbors to identify for each cell. If
-        None, k will be automatically be set to the square root of
-        the number of cells in the dataset.
-
-    distance : string, optional, default 'correlation'
-        The distance metric to use when constructing cell distance
-        matrices. Can be any of the distance metrics supported by
-        sklearn's 'pdist'.
 
     Attributes
     ----------
-    sparse_data: scipy.sparse matrix
+    raw_data: scipy.sparse matrix
         Sparse data structure of raw gene expression counts.
     
     all_cell_names: numpy.array
-        Vector of cell IDs corresponding to rows of sparse_data
+        Vector of cell IDs corresponding to rows of raw_data
     
     all_gene_names: numpy.array
-        Vector of gene IDs corresponding to columns of sparse_data
+        Vector of gene IDs corresponding to columns of raw_data
 
     k: int
         The number of nearest neighbors to identify for each cell
@@ -132,36 +124,33 @@ class SAM(object):
     geneID_groups: list of numpy.ndarray
         Each element of the list contains a vector of gene IDs that are
         correlated with each other along the SAM manifold.
-
-    cluster_labels: numpy.array
-        Output of 'louvain_clustering'. Denotes assigned cluster labels for each cell.
-    
-    cluster_labels_k: numpy.array
-        Output of 'kmeans'. Denotes assigned cluster labels for each cell.
         
     """
 
-    def __init__(self, counts=None, annotations=None, k=20,
-                 distance='correlation'):
+    def __init__(self, counts=None, annotations=None):
         
         if isinstance(counts, tuple) or isinstance(counts,list):
-            self.sparse_data,self.all_gene_names,self.all_cell_names = counts
-            if isinstance(self.sparse_data,np.ndarray):
-                self.sparse_data = sp.csr_matrix(self.sparse_data)
-            self.D = self.sparse_data.copy()
+            self.raw_data,self.all_gene_names,self.all_cell_names = counts
+            if isinstance(self.raw_data,np.ndarray):
+                self.raw_data = sp.csr_matrix(self.raw_data)
+            self.D = self.raw_data.copy()
             self.D2=self.D.copy()
             self.all_gene_names=np.array(list(self.all_gene_names))
             self.all_cell_names=np.array(list(self.all_cell_names))
             self.gene_names=self.all_gene_names.copy()
             self.cell_names=self.all_cell_names.copy()
+            self.adata = AnnData(X = self.D2,obs={'obs_names':self.all_cell_names},
+                        var = {'var_names':self.gene_names})
         elif isinstance(counts,pd.DataFrame):
-            self.sparse_data = sp.csr_matrix(counts.values)
+            self.raw_data = sp.csr_matrix(counts.values)
             self.all_gene_names = np.array(list(counts.columns.values))
             self.all_cell_names = np.array(list(counts.index.values))
-            self.D = self.sparse_data.copy()
+            self.D = self.raw_data.copy()
             self.D2=self.D.copy()
             self.gene_names=self.all_gene_names.copy()
             self.cell_names=self.all_cell_names.copy()
+            self.adata = AnnData(X = self.D2,obs={'obs_names':self.all_cell_names},
+                        var = {'var_names':self.gene_names})
         elif counts is not None:
             raise Exception("\'counts\' must be either a tuple/list of (data,gene IDs,cell IDs)"
                              "or a Pandas DataFrame of cells x genes")
@@ -169,95 +158,23 @@ class SAM(object):
         if(annotations is not None):
             self.annotations = np.array(list(annotations))
             self.integer_annotations = ut.convert_annotations(self.annotations)
-
-        self.k = k
-        self.distance = distance
+            
+            if counts is not None:
+                self.adata.obs['ann']=self.annotations
+                self.adata.obs['annInt']=self.integer_annotations            
+                
         self.analysis_performed = False
 
         self.output_vars = {}
         
-        
-    def load_sparse_data(self, filename,
-                                   transpose=True, **kwargs):
-        
-        """Reads the specified sparse data file and cell/gene IDs and stores 
-        the data in a scipy.sparse matrix. These files can be obtained by
-        running 'load_dense_data_from_file' for the first time.
 
-        
-        
-        Parameters
-        ----------
-        filename - string
-            The path to the tabular raw expression counts file.
-            
-        genename - string
-            The path to the text file containing gene IDs.
-            
-        cellname - string
-            The path to the text file containing cell IDs.
-
-        sep - string, optional, default ','
-            The delimeter used to read the input data table. By default
-            assumes the input table is delimited by commas.
-
-        do_filtering - bool, optional, default True
-            If True, filters the data with default parameters using
-            'filter_data'. Otherwise, loads the data without filtering
-            (aside from removing genes with no expression at all).
-
-        transpose - bool, optional, default True
-            By default, assumes file is (genes x cells). Set this to False if
-            the file has dimensions (cells x genes).
-
-        Keyword arguments
-        -----------------
-
-        div : float, default 1
-            The factor by which the gene expression will be divided prior to
-            log normalization.
-
-        downsample : float, default 0
-            The factor by which to randomly downsample the data. If 0, the data
-            will not be downsampled.
-
-        genes : array-like of string or int, default None
-            A vector of gene names or indices that specifies the genes to keep.
-            All other genes will be filtered out. If specified, the usual
-            filtering operations do not occur. Gene names are case-sensitive.
-
-        cells : array-like of string or int, default None
-            A vector of cell names or indices that specifies the cells to keep.
-            All other cells wil lbe filtered out. Cell names are
-            case-sensitive.
-
-        min_expression : float, default 1
-            The threshold (in log2 TPM) above which a gene is considered
-            expressed. Gene expression values less than 'min_expression' are
-            set to zero.
-
-        thresh : float, default 0.2
-            Keep genes expressed in greater than 'thresh'*100 % of cells and
-            less than (1-'thresh')*100 % of cells, where a gene is considered
-            expressed if its expression value exceeds 'min_expression'.
-
-        filter_genes : bool, default True
-            A convenience parameter. Setting this to False turns off all
-            filtering operations.
-
-        """
-        
-        self.sparse_data,self.all_cell_names,self.all_gene_names = pickle.load(open(filename,'rb'))
-        
-        if(transpose):
-            self.sparse_data = self.sparse_data.T        
-        
-        self.filter_data(**kwargs)                        
+               
     
-    def filter_data(self, div=1, downsample=0, include_genes=None,
-                    exclude_genes=None, include_cells=None, exclude_cells=None,
-                    norm='log', min_expression=1, thresh=0.01,
-                    filter_genes=True):
+    def preprocess_data(self, div=1, downsample=0, sum_norm = None,
+                        include_genes=None, exclude_genes=None,
+                        include_cells=None, exclude_cells=None,
+                        norm='log', min_expression=1, thresh=0.01,
+                        filter_genes=True):
         
         """Log-normalizes and filters the expression data.
 
@@ -271,7 +188,12 @@ class SAM(object):
         downsample : float, optional, default 0
             The factor by which to randomly downsample the data. If 0, the
             data will not be downsampled.
-        
+
+        sum_norm : float, optional, default None
+            If specified, the total number of transcripts in each cell will be
+            normalized to this value prior to log normalization and filtering.
+            Otherwise, nothing happens.
+
         norm : str, optional, default 'log'
             If 'log', log-normalizes the expression data. If the loaded data is
             already log-normalized, set norm = None.
@@ -279,23 +201,23 @@ class SAM(object):
         include_genes : array-like of string, optional, default None
             A vector of gene names or indices that specifies the genes to keep.
             All other genes will be filtered out. Gene names are case-sensitive.
-
+    
         exclude_genes : array-like of string, optional, default None
             A vector of gene names or indices that specifies the genes to exclude.
-            All other genes will be filtered out. Gene names are case-sensitive.
-
+            These genes will be filtered out. Gene names are case-sensitive.
+    
         include_cells : array-like of string, optional, default None
             A vector of cell names that specifies the cells to keep.
             All other cells will be filtered out. Cell names are
             case-sensitive.
-
+    
         exclude_cells : array-like of string, optional, default None
             A vector of cell names that specifies the cells to exclude.
-            All other cells will be filtered out. Cell names are
+            Thses cells will be filtered out. Cell names are
             case-sensitive.
         
         min_expression : float, optional, default 1
-            The threshold (in log2 TPM) above which a gene is considered
+            The threshold above which a gene is considered
             expressed. Gene expression values less than 'min_expression' are
             set to zero.
 
@@ -311,11 +233,14 @@ class SAM(object):
             filtered.
 
         """
-        if(self.sparse_data is None):
+        if(self.raw_data is None):
             print('No data loaded')
             return
+
+        self.D = self.raw_data.copy()    
+        if (sum_norm is not None):
+            self.D = self.D.multiply(1/self.D.sum(1).A.flatten()[:,None]*sum_norm).tocsr()
         
-        self.D = self.sparse_data.copy()
         if(norm == 'log'):
             self.D.data = np.log2(self.D.data/div+1)
         else:
@@ -387,15 +312,17 @@ class SAM(object):
         
         self.gene_names = self.gene_names[keep]
         
-                
+        self.adata = AnnData(X = self.D2,obs={'obs_names':self.cell_names},
+                        var = {'var_names':self.gene_names})       
         
-    def load_data_from_file(self, filename, do_filtering=True, transpose=True,
-                            save_sparse_files=True,sep=',', **kwargs):
-        """Reads the specified tabular data file and stores the data in a
-        scipy.sparse matrix.
+    def load_data(self, filename, transpose=True,
+                            save_sparse_file=True,sep=','):
+        """Loads the specified data file. The file can be a table of
+        read counts (i.e. '.csv' or '.txt'), with genes as rows and cells
+        as columns by default. The file can also be a pickle file (output from
+        'save_sparse_data').
 
-        This is a wrapper function that loads the file specified by 'filename'
-        and filters the data.
+        This function that loads the file specified by 'filename'.
 
         Parameters
         ----------
@@ -405,77 +332,57 @@ class SAM(object):
         sep - string, optional, default ','
             The delimeter used to read the input data table. By default
             assumes the input table is delimited by commas.
-
-        do_filtering - bool, optional, default True
-            If True, filters the data with default parameters using
-            'filter_data'. Otherwise, loads the data without filtering
-            (aside from removing genes with no expression at all).
         
-        save_sparse_files - bool, optional, default True
-            If True, pickles the gene names, cell names, and sparse data structure
+        save_sparse_file - bool, optional, default True
+            If True, pickles the sparse data structure, cell names, and gene names
             in the same folder as the original data for faster loading in the
-            future using 'load_sparse_data'. 
+            future. 
             
         transpose - bool, optional, default True
             By default, assumes file is (genes x cells). Set this to False if
             the file has dimensions (cells x genes).
-
-        Keyword arguments
-        -----------------
-
-        div : float, default 1
-            The factor by which the gene expression will be divided prior to
-            log normalization.
-
-        downsample : float, default 0
-            The factor by which to randomly downsample the data. If 0, the data
-            will not be downsampled.
-
-        genes : array-like of string or int, default None
-            A vector of gene names or indices that specifies the genes to keep.
-            All other genes will be filtered out. If specified, the usual
-            filtering operations do not occur. Gene names are case-sensitive.
-
-        cells : array-like of string or int, default None
-            A vector of cell names or indices that specifies the cells to keep.
-            All other cells wil lbe filtered out. Cell names are
-            case-sensitive.
-
-        min_expression : float, default 1
-            The threshold (in log2 TPM) above which a gene is considered
-            expressed. Gene expression values less than 'min_expression' are
-            set to zero.
-
-        thresh : float, default 0.2
-            Keep genes expressed in greater than 'thresh'*100 % of cells and
-            less than (1-'thresh')*100 % of cells, where a gene is considered
-            expressed if its expression value exceeds 'min_expression'.
-
-        filter_genes : bool, default True
-            A convenience parameter. Setting this to False turns off all
-            filtering operations.
-
+        
+        
         """
-        df = pd.read_csv(filename, sep=sep, index_col=0)
-        if(transpose):
-            dataset = df.T
-        else:
-            dataset = df
+        if filename.split('.')[-1]=='p':
+            self.raw_data,self.all_cell_names,self.all_gene_names = (
+                                    pickle.load(open(filename,'rb')))
+            
+            if(transpose):
+                self.raw_data = self.raw_data.T        
         
-        self.sparse_data = sp.csr_matrix(dataset.values)
-        self.all_cell_names = np.array(list(dataset.index.values))
-        self.all_gene_names = np.array(list(dataset.columns.values))
-        
-        self.filter_data(**kwargs)        
-        
-        if(save_sparse_files):
-            new_sparse_file = filename.split('/')[-1].split('.')[0]        
-            path = filename[:filename.find(filename.split('/')[-1])]                        
-            self.save_sparse_data(path+new_sparse_file+'_sparse.p')
+            #self.filter_data(**kwargs)      
+            
+        else:    
+            df = pd.read_csv(filename, sep=sep, index_col=0)
+            if(transpose):
+                dataset = df.T
+            else:
+                dataset = df
+            
+            self.raw_data = sp.csr_matrix(dataset.values)
+            self.all_cell_names = np.array(list(dataset.index.values))
+            self.all_gene_names = np.array(list(dataset.columns.values))
+            
+            #self.filter_data(**kwargs)        
+            
+            if(save_sparse_file):
+                new_sparse_file = filename.split('/')[-1].split('.')[0]        
+                path = filename[:filename.find(filename.split('/')[-1])]                        
+                self.save_sparse_data(path+new_sparse_file+'_sparse.p')
+
+        self.D = self.raw_data.copy()
+        self.D2=self.D.copy()
+        self.all_gene_names=np.array(list(self.all_gene_names))
+        self.all_cell_names=np.array(list(self.all_cell_names))
+        self.gene_names=self.all_gene_names.copy()
+        self.cell_names=self.all_cell_names.copy()
+        self.adata = AnnData(X = self.D2,obs={'obs_names':self.all_cell_names},
+                    var = {'var_names':self.gene_names})
 
             
     def save_sparse_data(self,fname):
-        """Saves the tuple (sparse_data,all_cell_names,all_gene_names) in a
+        """Saves the tuple (raw_data,all_cell_names,all_gene_names) in a
         Pickle file.
         
         Parameters
@@ -484,7 +391,7 @@ class SAM(object):
             The filename of the output file.        
 
         """                
-        pickle.dump((self.sparse_data.T,self.all_cell_names,self.all_gene_names),open(fname,'wb'))
+        pickle.dump((self.raw_data.T,self.all_cell_names,self.all_gene_names),open(fname,'wb'))
 
     def load_annotations(self, aname,sep=','):
         """Loads cell annotations.
@@ -513,6 +420,9 @@ class SAM(object):
 
         self.annotations = ann
         self.integer_annotations = ut.convert_annotations(self.annotations)
+        
+        self.adata.obs['ann']=self.annotations
+        self.adata.obs['annInt']=self.integer_annotations 
     
     def dispersion_ranking_NN(self, nnm, num_norm_avg=50):
         """Computes the spatial dispersion factors for each gene.      
@@ -591,7 +501,7 @@ class SAM(object):
             npcs = self.D.shape[0]
             
         pca= PCA(n_components=npcs)
-        pc= pca.fit_transform(self.D.toarray())
+        pc= pca.fit_transform(self.D.toarray()-self.D.mean(0).A.flatten())
         
         self.regression_pca = pca
         self.regression_pcs = pc
@@ -622,10 +532,18 @@ class SAM(object):
         
         ind = [PCs]
         ind = np.array(ind).flatten()
-        y = self.D.toarray() - self.regression_pcs[:,ind].dot(self.regression_pca.components_[ind,:]*self.weights_f)
+        try:
+            y = self.D.toarray() - self.regression_pcs[:,ind].dot(
+                    self.regression_pca.components_[ind,:]*self.weights_f)
+        except:
+            y = self.D.toarray() - self.regression_pcs[:,ind].dot(
+                    self.regression_pca.components_[ind,:])
+            
         self.D = sp.csr_matrix(y)    
         
-    def kmeans(self,numc,npcs = 15):
+        self.adata.layers['X_regressed'] = self.D
+        
+    def kmeans_clustering(self,numc,X=None,npcs = 15):
         """Performs k-means clustering.
         
         Parameters
@@ -639,56 +557,58 @@ class SAM(object):
         """
         
         from sklearn.cluster import KMeans
-        PCA_data = (self.D_sub-self.D_sub.mean(0)).dot(self.pca.components_[:npcs,:].T)
+        if X is None:
+            X = (self.D_sub-self.D_sub.mean(0)
+                                        ).dot(self.pca.components_[:npcs,:].T)
+            save=True
+        else:
+            save=False
         
-        cl = KMeans(n_clusters=numc).fit_predict(Normalizer().fit_transform(PCA_data[:,:]))
-        self.cluster_labels_k = cl
-        self.output_vars['kmeans_cluster_labels'] = self.cluster_labels_k     
+        cl = KMeans(n_clusters=numc).fit_predict(Normalizer().fit_transform(X))        
+        
+        if save:
+            self.output_vars['kmeans_cluster_labels'] = cl        
+            self.adata.obs['kmeans_clusters'] = cl
+        else:
+            return cl
     
     
     def run(self,
             max_iter=10,
             verbose=True,
             projection='umap',
-            n_genes=None,
-            npcs=None,
             stopping_condition=5e-3,
             num_norm_avg=50,
-            weight_PCs=True,
+            k = 20,
+            distance='correlation',
             preprocessing='Normalizer'):
+        
         """Runs the Self-Assembling Manifold algorithm.
 
         Parameters
         ----------
+        k - int, optional, default 20
+            The number of nearest neighbors to identify for each cell.
+        
+        distance : string, optional, default 'correlation'
+            The distance metric to use when constructing cell distance
+            matrices. Can be any of the distance metrics supported by
+            sklearn's 'pdist'.
+
         max_iter - int, optional, default 10
             The maximum number of iterations SAM will run.
 
         stopping_condition - float, optional, default 5e-3
-            The convergence threshold for the error between adjacent cell
-            distance matrices.
+            The stopping condition threshold for the RMSE between gene weights in 
+            adjacent iterations.
 
         verbose - bool, optional, default True
-            If True, the iteration number and convergence score will be
-            displayed.
-
+            If True, the iteration number and error between gene weights in adjacent
+            iterations will be displayed.
+            
         projection - str, optional, default 'umap'
             If 'tsne', generates a t-SNE embedding. If 'umap', generates a UMAP
             embedding. Otherwise, no embedding will be generated.
-
-        npcs - int, optional, default None
-            Determines the number of weighted principal
-            components to take. If None, all principal components will be
-            selected if there are <3000 cells (recommended). Otherwise, 150 PCs
-            will be selected.
-
-        n_genes - int, optional, default None
-            Improve runtime by selecting only the top 'n_genes' weighted genes
-            when computing PCA. If None, use min(#genes,8000) weighted genes.
-        
-        weight_PCs - bool, optional, default True
-            If True, use weighted PCA, in which the principal scores are scaled
-            by their respective eigenvalues. This allows one to use as many
-            PCs as is computationally efficient to calculate.
         
         preprocessing - str, optional, default 'Normalizer'
             If 'Normalizer', use sklearn.preprocessing.Normalizer, which
@@ -697,32 +617,31 @@ class SAM(object):
             sklearn.preprocessing.StandardScaler, which normalizes expression
             data prior to PCA such that each gene has zero mean and unit
             variance. Otherwise, do not normalize the expression data. We
-            recommend using 'StandardScaler' for datasets with low sequencing
-            depth, such as UMI datasets, and 'Normalizer' otherwise.
+            recommend using 'StandardScaler' for large datasets and 'Normalizer'
+            otherwise.
         
         num_norm_avg - int, optional, default 50
             The top 'num_norm_avg' dispersions are averaged to determine the
-            normalization factor when calculating the weights.
+            normalization factor when calculating the weights. This prevents
+            genes with large spatial dispersions from skewing the distribution
+            of weights.
         """
-
+        
+        self.distance=distance
+        
+        self.k=k
         if(self.k < 5):
             self.k = 5
         elif(self.k > 100):
             self.k = 100
-
-        if(n_genes is not None):
-            if(n_genes < 2*num_norm_avg):
-                n_genes = 2*num_norm_avg
-        else:
-            n_genes = 8000
             
         if(self.k > self.D.shape[0]-1):
-            print("Warning: chosen k exceeds the number of cells")
             self.k = self.D.shape[0]-2
 
 
         numcells = self.D.shape[0]
         
+        n_genes = 8000
         if numcells > 3000 and n_genes > 3000:
             n_genes = 3000;
         elif numcells > 2000 and n_genes > 4500:
@@ -732,6 +651,7 @@ class SAM(object):
         elif n_genes > 8000:        
             n_genes = 8000
         
+        npcs = None
         if npcs is None and numcells > 3000:
             npcs = 150
         elif npcs is None and numcells > 2000:
@@ -767,6 +687,7 @@ class SAM(object):
             
         nnas=num_norm_avg
         
+        
         while (i < max_iter and err > stopping_condition):
         
             conv = err
@@ -777,20 +698,20 @@ class SAM(object):
             old = new
                         
             W = self.calculate_nnm(W,n_genes,preprocessing,npcs,numcells,nnas,weight_PCs)                        
-            
             new = W
             err = ((new-old)**2).mean()**0.5
 
         self.analysis_performed = True
 
-        if(projection is 'tsne'):
+        if(projection == 'tsne'):
             print('Computing the t-SNE embedding...')
             self.run_tsne()
-        elif(projection is 'umap'):
+        elif(projection == 'umap'):
             print('Computing the UMAP embedding...')
             self.run_umap()
 
-        self.datalog = self.sparse_data[np.in1d(self.all_cell_names,self.cell_names),:].copy()
+
+        self.datalog = self.raw_data[np.in1d(self.all_cell_names,self.cell_names),:].copy()
         self.datalog.data = np.log2(self.datalog.data+1)
         D_avg=sp.hstack((self.D_avg,sp.coo_matrix((self.cell_names.size,self.all_gene_names.size-self.gene_names.size)))).tocsr()
         
@@ -804,6 +725,7 @@ class SAM(object):
 
         self.D_avg_f = self.D_avg
         self.weights_f = self.weights
+        self.indinces_f=np.argsort(-self.weights_f)
         
         self.weights=W
         self.D_avg=D_avg
@@ -818,6 +740,16 @@ class SAM(object):
         self.output_vars['ranked_gene_names'] = self.ranked_genes
         self.output_vars['nearest_neighbor_matrix'] = self.nnm_adj
         self.output_vars['gene_weights'] = self.weights
+        
+        self.adata.obsm['X_pca']=self.wPCA_data
+        
+        self.adata.uns['neighbors']={}
+        self.adata.uns['neighbors']['connectivities']=self.nnm_adj        
+        self.adata.var['weights'] = self.weights_f
+        self.adata.var['spatial_dispersions'] = self.dispersions
+        
+        self.adata.layers['X_knn_avg'] = self.D_avg_f
+        
         
         elapsed = time.time()-tinit
         if verbose:
@@ -1035,7 +967,7 @@ class SAM(object):
             for i in range(n_genes):
                 self.show_gene_expression(self.geneID_groups[group][i], **kwargs)
 
-    def plot_correlated_genes(self, name, n_genes=5, **kwargs):
+    def plot_correlated_genes(self, name, n_genes=5,number_of_features=2000, **kwargs):
         """Plots gene expression patterns correlated with the input gene.
 
         Parameters
@@ -1062,7 +994,7 @@ class SAM(object):
                 "Gene not found in the filtered dataset. Note that genes "
                 "are case sensitive.")
             return
-        sds = self.corr_bin_genes(input_gene=name, number_of_features=2000)
+        sds = self.corr_bin_genes(input_gene=name, number_of_features=number_of_features)
         if (n_genes+1 > sds[0].size):
             x = sds[0].size
         else:
@@ -1115,6 +1047,7 @@ class SAM(object):
                     maxd = np.mean(pw_corr[i, :][pw_corr[i, :] > 0])
                     maxi = 0
                     for j in range(len(seeds)):
+                        #print(np.where(idx2 == seeds[j][0])[0])
                         if(pw_corr[np.where(idx2 == seeds[j][0])[0], i]
                            > maxd):
                             maxd = pw_corr[np.where(idx2 == seeds[j][0])[0], i]
@@ -1156,6 +1089,46 @@ class SAM(object):
 
                 return self.geneID_groups
     
+    def hdbknn_clustering(self,X=None,k=None,**kwargs):    
+        import hdbscan
+        if X is None:
+            X = self.nnm_adj.toarray()
+            save=True
+        else:
+            save=False
+                
+        if k is None:
+            k = self.k
+        
+        if k <10:
+            k = 10
+                        
+        hdb = hdbscan.HDBSCAN(metric='correlation',min_cluster_size=k,**kwargs)
+    
+        cl = hdb.fit_predict(X)
+        
+        idx0 = np.where(cl != -1)[0]
+        idx1 = np.where(cl == -1)[0]
+        if idx1.size > 0 and idx0.size > 0:
+            xcmap = ut.generate_correlation_map(X[idx0,:],X[idx1,:])
+            knn = np.argsort(xcmap.T, axis=1)[:, :k]
+            nnm = np.zeros(xcmap.shape).T
+            nnm[np.tile(np.arange(knn.shape[0])[:, None],
+                        (1, knn.shape[1])).flatten(),
+                knn.flatten()] = 1
+            nnmc = np.zeros((nnm.shape[0], cl.max() + 1))
+            for i in range(cl.max() + 1):
+                nnmc[:, i] = nnm[:, cl[idx0] == i].sum(1)
+    
+            cl[idx1] = np.argmax(nnmc, axis=1)
+        
+        if save:
+            self.output_vars['hdbknn_cluster_labels'] = cl
+            self.adata.obs['hdbknn_clusters'] = cl
+        else:
+            return cl
+    
+          
     def run_tsne(self, X=None, metric='correlation',**kwargs):
         """Wrapper for sklearn's t-SNE implementation.
 
@@ -1174,7 +1147,8 @@ class SAM(object):
         else:
             dt = man.TSNE(metric=self.distance,**kwargs).fit_transform(self.wPCA_data)
             self.tsne2d = dt
-            self.output_vars['tsne_projection'] = self.tsne2d        
+            self.output_vars['tsne_projection'] = self.tsne2d    
+            self.adata.obsm['X_tsne'] = self.tsne2d
             return self.tsne2d.copy()
     
     def run_umap(self, X=None, metric=None, **kwargs):
@@ -1200,7 +1174,8 @@ class SAM(object):
         else:
             umap_obj = umap.UMAP(metric=metric, **kwargs)
             self.umap2d = umap_obj.fit_transform(self.wPCA_data)
-            self.output_vars['umap_projection'] = self.umap2d        
+            self.output_vars['umap_projection'] = self.umap2d    
+            self.adata.obsm['X_umap'] = self.umap2d
             return self.umap2d.copy()
         
     def scatter(self, projection=None, c=None, cmap='rainbow', linewidth=0.0,
@@ -1244,13 +1219,13 @@ class SAM(object):
         elif (not PLOTTING):
             print("matplotlib not installed!")
         else:
-            if(projection is 'umap'):
+            if(projection == 'umap'):
                 try:
                     dt = self.umap2d
                 except AttributeError:
                     print('Please create a UMAP projection first.')
                     return
-            elif(projection is 'tsne'):
+            elif(projection == 'tsne'):
                 try:
                     dt = self.tsne2d
                 except AttributeError:
@@ -1369,40 +1344,16 @@ class SAM(object):
         
         if X is None:
             X = self.umap2d
-            
-        self.cluster_labels_d = DBSCAN(eps=eps,metric=metric,**kwargs).fit_predict(X)
-        self.output_vars['density_cluster_labels'] = self.cluster_labels_d
-
-    def hdbknn(self,x=None,k=None,**kwargs):    
-        import hdbscan
-        if x is None:
-            x = self.nnm_adj.toarray()
-                
-        if k is None:
-            k = self.k
+            save=True
+        else:
+            save=False
         
-        if k <10:
-            k = 10
-                        
-        hdb = hdbscan.HDBSCAN(metric='correlation',min_cluster_size=k,**kwargs)
-    
-        cl = hdb.fit_predict(x)
-        
-        idx0 = np.where(cl != -1)[0]
-        idx1 = np.where(cl == -1)[0]
-        if idx1.size > 0 and idx0.size > 0:
-            xcmap = ut.generate_correlation_map(x[idx0,:],x[idx1,:])
-            knn = np.argsort(xcmap.T, axis=1)[:, :k]
-            nnm = np.zeros(xcmap.shape).T
-            nnm[np.tile(np.arange(knn.shape[0])[:, None],
-                        (1, knn.shape[1])).flatten(),
-                knn.flatten()] = 1
-            nnmc = np.zeros((nnm.shape[0], cl.max() + 1))
-            for i in range(cl.max() + 1):
-                nnmc[:, i] = nnm[:, cl[idx0] == i].sum(1)
-    
-            cl[idx1] = np.argmax(nnmc, axis=1)
-        return cl
+        cl=DBSCAN(eps=eps,metric=metric,**kwargs).fit_predict(X)
+        if save:
+            self.output_vars['density_cluster_labels'] = cl
+            self.adata.obs['density_clusters'] = cl
+        else:
+            return cl
         
     def louvain_clustering(self,X=None, res=1,method='modularity'):
         """Runs Louvain clustering using the vtraag implementation. Assumes
@@ -1446,71 +1397,66 @@ class SAM(object):
             cl=louvain.find_partition(g,louvain.RBConfigurationVertexPartition,
                                resolution_parameter=res)
         
-        if save:
-            self.cluster_labels = np.array(cl.membership)
-            self.output_vars['louvain_cluster_labels'] = self.cluster_labels
+        if save:            
+            self.output_vars['louvain_cluster_labels'] = np.array(cl.membership)
+            self.adata.obs['louvain_clusters'] = np.array(cl.membership)
         else:
             return np.array(cl.membership)
 
-    def identify_marker_genes_model(self, n_genes_per_cluster=10, labels=None,
-                              n_genes_subset=3000, svm=True):
+    def identify_marker_genes_rf(self, labels=None,
+                              n_genes_subset=3000, svm=False):
         """
-        Ranks marker genes for each cluster using either LogisticRegression
-        or Support Vector Machine classification. Marker genes saved in
-        'SAM.output_vars' and 'SAM.marker_genes_model'.
+        Ranks marker genes for each cluster using a random forest classification
+        approach.
         
         Parameters
         ----------
-        n_genes_per_cluster - int, optional, default 10
-            Number of marker genes to output per cluster. 
         
         labels - numpy.array, optional, default None
             Cluster labels to use for marker gene identification. If None,
             assumes that one of SAM's clustering algorithms has been run.
         
         n_genes_subset - int, optional, default 3000
-            By default, trains the models on the top 3000 SAM-weighted genes.
-
-        svm - bool, optional, default True        
-            If True, trains a Support Vector Machine for marker gene
-            identification. Otherwise, trains a logistic regression model.            
+            By default, trains the models on the top 3000 SAM-weighted genes.           
         
         """
         if(labels is None):
             try:
-                lbls = self.cluster_labels
+                lbls = self.output_vars[ut.search_string(np.array(list(
+                        self.output_vars.keys())),'_cluster_labels')[0][0]]                
             except AttributeError:
-                try:
-                    lbls = self.cluster_labels_k
-                except AttributeError:
-                    print("Please generate cluster labels first or set the "
+                print("Please generate cluster labels first or set the "
                       "'labels' keyword argument.")
-                    return
+                return
+        elif type(labels) is str:
+            lbls = self.adata.obs[labels].values.flatten()
         else:
             lbls = labels
 
-        if(not svm):
-            import sklearn.linear_model
-            obj = sklearn.linear_model.LogisticRegression(
-                solver='liblinear', multi_class='auto')
-        else:
-            import sklearn.svm
-            obj = sklearn.svm.LinearSVC()
+        from sklearn.ensemble import RandomForestClassifier
 
-        boo=np.in1d(self.all_gene_names,self.ranked_genes[:n_genes_subset])
-        rawD = self.sparse_data[:,boo][np.in1d(self.all_cell_names,self.cell_names),:]
-        ge = self.all_gene_names[boo]
-        obj.fit(rawD.toarray(), lbls)
-        idx = np.argsort(-(obj.coef_), axis=1)
+        rankings=[]
+        lblsu = np.unique(lbls)
+        
+        X=self.datalog[:,self.indices[:n_genes_subset]].toarray()
+        for K in range(lblsu.size):            
+            y = np.zeros(lbls.size)
 
-        markers = np.zeros(
-            (idx.shape[0], n_genes_per_cluster), dtype=self.gene_names.dtype)
-        for i in range(idx.shape[0]):
-            markers[i, :] = ge[idx[i, :n_genes_per_cluster]]
+            y[lbls==lblsu[K]]=1                    
+            
+            clf = RandomForestClassifier(n_estimators=100, max_depth=None,
+                                  random_state=0)
+    
+            clf.fit(X, y)
 
-        self.marker_genes_model = markers
-        self.output_vars['marker_genes_model'] = self.marker_genes_model
-        return obj
+            idx = np.argsort(-clf.feature_importances_)
+
+            rankings.append(self.ranked_genes[idx])
+    
+        rankings = np.vstack(rankings)                
+        self.output_vars['marker_genes_rf'] = rankings
+        
+        return clf,rankings
     
     def identify_marker_genes_ratio(self, n_genes_per_cluster=10, ref = None,labels=None):
         """
@@ -1526,20 +1472,18 @@ class SAM(object):
         labels - numpy.array, optional, default None
             Cluster labels to use for marker gene identification. If None,
             assumes that one of SAM's clustering algorithms has been run.
-        
-        ref - #TODO: remove this from the code          
-        
+                
         """        
         if(labels is None):
             try:
-                lbls = self.cluster_labels
+                lbls = self.output_vars[ut.search_string(np.array(list(
+                        self.output_vars.keys())),'_cluster_labels')[0][0]]                
             except AttributeError:
-                try:
-                    lbls = self.cluster_labels_k
-                except AttributeError:
-                    print("Please generate cluster labels first or set the "
+                print("Please generate cluster labels first or set the "
                       "'labels' keyword argument.")
-                    return
+                return
+        elif type(labels) is str:
+            lbls = self.adata.obs[labels].values.flatten()
         else:
             lbls = labels
         
@@ -1547,33 +1491,19 @@ class SAM(object):
             (lbls.max()+1, n_genes_per_cluster), dtype=self.all_gene_names.dtype)        
         markers_ratio = np.zeros(markers.shape)
         
-        if ref is None:
-            s = np.array(self.datalog.sum(0)).flatten()
-        else:
-            ref = np.array(ref)
-            s = np.array(self.datalog[np.in1d(lbls,ref),:].sum(0)).flatten()
-            
-        if ref is None:
-            for i in range(lbls.max()+1):
-                d = np.array(self.datalog[lbls==i,:].sum(0)).flatten()
-                rat = np.zeros(d.size)
-                rat[s>0] = d[s>0]**2 / s[s>0] * self.weights[s>0]
-                x = np.argsort(-rat)
-                markers[i,:]=self.all_gene_names[x[:n_genes_per_cluster]]
-                markers_ratio[i,:] = rat[x[:n_genes_per_cluster]]
-        else:
-            for i in range(lbls.max()+1):
-                d = self.datalog[lbls==i,:].sum(0).A.flatten()
-                rat = np.zeros(d.size)
-                rat[s>0] = d[s>0]**2 / s[s>0] * self.weights[s>0]
-                
-                x = np.argsort( -rat )
-                markers[i,:]=self.all_gene_names[x[:n_genes_per_cluster]]            
-                markers_ratio[i,:] = rat[x[:n_genes_per_cluster]]
-
-
-        self.marker_genes_ratio = markers
-        self.output_vars['marker_genes_ratio'] = self.marker_genes_ratio
         
-        return markers_ratio
+        s = np.array(self.datalog.sum(0)).flatten()
+       
+    
+        for i in range(lbls.max()+1):
+            d = np.array(self.datalog[lbls==i,:].sum(0)).flatten()
+            rat = np.zeros(d.size)
+            rat[s>0] = d[s>0]**2 / s[s>0] * self.weights[s>0]
+            x = np.argsort(-rat)
+            markers[i,:]=self.all_gene_names[x[:n_genes_per_cluster]]
+            markers_ratio[i,:] = rat[x[:n_genes_per_cluster]]
+        
+        self.output_vars['marker_genes_ratio'] = markers
+        
+        return markers_ratio,markers
 
