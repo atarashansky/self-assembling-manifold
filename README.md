@@ -7,7 +7,7 @@ The Self-Assembling-Manifold (SAM) algorithm.
 
 - Input and output has been further streamlined: `load_data` will now be used for loading both tabular csv/txt files as well as pickled sparse data structures. Note that `load_data` no longer preprocesses the data automatically, and `filter_data` was renamed to `preprocess_data`.
 - In preparation for integrating with the Scanpy package (https://github.com/theislab/scanpy), SAM can now accept as input to its constructor (via the `counts` argument) an AnnData object. It also stores key SAM outputs in an AnnData object (`.adata`).
-- New clustering methods have been added (DBSCAN in `density_clustering` and HDBSCAN in `hdbknn_clustering`. `hdbknn_clustering` is a slightly extended version of HDBSCAN in which outlier cells (cells that were not assigned to a cluster) are assigned to clusters that were found using a kNN classification approach.
+- New clustering methods have been added (DBSCAN in `density_clustering` and HDBSCAN in `hdbknn_clustering`). `hdbknn_clustering` is a slightly extended version of HDBSCAN in which outlier cells (i.e. cells that were not assigned to a cluster) are assigned to the clusters that were found using a kNN classification approach.
 - A Random Forest classification approach for marker gene identification was added (in `identify_marker_genes_rf`).
 
 ## Requirements
