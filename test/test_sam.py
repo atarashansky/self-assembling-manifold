@@ -20,5 +20,5 @@ if __name__ == '__main__':
     sam.run(projection=None)
     sam.run_umap()
     sam.run_tsne()
-    sam.kmeans(4)    
+    sam.kmeans_clustering(4)    
     sam.identify_marker_genes_ratio();
