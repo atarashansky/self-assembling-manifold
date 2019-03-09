@@ -15,11 +15,10 @@ import numpy as np
 if __name__ == '__main__':
 
     sam = SAM()
-    sam.load_data_from_file('example_data/GSE74596_data.csv.gz')
+    sam.load_data('example_data/GSE74596_data.csv.gz')
     sam.load_annotations('example_data/GSE74596_ann.csv')
     sam.run(projection=None)
     sam.run_umap()
     sam.run_tsne()
-    sam.kmeans(4)
-    sam.identify_marker_genes_model()
-    sam.identify_marker_genes_ratio()
+    sam.kmeans_clustering(4)    
+    sam.identify_marker_genes_ratio();
