@@ -102,12 +102,12 @@ sam.scatter() #display resulting UMAP plot
 
 ### Loading a pickle file previously output by SAM: 
 
-Finally, `load_data` by default saves the sparse data structure in a pickle file (`_sparse.p`) for faster loading in subsequent analyses. This file can be loaded as:
+Finally, `load_data` by default saves the sparse data structure to a pickle file (`_sparse.p`) for faster loading in subsequent analyses. This file can be loaded as:
 
 ```
 from SAM import SAM #import SAM
 sam=SAM() #initialize SAM object
-sam.load_data('/path/to/sparse_expression_pickle_file.p') #load data from a pickle file
+sam.load_data('/path/to/sparse_expression_pickle_file_sparse.p') #load data from a pickle file
 sam.preprocess_data() # log transforms and filters the data (recommended)
 sam.run()
 sam.scatter()
