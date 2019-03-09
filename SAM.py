@@ -1117,8 +1117,8 @@ class SAM(object):
         if k is None:
             k = self.k
         
-        if k <10:
-            k = 10
+        if k <5:
+            k = 5
                         
         hdb = hdbscan.HDBSCAN(metric='correlation',min_cluster_size=k,**kwargs)
     
