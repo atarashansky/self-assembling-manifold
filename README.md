@@ -3,9 +3,12 @@
 # self-assembling-manifold
 The Self-Assembling-Manifold (SAM) algorithm.
 
-# Update (1/8/2019) -- SAM version 0.3.0
+# Update (1/8/2019) -- SAM version 0.4.2
 
-What was previously 'SAMsparse' is now just 'SAM'. Refer to the below code snippets or the updated tutorial notebook to see any usage changes (mainly, the loading and filtering functions in SAMsparse changed names to match their counterparts in the old SAM). Other tweaks here and there have been made to the SAM algorithm to improve convergence stability, run-time performance, etc.
+- Input and output has been further streamlined: `load_data` will now be used for loading both tabular csv/txt files as well as pickled sparse data structures. Note that `load_data` no longer preprocesses the data automatically, and `filter_data` was renamed to `preprocess_data`.
+- In preparation for integrating with the Scanpy package (https://github.com/theislab/scanpy), SAM can now accept as input to its constructor (via the `counts` argument) an AnnData object. It also stores key SAM outputs in an AnnData object (`.adata`).
+- New clustering methods have been added (DBSCAN in `density_clustering` and HDBSCAN in `hdbknn_clustering`. `hdbknn_clustering` is a slightly extended version of HDBSCAN in which outlier cells (cells that were not assigned to a cluster) are assigned to clusters that were found using a kNN classification approach.
+- A Random Forest classification approach for marker gene identification was added (in `identify_marker_genes_rf`).
 
 ## Requirements
  - `numpy`
@@ -14,6 +17,7 @@ What was previously 'SAMsparse' is now just 'SAM'. Refer to the below code snipp
  - `scikit-learn`
  - `umap-learn`
  - `numba`
+ - `anndata`
 
 ### Optional dependencies
  - Plotting
@@ -49,7 +53,7 @@ python setup.py install
 ```
 
 ## Tutorial
-Please see the Jupyter notebook in the 'tutorial' folder for a basic tutorial. If you installed a fresh environment, do not forget to install jupyter into that environment! Please run
+Please see the Jupyter notebooks in the 'tutorial' folder for basic tutorials. If you installed a fresh environment, do not forget to install jupyter into that environment! Please run
 ```
 pip install jupyter
 ```
@@ -63,7 +67,8 @@ There are a number of ways to load data into the SAM object:
 ```
 from SAM import SAM #import SAM
 sam=SAM() #initialize SAM object
-sam.load_data_from_file('/path/to/expression_data_file.csv') #load data from a csv file and filter with default parameters
+sam.load_data('/path/to/expression_data_file.csv') #load data from a csv file
+sam.preprocess_data() # log transforms and filters the data (recommended)
 sam.load_annotations('/path/to/annotations_file.csv')
 sam.run()
 sam.scatter()
@@ -73,7 +78,7 @@ sam.scatter()
 ```
 from SAM import SAM #import SAM
 sam=SAM(counts=(matrix,geneIDs,cellIDs))
-sam.filter_data() #filter data with default parameters
+sam.preprocess_data() # log transforms and filters the data (recommended)
 sam.run() #run with default parameters
 sam.scatter() #display resulting UMAP plot
 ```
@@ -81,20 +86,32 @@ sam.scatter() #display resulting UMAP plot
 ```
 from SAM import SAM #import SAM
 sam=SAM(counts=dataframe)
-sam.filter_data() #filter data with default parameters
+sam.preprocess_data() # log transforms and filters the data (recommended)
 sam.run() #run with default parameters
 sam.scatter() #display resulting UMAP plot
 ```
-### Loading the pickled data (output from `load_data_from_file`) into SAM:
+
+### Using an existing AnnData object:
+```
+from SAM import SAM #import SAM
+sam=SAM(counts=adata)
+sam.preprocess_data() # log transforms and filters the data (recommended)
+sam.run() #run with default parameters
+sam.scatter() #display resulting UMAP plot
+```
+
+### Loading a pickle file previously output by SAM: 
+
+Finally, `load_data` by default saves the sparse data structure in a pickle file (`_sparse.p`) for faster loading in subsequent analyses. This file can be loaded as:
+
 ```
 from SAM import SAM #import SAM
 sam=SAM() #initialize SAM object
-sam.load_sparse_data('/path/to/sparse_expression_pickle_file.p') #load data from a pickle file and filter with default parameters
-sam.load_annotations('/path/to/annotations_file.csv')
+sam.load_data('/path/to/sparse_expression_pickle_file.p') #load data from a pickle file
+sam.preprocess_data() # log transforms and filters the data (recommended)
 sam.run()
 sam.scatter()
 ```
-After loading the data for the first time using 'load_data_from_file', a pickle file of the sparse data will be automatically saved in the same location as the original file. Load the pickle file with 'load_sparse_data' in the future to greatly speed up the loading of data. 
 
 ### Saving and loading a pickled SAM object:
 ```
@@ -102,7 +119,8 @@ from SAM import SAM #import SAM
 
 #Save
 sam=SAM() #initialize SAM object
-sam.load_data_from_file('/path/to/expression_data_file.csv') #load data from a csv file and filter with default parameters
+sam.load_data('/path/to/expression_data_file.csv') #load data from a csv file and filter with default parameters
+sam.preprocess_data() # log transforms and filters the data (recommended)
 sam.run()
 sam.save('/desired/output/path') #pickle the SAM object with all its attributes
 
