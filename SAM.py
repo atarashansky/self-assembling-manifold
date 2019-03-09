@@ -31,9 +31,9 @@ Email: <tarashan@stanford.edu>
 class SAM(object):
     """Self-Assembling Manifolds single-cell RNA sequencing analysis tool.
 
-    SAM iteratively rescales the input gene expression matrix to emphasize
+    SAM iteratively rescales the input gene expression matrix to emphasize genes
     that are spatially variable along the intrinsic manifold of the data.
-    It outputs the gene weights, nearest neighbor matrix, distance matrix, and
+    It outputs the gene weights, nearest neighbor matrix, and
     a 2D projection.
 
     Parameters
