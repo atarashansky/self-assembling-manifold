@@ -13,7 +13,7 @@ from umap.nndescent import (
 INT32_MIN = np.iinfo(np.int32).min + 1
 INT32_MAX = np.iinfo(np.int32).max - 1
 
-__version__ = '0.4.1'
+__version__ = '0.4.2'
 
 
 
@@ -145,6 +145,18 @@ def distance_matrix_error(dist1,dist2):
         s+=np.corrcoef(dist1[k,:],dist2[k,:])[0,1]
     return 1-s / dist1.shape[0]
 
+
+def generate_correlation_map(x, y):
+    mu_x = x.mean(1)
+    mu_y = y.mean(1)
+    n = x.shape[1]
+    if n != y.shape[1]:
+        raise ValueError('x and y must ' +
+                         'have the same number of timepoints.')
+    s_x = x.std(1, ddof=n - 1)
+    s_y = y.std(1, ddof=n - 1)
+    cov = np.dot(x,y.T) - n * np.dot(mu_x[:, None],mu_y[None, :])
+    return cov / np.dot(s_x[:, None], s_y[None, :])
 
 def extract_annotation(cn,x,c='_'):
     m=[]

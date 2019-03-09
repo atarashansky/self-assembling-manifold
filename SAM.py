@@ -21,7 +21,7 @@ except ImportError:
     PLOTTING = False
 
 
-__version__ = '0.4.1'
+__version__ = '0.4.2'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -40,7 +40,8 @@ class SAM(object):
     ----------
     counts : tuple or list (scipy.sparse matrix, numpy.ndarray,numpy.ndarray), OR
         tuple or list (numpy.ndarray, numpy.ndarray,numpy.ndarray), OR
-        pandas.DataFrame
+        pandas.DataFrame, OR
+        anndata.AnnData
 
         If a tuple or list, it should contain the gene expression data (scipy.sparse or 
         numpy.ndarray) matrix (cells x genes), numpy array of gene IDs, and numpy array
@@ -125,6 +126,10 @@ class SAM(object):
         Each element of the list contains a vector of gene IDs that are
         correlated with each other along the SAM manifold.
         
+    adata: AnnData
+        An AnnData object containing the processed data and SAM outputs. Used
+        for integration with Scanpy.
+        
     """
 
     def __init__(self, counts=None, annotations=None):
@@ -151,6 +156,18 @@ class SAM(object):
             self.cell_names=self.all_cell_names.copy()
             self.adata = AnnData(X = self.D2,obs={'obs_names':self.all_cell_names},
                         var = {'var_names':self.gene_names})
+        elif isinstance(counts,AnnData):
+            self.adata = counts
+            self.all_cell_names = np.array(list(self.adata.obs_names))
+            self.all_gene_names = np.array(list(self.adata.var_names))
+
+            self.raw_data = sp.csr_matrix(self.adata.X)            
+            self.D = self.raw_data.copy()
+            self.D2 = self.D.copy()
+            
+            self.gene_names=self.all_gene_names.copy()
+            self.cell_names = self.all_cell_names.copy()
+            
         elif counts is not None:
             raise Exception("\'counts\' must be either a tuple/list of (data,gene IDs,cell IDs)"
                              "or a Pandas DataFrame of cells x genes")
