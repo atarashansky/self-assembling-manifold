@@ -1236,18 +1236,19 @@ class SAM(object):
         elif (not PLOTTING):
             print("matplotlib not installed!")
         else:
-            if(projection == 'umap'):
-                try:
-                    dt = self.umap2d
-                except AttributeError:
-                    print('Please create a UMAP projection first.')
-                    return
-            elif(projection == 'tsne'):
-                try:
-                    dt = self.tsne2d
-                except AttributeError:
-                    print('Please create a t-SNE projection first.')
-                    return
+            if(type(projection) is str):
+                if projection == 'umap':
+                    try:
+                        dt = self.umap2d
+                    except AttributeError:
+                        print('Please create a UMAP projection first.')
+                        return
+                elif(projection == 'tsne'):
+                    try:
+                        dt = self.tsne2d
+                    except AttributeError:
+                        print('Please create a t-SNE projection first.')
+                        return
             elif(projection is None):
                 try:
                     dt = self.umap2d
