@@ -21,7 +21,7 @@ except ImportError:
     PLOTTING = False
 
 
-__version__ = '0.4.0'
+__version__ = '0.4.1'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -567,7 +567,7 @@ class SAM(object):
         cl = KMeans(n_clusters=numc).fit_predict(Normalizer().fit_transform(X))        
         
         if save:
-            self.output_vars['kmeans_cluster_labels'] = cl        
+            self.output_vars['kmeans_clusters'] = cl        
             self.adata.obs['kmeans_clusters'] = cl
         else:
             return cl
@@ -697,7 +697,7 @@ class SAM(object):
             i += 1
             old = new
                         
-            W = self.calculate_nnm(W,n_genes,preprocessing,npcs,numcells,nnas,weight_PCs)                        
+            W = self.calculate_nnm(W,n_genes,preprocessing,npcs,numcells,nnas)                        
             new = W
             err = ((new-old)**2).mean()**0.5
 
@@ -755,7 +755,7 @@ class SAM(object):
         if verbose:
             print('Elapsed time: ' + str(elapsed) + ' seconds')
     
-    def calculate_nnm(self,W,n_genes,preprocessing,npcs,numcells,num_norm_avg,weight_PCs):
+    def calculate_nnm(self,W,n_genes,preprocessing,npcs,numcells,num_norm_avg):
         if(n_genes is None):
             gkeep = np.arange(W.size)
         else:
@@ -778,9 +778,9 @@ class SAM(object):
         D_sub = Ds*(W[gkeep])
         self.D_sub=D_sub            
         if numcells > 500:
-            g_weighted,pca = ut.weighted_PCA(D_sub,npcs=min(npcs,min(self.D.shape)),do_weight=weight_PCs,solver='auto')
+            g_weighted,pca = ut.weighted_PCA(D_sub,npcs=min(npcs,min(self.D.shape)),do_weight=True,solver='auto')
         else:
-            g_weighted,pca = ut.weighted_PCA(D_sub,npcs=min(npcs,min(self.D.shape)),do_weight=weight_PCs,solver='full')
+            g_weighted,pca = ut.weighted_PCA(D_sub,npcs=min(npcs,min(self.D.shape)),do_weight=True,solver='full')
         
         if self.distance=='euclidean':
             g_weighted = Normalizer().fit_transform(g_weighted)
@@ -995,14 +995,14 @@ class SAM(object):
                 "are case sensitive.")
             return
         sds = self.corr_bin_genes(input_gene=name, number_of_features=number_of_features)
-        if (n_genes+1 > sds[0].size):
-            x = sds[0].size
+        if (n_genes+1 > sds.size):
+            x = sds.size
         else:
             x = n_genes+1
             
         for i in range(1,x):
-            self.show_gene_expression(sds[0][i], **kwargs)
-        return sds[0][1:]
+            self.show_gene_expression(sds[i], **kwargs)
+        return sds[1:]
 
     def corr_bin_genes(self, number_of_features=None, input_gene=None):
         """A (hacky) method for binning groups of genes correlated along the
@@ -1062,7 +1062,7 @@ class SAM(object):
                 for i in range(len(seeds)):
                     geneID_groups.append(self.all_gene_names[seeds[i]])
 
-                return geneID_groups
+                return geneID_groups[0]
             else:
                 seeds = [np.array([idx2[0]])]
                 pw_corr = np.corrcoef(
@@ -1123,7 +1123,7 @@ class SAM(object):
             cl[idx1] = np.argmax(nnmc, axis=1)
         
         if save:
-            self.output_vars['hdbknn_cluster_labels'] = cl
+            self.output_vars['hdbknn_clusters'] = cl
             self.adata.obs['hdbknn_clusters'] = cl
         else:
             return cl
@@ -1350,7 +1350,7 @@ class SAM(object):
         
         cl=DBSCAN(eps=eps,metric=metric,**kwargs).fit_predict(X)
         if save:
-            self.output_vars['density_cluster_labels'] = cl
+            self.output_vars['density_clusters'] = cl
             self.adata.obs['density_clusters'] = cl
         else:
             return cl
@@ -1363,7 +1363,11 @@ class SAM(object):
         ----------
         res - float, optional, default 1
             The resolution parameter which tunes the number of clusters Louvain
-            finds.        
+            finds.       
+        
+        method - str, optional, default 'modularity'
+            Can be 'modularity' or 'significance', which are two different 
+            optimizing funcitons in the Louvain algorithm.
         
         """
         
@@ -1398,7 +1402,7 @@ class SAM(object):
                                resolution_parameter=res)
         
         if save:            
-            self.output_vars['louvain_cluster_labels'] = np.array(cl.membership)
+            self.output_vars['louvain_clusters'] = np.array(cl.membership)
             self.adata.obs['louvain_clusters'] = np.array(cl.membership)
         else:
             return np.array(cl.membership)
@@ -1412,18 +1416,20 @@ class SAM(object):
         Parameters
         ----------
         
-        labels - numpy.array, optional, default None
+        labels - numpy.array or str, optional, default None
             Cluster labels to use for marker gene identification. If None,
-            assumes that one of SAM's clustering algorithms has been run.
+            assumes that one of SAM's clustering algorithms has been run. Can
+            be a string (i.e. 'louvain_clusters', 'kmeans_clusters', etc) to
+            specify specific cluster labels in adata.obs.
         
         n_genes_subset - int, optional, default 3000
-            By default, trains the models on the top 3000 SAM-weighted genes.           
+            By default, trains the classifier on the top 3000 SAM-weighted genes.           
         
         """
         if(labels is None):
             try:
                 lbls = self.output_vars[ut.search_string(np.array(list(
-                        self.output_vars.keys())),'_cluster_labels')[0][0]]                
+                        self.output_vars.keys())),'_clusters')[0][0]]                
             except AttributeError:
                 print("Please generate cluster labels first or set the "
                       "'labels' keyword argument.")
@@ -1435,7 +1441,7 @@ class SAM(object):
 
         from sklearn.ensemble import RandomForestClassifier
 
-        rankings=[]
+        markers=[]
         lblsu = np.unique(lbls)
         
         X=self.datalog[:,self.indices[:n_genes_subset]].toarray()
@@ -1451,14 +1457,14 @@ class SAM(object):
 
             idx = np.argsort(-clf.feature_importances_)
 
-            rankings.append(self.ranked_genes[idx])
+            markers.append(self.ranked_genes[idx])
     
-        rankings = np.vstack(rankings)                
-        self.output_vars['marker_genes_rf'] = rankings
+        markers = np.vstack(markers)                
+        self.output_vars['marker_genes_rf'] = markers
         
-        return clf,rankings
+        return markers
     
-    def identify_marker_genes_ratio(self, n_genes_per_cluster=10, ref = None,labels=None):
+    def identify_marker_genes_ratio(self, labels=None):
         """
         Ranks marker genes for each cluster by computing using a SAM-weighted
         expression-ratio approach (works quite well). Marker genes saved in
@@ -1466,18 +1472,18 @@ class SAM(object):
         
         Parameters
         ----------
-        n_genes_per_cluster - int, optional, default 10
-            Number of marker genes to output per cluster. 
         
-        labels - numpy.array, optional, default None
+        labels - numpy.array or str, optional, default None
             Cluster labels to use for marker gene identification. If None,
-            assumes that one of SAM's clustering algorithms has been run.
+            assumes that one of SAM's clustering algorithms has been run. Can
+            be a string (i.e. 'louvain_clusters', 'kmeans_clusters', etc) to
+            specify specific cluster labels in adata.obs.
                 
         """        
         if(labels is None):
             try:
                 lbls = self.output_vars[ut.search_string(np.array(list(
-                        self.output_vars.keys())),'_cluster_labels')[0][0]]                
+                        self.output_vars.keys())),'_clusters')[0][0]]                
             except AttributeError:
                 print("Please generate cluster labels first or set the "
                       "'labels' keyword argument.")
@@ -1488,7 +1494,7 @@ class SAM(object):
             lbls = labels
         
         markers = np.zeros(
-            (lbls.max()+1, n_genes_per_cluster), dtype=self.all_gene_names.dtype)        
+            (lbls.max()+1, self.all_gene_names.size), dtype=self.all_gene_names.dtype)        
         markers_ratio = np.zeros(markers.shape)
         
         
@@ -1500,10 +1506,10 @@ class SAM(object):
             rat = np.zeros(d.size)
             rat[s>0] = d[s>0]**2 / s[s>0] * self.weights[s>0]
             x = np.argsort(-rat)
-            markers[i,:]=self.all_gene_names[x[:n_genes_per_cluster]]
-            markers_ratio[i,:] = rat[x[:n_genes_per_cluster]]
+            markers[i,:]=self.all_gene_names[x[:]]
+            markers_ratio[i,:] = rat[x[:]]
         
         self.output_vars['marker_genes_ratio'] = markers
         
-        return markers_ratio,markers
+        return markers
 
