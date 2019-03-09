@@ -3,7 +3,7 @@
 # self-assembling-manifold
 The Self-Assembling-Manifold (SAM) algorithm.
 
-# Update (1/8/2019) -- SAM version 0.4.2
+# Update (3/8/2019) -- SAM version 0.4.2
 
 - Input and output has been further streamlined: `load_data` will now be used for loading both tabular csv/txt files as well as pickled sparse data structures. Note that `load_data` no longer preprocesses the data automatically, and `filter_data` was renamed to `preprocess_data`.
 - In preparation for integrating with the Scanpy package (https://github.com/theislab/scanpy), SAM can now accept as input to its constructor (via the `counts` argument) an AnnData object. It also stores key SAM outputs in an AnnData object (`.adata`).
