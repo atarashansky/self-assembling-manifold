@@ -1109,7 +1109,7 @@ class SAM(object):
     def hdbknn_clustering(self,X=None,k=None,**kwargs):    
         import hdbscan
         if X is None:
-            X = self.nnm_adj.toarray()
+            X = self.wPCA_data
             save=True
         else:
             save=False
