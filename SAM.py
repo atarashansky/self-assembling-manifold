@@ -142,7 +142,7 @@ class SAM(object):
         
         if isinstance(counts, tuple) or isinstance(counts,list):
             raw_data,all_gene_names,all_cell_names = counts
-            if isinstance(self.raw_data,np.ndarray):
+            if isinstance(raw_data,np.ndarray):
                 raw_data = sp.csr_matrix(raw_data)
                 
             self.adata_raw = AnnData(X = raw_data,obs={'obs_names':all_cell_names},
