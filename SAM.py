@@ -1266,7 +1266,7 @@ class SAM(object):
         idx1 = np.where(cl == -1)[0]
         if idx1.size > 0 and idx0.size > 0:
             xcmap = ut.generate_correlation_map(X[idx0,:],X[idx1,:])
-            knn = np.argsort(xcmap.T, axis=1)[:, :k]
+            knn = np.argsort(-xcmap.T, axis=1)[:, :k]
             nnm = np.zeros(xcmap.shape).T
             nnm[np.tile(np.arange(knn.shape[0])[:, None],
                         (1, knn.shape[1])).flatten(),
