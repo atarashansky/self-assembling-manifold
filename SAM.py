@@ -1069,7 +1069,10 @@ class SAM(object):
             else:
                 
                 if type(c) is str:
-                    c = self.adata.obs[c].values
+                    try:
+                        c = self.adata.obs[c].values
+                    except KeyError:
+                        0; # do nothing
                 
                 if((type(c[0]) is str or type(c[0]) is np.str_) and
                    (type(c) is np.ndarray or type(c) is list)):
