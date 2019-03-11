@@ -71,7 +71,7 @@ There are a number of ways to load data into the SAM object:
 from SAM import SAM #import SAM
 sam=SAM() #initialize SAM object
 sam.load_data('/path/to/expression_data_file.csv') #load data from a csv file
-sam.preprocess_data() # log transforms and filters the data (recommended)
+sam.preprocess_data() # log transforms and filters the data
 sam.load_annotations('/path/to/annotations_file.csv')
 sam.run()
 sam.scatter()
@@ -81,7 +81,7 @@ sam.scatter()
 ```
 from SAM import SAM #import SAM
 sam=SAM(counts=(matrix,geneIDs,cellIDs))
-sam.preprocess_data() # log transforms and filters the data (recommended)
+sam.preprocess_data() # log transforms and filters the data
 sam.run() #run with default parameters
 sam.scatter() #display resulting UMAP plot
 ```
@@ -89,7 +89,7 @@ sam.scatter() #display resulting UMAP plot
 ```
 from SAM import SAM #import SAM
 sam=SAM(counts=dataframe)
-sam.preprocess_data() # log transforms and filters the data (recommended)
+sam.preprocess_data() # log transforms and filters the data
 sam.run() #run with default parameters
 sam.scatter() #display resulting UMAP plot
 ```
@@ -98,7 +98,7 @@ sam.scatter() #display resulting UMAP plot
 ```
 from SAM import SAM #import SAM
 sam=SAM(counts=adata)
-sam.preprocess_data() # log transforms and filters the data (recommended)
+sam.preprocess_data() # log transforms and filters the data
 sam.run() #run with default parameters
 sam.scatter() #display resulting UMAP plot
 ```
@@ -111,7 +111,7 @@ Finally, `load_data` by default saves the sparse data structure to a pickle file
 from SAM import SAM #import SAM
 sam=SAM() #initialize SAM object
 sam.load_data('/path/to/sparse_expression_pickle_file_sparse.p') #load data from a pickle file
-sam.preprocess_data() # log transforms and filters the data (recommended)
+sam.preprocess_data() # log transforms and filters the data
 sam.run()
 sam.scatter()
 ```
@@ -123,7 +123,7 @@ from SAM import SAM #import SAM
 #Save
 sam=SAM() #initialize SAM object
 sam.load_data('/path/to/expression_data_file.csv') #load data from a csv file and filter with default parameters
-sam.preprocess_data() # log transforms and filters the data (recommended)
+sam.preprocess_data() # log transforms and filters the data
 sam.run()
 sam.save('/desired/output/path') #pickle the SAM object with all its attributes
 
