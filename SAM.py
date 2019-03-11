@@ -162,6 +162,8 @@ class SAM(object):
                     'var_names': all_gene_names})
 
         elif isinstance(counts, AnnData):
+            all_cell_names=np.array(list(counts.obs_names))
+            all_gene_names=np.array(list(counts.var_names))
             self.adata_raw = counts
 
         elif counts is not None:
@@ -175,7 +177,12 @@ class SAM(object):
             if counts is not None:
                 self.adata_raw.obs['annotations'] = annotations
 
-        if counts is not None:
+        if(counts is not None):
+            if(np.unique(all_gene_names).size != all_gene_names.size):
+                self.adata_raw.var_names_make_unique()
+            if(np.unique(all_cell_names).size != all_cell_names.size):
+                self.adata_raw.obs_names_make_unique()
+                
             self.adata = self.adata_raw.copy()
             self.adata.layers['X_disp'] = self.adata.X
 
@@ -252,14 +259,10 @@ class SAM(object):
         gene_names = np.array(list(self.adata_raw.var_names))
 
         if (sum_norm is not None):
-            D = D.multiply(
-                1 /
-                D.sum(1).A.flatten()[
-                    :,
-                    None] *
-                sum_norm).tocsr()
+            D = D.multiply(1 / D.sum(1).A.flatten()[:,
+                    None] * sum_norm).tocsr()
 
-        if(norm == 'log'):
+        if(norm.lower() == 'log'):
             D.data[:] = np.log2(D.data / div + 1)
         else:
             D.data[:] = (D.data / div)
@@ -302,9 +305,12 @@ class SAM(object):
         D.data[idx] = 0
         D.eliminate_zeros()
         D = D.astype('float32')
-
+        
         if(filter_genes):
-            a, ct = np.unique(D.nonzero()[1], return_counts=True)
+            if(D.getformat() == 'csc'):
+                D=D.tocsr();
+                
+            a, ct = np.unique(D.indices, return_counts=True)
             c = np.zeros(D.shape[1])
             c[a] = ct
 
@@ -312,18 +318,19 @@ class SAM(object):
                                            c / D.shape[0] < 1 - thresh))[0]
 
             idx_genes = np.array(list(set(keep) & set(idx_genes)))
-
+        
         mask_genes = np.zeros(D.shape[1], dtype='bool')
         mask_genes[idx_genes] = True
 
         mask_cells = np.zeros(D.shape[0], dtype='bool')
         mask_cells[idx_cells] = True
-
+        
         self.adata = self.adata_raw[mask_cells, :].copy()
         self.adata.X = D[mask_cells, :].multiply(mask_genes[None, :]).tocsr()
         self.adata.X.eliminate_zeros()
         self.adata.layers['X_disp'] = self.adata.X
         self.adata.var['mask_genes'] = mask_genes
+        
 
     def load_data(self, filename, transpose=True,
                   save_sparse_file=True, sep=','):
@@ -358,8 +365,11 @@ class SAM(object):
             raw_data, all_cell_names, all_gene_names = (
                 pickle.load(open(filename, 'rb')))
 
-            if(transpose):
+            if(transpose):                
                 raw_data = raw_data.T
+                if raw_data.getformat()=='csc':
+                    print("Converting sparse matrix to csr format...")
+                    raw_data=raw_data.tocsr()
 
         else:
             df = pd.read_csv(filename, sep=sep, index_col=0)
@@ -385,6 +395,12 @@ class SAM(object):
 
         self.adata_raw = AnnData(X=raw_data, obs={'obs_names': all_cell_names},
                                  var={'var_names': all_gene_names})
+        
+        if(np.unique(all_gene_names).size != all_gene_names.size):
+            self.adata_raw.var_names_make_unique()
+        if(np.unique(all_cell_names).size != all_cell_names.size):
+            self.adata_raw.obs_names_make_unique()
+        
         self.adata = self.adata_raw.copy()
         self.adata.layers['X_disp'] = raw_data
 
