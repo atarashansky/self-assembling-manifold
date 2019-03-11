@@ -1247,26 +1247,24 @@ class SAM(object):
     def hdbknn_clustering(self,X=None,k=None,**kwargs):    
         import hdbscan
         if X is None:
-            X= self.adata.obsm['X_pca']            
+            X=self.adata.obsm['X_pca']
             save=True
         else:
             save=False
                 
         if k is None:
             k = self.k
-        
-        if k <5:
-            k = 5
                         
-        hdb = hdbscan.HDBSCAN(metric='correlation',min_cluster_size=k,**kwargs)
+        X = Normalizer().fit_transform(X)
+        hdb = hdbscan.HDBSCAN(metric='euclidean',**kwargs)
     
         cl = hdb.fit_predict(X)
         
         idx0 = np.where(cl != -1)[0]
         idx1 = np.where(cl == -1)[0]
         if idx1.size > 0 and idx0.size > 0:
-            xcmap = ut.generate_correlation_map(X[idx0,:],X[idx1,:])
-            knn = np.argsort(-xcmap.T, axis=1)[:, :k]
+            xcmap = ut.generate_euclidean_map(X[idx0,:],X[idx1,:])
+            knn = np.argsort(xcmap.T, axis=1)[:, :k]
             nnm = np.zeros(xcmap.shape).T
             nnm[np.tile(np.arange(knn.shape[0])[:, None],
                         (1, knn.shape[1])).flatten(),
