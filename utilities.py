@@ -145,6 +145,12 @@ def distance_matrix_error(dist1,dist2):
         s+=np.corrcoef(dist1[k,:],dist2[k,:])[0,1]
     return 1-s / dist1.shape[0]
 
+def generate_euclidean_map(A, B):
+    a=(A**2).sum(1).flatten()
+    b =(B**2).sum(1).flatten()
+    x=a[:,None]+b[None,:] - 2*np.dot(A,B.T)
+    x[x<0]=0
+    return np.sqrt(x)
 
 def generate_correlation_map(x, y):
     mu_x = x.mean(1)
