@@ -1,3 +1,4 @@
+import numpy as np
 from anndata import AnnData
 import scipy.sparse as sp
 import time
@@ -11,7 +12,6 @@ import warnings
 
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
-import numpy as np
 
 try:
     import matplotlib.pyplot as plt
@@ -28,25 +28,26 @@ Copyright 2018, Alexander J. Tarashansky, All rights reserved.
 Email: <tarashan@stanford.edu>
 """
 
+
 def save_figures(filename, fig_IDs=None, **kwargs):
     """
     Save figures.
-    
+
     Parameters
     ----------
     filename - str
         Name of output file
-        
+
     fig_IDs - int, numpy.array, list, optional, default None
         A list of open figure IDs or a figure ID that will be saved to a
         pdf/png file respectively.
-    
-    **kwargs - 
+
+    **kwargs -
         Extra keyword arguments passed into 'matplotlib.pyplot.savefig'.
-        
+
     """
     if(fig_IDs is not None):
-        if(type(fig_IDs) is list):
+        if(isinstance(fig_IDs, list)):
             savetype = 'pdf'
         else:
             savetype = 'png'
@@ -59,7 +60,7 @@ def save_figures(filename, fig_IDs=None, **kwargs):
         if(len(filename.split('.')) == 1):
             filename = filename + '.pdf'
         else:
-            filename = '.'.join(filename.split('.')[:-1])+'.pdf'
+            filename = '.'.join(filename.split('.')[:-1]) + '.pdf'
 
         pdf = PdfPages(filename)
 
@@ -74,41 +75,41 @@ def save_figures(filename, fig_IDs=None, **kwargs):
     elif(savetype == 'png'):
         plt.figure(fig_IDs).savefig(filename, **kwargs)
 
-def sparse_knn(D,k):
-    D1=D.tocoo()
+
+def sparse_knn(D, k):
+    D1 = D.tocoo()
     idr = np.argsort(D1.row)
-    D1.row[:]=D1.row[idr]
-    D1.col[:]=D1.col[idr]
-    D1.data[:]=D1.data[idr]
-    
-    _,ind = np.unique(D1.row,return_index=True)
-    ind = np.append(ind,D1.data.size)
-    for i in range(ind.size-1):
-        idx = np.argsort(D1.data[ind[i]:ind[i+1]])
+    D1.row[:] = D1.row[idr]
+    D1.col[:] = D1.col[idr]
+    D1.data[:] = D1.data[idr]
+
+    _, ind = np.unique(D1.row, return_index=True)
+    ind = np.append(ind, D1.data.size)
+    for i in range(ind.size - 1):
+        idx = np.argsort(D1.data[ind[i]:ind[i + 1]])
         if idx.size > k:
             idx = idx[:-k]
-            D1.data[np.arange(ind[i],ind[i+1])[idx]]=0
+            D1.data[np.arange(ind[i], ind[i + 1])[idx]] = 0
     D1.eliminate_zeros()
-    return D1  
+    return D1
+
 
 class SAM(object):
     """Self-Assembling Manifolds single-cell RNA sequencing analysis tool.
 
-    SAM iteratively rescales the input gene expression matrix to emphasize genes
-    that are spatially variable along the intrinsic manifold of the data.
-    It outputs the gene weights, nearest neighbor matrix, and
-    a 2D projection.
+    SAM iteratively rescales the input gene expression matrix to emphasize
+    genes that are spatially variable along the intrinsic manifold of the data.
+    It outputs the gene weights, nearest neighbor matrix, and a 2D projection.
 
     Parameters
     ----------
-    counts : tuple or list (scipy.sparse matrix, numpy.ndarray,numpy.ndarray), OR
-        tuple or list (numpy.ndarray, numpy.ndarray,numpy.ndarray), OR
-        pandas.DataFrame, OR
-        anndata.AnnData
+    counts : tuple or list (scipy.sparse matrix, numpy.ndarray,numpy.ndarray),
+        OR tuple or list (numpy.ndarray, numpy.ndarray,numpy.ndarray), OR
+        pandas.DataFrame, OR anndata.AnnData
 
-        If a tuple or list, it should contain the gene expression data (scipy.sparse or 
-        numpy.ndarray) matrix (cells x genes), numpy array of gene IDs, and numpy array
-        of cell IDs in that order.
+        If a tuple or list, it should contain the gene expression data
+        (scipy.sparse or numpy.ndarray) matrix (cells x genes), numpy array of
+        gene IDs, and numpy array of cell IDs in that order.
 
         If a pandas.DataFrame, it should be (cells x genes)
 
@@ -132,54 +133,57 @@ class SAM(object):
 
     adata_raw: AnnData
         An AnnData object containing the raw, unfiltered input data.
-        
+
     adata: AnnData
         An AnnData object containing all processed data and SAM outputs.
-        
+
     """
 
     def __init__(self, counts=None, annotations=None):
-        
-        if isinstance(counts, tuple) or isinstance(counts,list):
-            raw_data,all_gene_names,all_cell_names = counts
-            if isinstance(raw_data,np.ndarray):
+
+        if isinstance(counts, tuple) or isinstance(counts, list):
+            raw_data, all_gene_names, all_cell_names = counts
+            if isinstance(raw_data, np.ndarray):
                 raw_data = sp.csr_matrix(raw_data)
-                
-            self.adata_raw = AnnData(X = raw_data,obs={'obs_names':all_cell_names},
-                                 var = {'var_names':all_gene_names})            
-            
-        elif isinstance(counts,pd.DataFrame):
+
+            self.adata_raw = AnnData(
+                X=raw_data, obs={
+                    'obs_names': all_cell_names}, var={
+                    'var_names': all_gene_names})
+
+        elif isinstance(counts, pd.DataFrame):
             raw_data = sp.csr_matrix(counts.values)
             all_gene_names = np.array(list(counts.columns.values))
             all_cell_names = np.array(list(counts.index.values))
-            
-            self.adata_raw = AnnData(X = raw_data,obs={'obs_names':all_cell_names},
-                                 var = {'var_names':all_gene_names})            
-            
-        elif isinstance(counts,AnnData):
+
+            self.adata_raw = AnnData(
+                X=raw_data, obs={
+                    'obs_names': all_cell_names}, var={
+                    'var_names': all_gene_names})
+
+        elif isinstance(counts, AnnData):
             self.adata_raw = counts
 
         elif counts is not None:
-            raise Exception("\'counts\' must be either a tuple/list of (data,gene IDs,cell IDs)"
-                             "or a Pandas DataFrame of cells x genes")
+            raise Exception(
+                "\'counts\' must be either a tuple/list of "
+                "(data,gene IDs,cell IDs) or a Pandas DataFrame of"
+                "cells x genes")
 
         if(annotations is not None):
             annotations = np.array(list(annotations))
             if counts is not None:
-                self.adata_raw.obs['annotations']=annotations                
+                self.adata_raw.obs['annotations'] = annotations
 
-
-        if counts is not None: 
+        if counts is not None:
             self.adata = self.adata_raw.copy()
             self.adata.layers['X_disp'] = self.adata.X
-       
-    
-    def preprocess_data(self, div=1, downsample=0, sum_norm = None,
+
+    def preprocess_data(self, div=1, downsample=0, sum_norm=None,
                         include_genes=None, exclude_genes=None,
                         include_cells=None, exclude_cells=None,
                         norm='log', min_expression=1, thresh=0.01,
                         filter_genes=True):
-        
         """Log-normalizes and filters the expression data.
 
         Parameters
@@ -201,25 +205,27 @@ class SAM(object):
         norm : str, optional, default 'log'
             If 'log', log-normalizes the expression data. If the loaded data is
             already log-normalized, set norm = None.
-            
+
         include_genes : array-like of string, optional, default None
             A vector of gene names or indices that specifies the genes to keep.
-            All other genes will be filtered out. Gene names are case-sensitive.
-    
+            All other genes will be filtered out. Gene names are case-
+            sensitive.
+
         exclude_genes : array-like of string, optional, default None
-            A vector of gene names or indices that specifies the genes to exclude.
-            These genes will be filtered out. Gene names are case-sensitive.
-    
+            A vector of gene names or indices that specifies the genes to
+            exclude. These genes will be filtered out. Gene names are case-
+            sensitive.
+
         include_cells : array-like of string, optional, default None
             A vector of cell names that specifies the cells to keep.
             All other cells will be filtered out. Cell names are
             case-sensitive.
-    
+
         exclude_cells : array-like of string, optional, default None
             A vector of cell names that specifies the cells to exclude.
             Thses cells will be filtered out. Cell names are
             case-sensitive.
-        
+
         min_expression : float, optional, default 1
             The threshold above which a gene is considered
             expressed. Gene expression values less than 'min_expression' are
@@ -241,90 +247,86 @@ class SAM(object):
             D = self.adata_raw.X.copy()
         except AttributeError:
             print('No data loaded')
-            
+
         cell_names = np.array(list(self.adata_raw.obs_names))
         gene_names = np.array(list(self.adata_raw.var_names))
-        
+
         if (sum_norm is not None):
-            D = D.multiply(1/D.sum(1).A.flatten()[:,None]*sum_norm).tocsr()
-        
+            D = D.multiply(
+                1 /
+                D.sum(1).A.flatten()[
+                    :,
+                    None] *
+                sum_norm).tocsr()
+
         if(norm == 'log'):
-            D.data[:] = np.log2(D.data/div+1)
+            D.data[:] = np.log2(D.data / div + 1)
         else:
-            D.data[:] = (D.data/div)
-               
+            D.data[:] = (D.data / div)
+
         idx_genes = np.arange(D.shape[1])
         idx_cells = np.arange(D.shape[0])
         if(include_genes is not None):
             include_genes = np.array(list(include_genes))
             idx = np.where(np.in1d(gene_names, include_genes))[0]
             idx_genes = np.array(list(set(idx) & set(idx_genes)))
-            
-            
+
         if(include_cells is not None):
             include_cells = np.array(list(include_cells))
-            idx2 = np.where(np.in1d(cell_names, include_cells))[0]            
+            idx2 = np.where(np.in1d(cell_names, include_cells))[0]
             idx_cells = np.array(list(set(idx2) & set(idx_cells)))
-            
+
         if(exclude_genes is not None):
             exclude_genes = np.array(list(exclude_genes))
             idx3 = np.where(np.in1d(gene_names, exclude_genes,
-                                                            invert=True))[0]
+                                    invert=True))[0]
             idx_genes = np.array(list(set(idx3) & set(idx_genes)))
-            
-        
+
         if(exclude_cells is not None):
             exclude_cells = np.array(list(exclude_cells))
             idx4 = np.where(np.in1d(cell_names, exclude_cells,
-                                                            invert=True))[0]
+                                    invert=True))[0]
             idx_cells = np.array(list(set(idx4) & set(idx_cells)))
 
-
         if downsample > 0:
-            numcells = int(D.shape[0]/downsample)
-            rand_ind= np.random.choice(np.arange(D.shape[0]),
-                                 size=numcells, replace=False)
-            
+            numcells = int(D.shape[0] / downsample)
+            rand_ind = np.random.choice(np.arange(D.shape[0]),
+                                        size=numcells, replace=False)
+
             idx_cells = np.array(list(set(rand_ind) & set(idx_cells)))
 
         else:
             numcells = D.shape[0]
 
-
         idx = np.where(D.data <= min_expression)[0]
-        D.data[idx]=0
+        D.data[idx] = 0
         D.eliminate_zeros()
-        D=D.astype('float32')
-        
+        D = D.astype('float32')
+
         if(filter_genes):
-            a,ct = np.unique(D.nonzero()[1],return_counts=True)
+            a, ct = np.unique(D.nonzero()[1], return_counts=True)
             c = np.zeros(D.shape[1])
-            c[a]=ct
-            
-            keep = np.where(np.logical_and(c/D.shape[0] > thresh,
-                                           c/D.shape[0] < 1-thresh))[0]
-            
-            
+            c[a] = ct
+
+            keep = np.where(np.logical_and(c / D.shape[0] > thresh,
+                                           c / D.shape[0] < 1 - thresh))[0]
+
             idx_genes = np.array(list(set(keep) & set(idx_genes)))
 
-            
-
-        
-        mask_genes = np.zeros(D.shape[1],dtype='bool')
+        mask_genes = np.zeros(D.shape[1], dtype='bool')
         mask_genes[idx_genes] = True
-        
-        mask_cells = np.zeros(D.shape[0],dtype='bool')
+
+        mask_cells = np.zeros(D.shape[0], dtype='bool')
         mask_cells[idx_cells] = True
-        
-        self.adata = self.adata_raw[mask_cells,:].copy()        
-        self.adata.X = D[mask_cells,:].multiply(mask_genes[None,:]).tocsr()
+
+        self.adata = self.adata_raw[mask_cells, :].copy()
+        self.adata.X = D[mask_cells, :].multiply(mask_genes[None, :]).tocsr()
         self.adata.X.eliminate_zeros()
-        self.adata.layers['X_disp'] = self.adata.X                
+        self.adata.layers['X_disp'] = self.adata.X
         self.adata.var['mask_genes'] = mask_genes
-        
-        
+
     def load_data(self, filename, transpose=True,
-                            save_sparse_file=True,sep=','):
+                  save_sparse_file=True, sep=','):
         """Loads the specified data file. The file can be a table of
         read counts (i.e. '.csv' or '.txt'), with genes as rows and cells
         as columns by default. The file can also be a pickle file (output from
@@ -340,61 +342,65 @@ class SAM(object):
         sep - string, optional, default ','
             The delimeter used to read the input data table. By default
             assumes the input table is delimited by commas.
-        
+
         save_sparse_file - bool, optional, default True
-            If True, pickles the sparse data structure, cell names, and gene names
-            in the same folder as the original data for faster loading in the
-            future. 
-            
+            If True, pickles the sparse data structure, cell names, and gene
+            names in the same folder as the original data for faster loading in
+            the future.
+
         transpose - bool, optional, default True
             By default, assumes file is (genes x cells). Set this to False if
             the file has dimensions (cells x genes).
-        
-        
+
+
         """
-        if filename.split('.')[-1]=='p':
-            raw_data,all_cell_names,all_gene_names = (
-                                    pickle.load(open(filename,'rb')))
-            
+        if filename.split('.')[-1] == 'p':
+            raw_data, all_cell_names, all_gene_names = (
+                pickle.load(open(filename, 'rb')))
+
             if(transpose):
-                raw_data = raw_data.T   
-            
-        else:    
+                raw_data = raw_data.T
+
+        else:
             df = pd.read_csv(filename, sep=sep, index_col=0)
             if(transpose):
                 dataset = df.T
             else:
                 dataset = df
-            
+
             raw_data = sp.csr_matrix(dataset.values)
             all_cell_names = np.array(list(dataset.index.values))
-            all_gene_names = np.array(list(dataset.columns.values))    
-            
-            if(save_sparse_file):
-                new_sparse_file = filename.split('/')[-1].split('.')[0]        
-                path = filename[:filename.find(filename.split('/')[-1])]                        
-                self.save_sparse_data(path+new_sparse_file+'_sparse.p',
-                                      raw_data.T,all_cell_names,all_gene_names)
+            all_gene_names = np.array(list(dataset.columns.values))
 
-        self.adata_raw = AnnData(X = raw_data,obs={'obs_names':all_cell_names},
-                             var = {'var_names':all_gene_names})            
-        self.adata=self.adata_raw.copy()
+            if(save_sparse_file):
+                new_sparse_file = filename.split('/')[-1].split('.')[0]
+                path = filename[:filename.find(filename.split('/')[-1])]
+                self.save_sparse_data(
+                    path +
+                    new_sparse_file +
+                    '_sparse.p',
+                    raw_data.T,
+                    all_cell_names,
+                    all_gene_names)
+
+        self.adata_raw = AnnData(X=raw_data, obs={'obs_names': all_cell_names},
+                                 var={'var_names': all_gene_names})
+        self.adata = self.adata_raw.copy()
         self.adata.layers['X_disp'] = raw_data
 
-            
-    def save_sparse_data(self,fname,data,cell_names,gene_names):
+    def save_sparse_data(self, fname, data, cell_names, gene_names):
         """Saves the tuple (raw_data,all_cell_names,all_gene_names) in a
         Pickle file.
-        
+
         Parameters
         ----------
         fname - string
-            The filename of the output file.        
+            The filename of the output file.
 
-        """                
-        pickle.dump((data,cell_names,gene_names),open(fname,'wb'))
+        """
+        pickle.dump((data, cell_names, gene_names), open(fname, 'wb'))
 
-    def load_annotations(self, aname,sep=','):
+    def load_annotations(self, aname, sep=','):
         """Loads cell annotations.
 
         Loads the cell annoations specified by the 'aname' path.
@@ -404,29 +410,29 @@ class SAM(object):
         aname - string
             The path to the annotations file. First column should be cell IDs
             and second column should be the desired annotations.
-            
+
         """
         ann = pd.read_csv(aname)
-        
+
         cell_names = np.array(list(self.adata.obs_names))
         all_cell_names = np.array(list(self.adata_raw.obs_names))
-        
+
         if(ann.shape[1] > 1):
             ann = pd.read_csv(aname, index_col=0)
             if(ann.shape[0] != all_cell_names.size):
-                ann = pd.read_csv(aname, index_col=0,header=None)
+                ann = pd.read_csv(aname, index_col=0, header=None)
         else:
             if(ann.shape[0] != all_cell_names.size):
-                ann = pd.read_csv(aname,header=None)            
-        
-        ann1 = np.array(list(ann.T[cell_names].T.values.flatten()))        
-        ann2=np.array(list(ann.values.flatten()))
+                ann = pd.read_csv(aname, header=None)
 
-        self.adata_raw.obs['annotations']=ann2
-        self.adata.obs['annotations']=ann1
-    
+        ann1 = np.array(list(ann.T[cell_names].T.values.flatten()))
+        ann2 = np.array(list(ann.values.flatten()))
+
+        self.adata_raw.obs['annotations'] = ann2
+        self.adata.obs['annotations'] = ann1
+
     def dispersion_ranking_NN(self, nnm, num_norm_avg=50):
-        """Computes the spatial dispersion factors for each gene.      
+        """Computes the spatial dispersion factors for each gene.
 
         Parameters
         ----------
@@ -448,35 +454,35 @@ class SAM(object):
         weights - ndarray, float
             The vector of gene weights.
         """
-        
-        D_avg = (nnm/self.k).dot(self.adata.layers['X_disp'])
-        
+
+        D_avg = (nnm / self.k).dot(self.adata.layers['X_disp'])
+
         self.adata.layers['X_knn_avg'] = D_avg
-        
-        mu,var = sf.mean_variance_axis(D_avg,axis=0)
+
+        mu, var = sf.mean_variance_axis(D_avg, axis=0)
 
         dispersions = np.zeros(var.size)
-        dispersions[mu>0] = var[mu>0]/mu[mu>0]
-        
+        dispersions[mu > 0] = var[mu > 0] / mu[mu > 0]
+
         self.adata.var['spatial_dispersions'] = dispersions.copy()
-        
+
         ma = np.sort(dispersions)[-num_norm_avg:].mean()
         dispersions[dispersions >= ma] = ma
 
-        weights = ((dispersions/dispersions.max())**0.5).flatten()       
-        
+        weights = ((dispersions / dispersions.max())**0.5).flatten()
+
         self.adata.var['weights'] = weights
-        
-        return weights    
-    
-    def calculate_regression_PCs(self,genes=None,npcs = None, plot=False):
+
+        return weights
+
+    def calculate_regression_PCs(self, genes=None, npcs=None, plot=False):
         """Computes the contribution of the gene IDs in 'genes' to each
         principal component (PC) of the filtered expression data as the mean of
         the absolute value of the corresponding gene loadings. High values
         correspond to PCs that are highly correlated with the features in
         'genes'. These PCs can then be regressed out of the data using
         'regress_genes'.
-        
+
 
         Parameters
         ----------
@@ -486,82 +492,83 @@ class SAM(object):
         npcs - int, optional, default None
             How many PCs to calculate when computing PCA of the filtered and
             log-transformed expression data. If None, calculate all PCs.
-        
+
         plot - bool, optional, default False
             If True, plot the scores reflecting how correlated each PC is with
             genes of interest. Otherwise, do not plot anything.
-            
+
         Returns:
         -------
         x - numpy.array
             Scores reflecting how correlated each PC is with the genes of
             interest (ordered by decreasing eigenvalues).
-                    
+
         """
         from sklearn.decomposition import PCA
-        
+
         if npcs is None:
             npcs = self.adata.X.shape[0]
-            
-        pca= PCA(n_components=npcs)
-        pc= pca.fit_transform(self.adata.X.toarray())
-        
+
+        pca = PCA(n_components=npcs)
+        pc = pca.fit_transform(self.adata.X.toarray())
+
         self.regression_pca = pca
         self.regression_pcs = pc
-        
+
         gene_names = np.array(list(self.adata.var_names))
         if(genes is not None):
-            idx = np.where(np.in1d(gene_names,genes))[0]
-            sx = pca.components_[:,idx]
-            x=np.abs(sx).mean(1)
-        
+            idx = np.where(np.in1d(gene_names, genes))[0]
+            sx = pca.components_[:, idx]
+            x = np.abs(sx).mean(1)
+
             if plot:
-                plt.figure(); plt.plot(x);
-            
+                plt.figure()
+                plt.plot(x)
+
             return x
         else:
             return
 
-    def regress_genes(self,PCs):
+    def regress_genes(self, PCs):
         """Regress out the principal components in 'PCs' from the filtered
         expression data ('SAM.D'). Assumes 'calculate_regression_PCs' has
         been previously called.
-        
+
         Parameters
         ----------
         PCs - int, numpy.array, list
             The principal components to regress out of the expression data.
-                   
+
         """
-        
+
         ind = [PCs]
         ind = np.array(ind).flatten()
         try:
-            y = self.adata.X.toarray() - self.regression_pcs[:,ind].dot(
-                    self.regression_pca.components_[ind,:]*self.adata.var['weights'].values)
-        except:
-            y = self.adata.X.toarray() - self.regression_pcs[:,ind].dot(
-                    self.regression_pca.components_[ind,:])
-            
-        self.adata.X = sp.csr_matrix(y)    
-    
+            y = self.adata.X.toarray() - self.regression_pcs[:, ind].dot(
+                self.regression_pca.components_[ind, :] * self.adata.var[
+                                                            'weights'].values)
+        except BaseException:
+            y = self.adata.X.toarray() - self.regression_pcs[:, ind].dot(
+                self.regression_pca.components_[ind, :])
+
+        self.adata.X = sp.csr_matrix(y)
+
     def run(self,
             max_iter=10,
             verbose=True,
             projection='umap',
             stopping_condition=5e-3,
             num_norm_avg=50,
-            k = 20,
+            k=20,
             distance='correlation',
             preprocessing='Normalizer'):
-        
         """Runs the Self-Assembling Manifold algorithm.
 
         Parameters
         ----------
         k - int, optional, default 20
             The number of nearest neighbors to identify for each cell.
-        
+
         distance : string, optional, default 'correlation'
             The distance metric to use when constructing cell distance
             matrices. Can be any of the distance metrics supported by
@@ -571,17 +578,17 @@ class SAM(object):
             The maximum number of iterations SAM will run.
 
         stopping_condition - float, optional, default 5e-3
-            The stopping condition threshold for the RMSE between gene weights in 
-            adjacent iterations.
+            The stopping condition threshold for the RMSE between gene weights
+            in adjacent iterations.
 
         verbose - bool, optional, default True
-            If True, the iteration number and error between gene weights in adjacent
-            iterations will be displayed.
-            
+            If True, the iteration number and error between gene weights in
+            adjacent iterations will be displayed.
+
         projection - str, optional, default 'umap'
             If 'tsne', generates a t-SNE embedding. If 'umap', generates a UMAP
             embedding. Otherwise, no embedding will be generated.
-        
+
         preprocessing - str, optional, default 'Normalizer'
             If 'Normalizer', use sklearn.preprocessing.Normalizer, which
             normalizes expression data prior to PCA such that each cell has
@@ -589,42 +596,41 @@ class SAM(object):
             sklearn.preprocessing.StandardScaler, which normalizes expression
             data prior to PCA such that each gene has zero mean and unit
             variance. Otherwise, do not normalize the expression data. We
-            recommend using 'StandardScaler' for large datasets and 'Normalizer'
-            otherwise.
-        
+            recommend using 'StandardScaler' for large datasets and
+            'Normalizer' otherwise.
+
         num_norm_avg - int, optional, default 50
             The top 'num_norm_avg' dispersions are averaged to determine the
             normalization factor when calculating the weights. This prevents
             genes with large spatial dispersions from skewing the distribution
             of weights.
         """
-        
-        self.distance=distance
-        
+
+        self.distance = distance
+
         D = self.adata.X
-        
-                
-        self.k=k
+
+        self.k = k
         if(self.k < 5):
             self.k = 5
         elif(self.k > 100):
             self.k = 100
-            
-        if(self.k > D.shape[0]-1):
-            self.k = D.shape[0]-2
-        
+
+        if(self.k > D.shape[0] - 1):
+            self.k = D.shape[0] - 2
+
         numcells = D.shape[0]
-        
+
         n_genes = 8000
         if numcells > 3000 and n_genes > 3000:
-            n_genes = 3000;
+            n_genes = 3000
         elif numcells > 2000 and n_genes > 4500:
-            n_genes = 4500;
+            n_genes = 4500
         elif numcells > 1000 and n_genes > 6000:
             n_genes = 6000
-        elif n_genes > 8000:        
+        elif n_genes > 8000:
             n_genes = 8000
-        
+
         npcs = None
         if npcs is None and numcells > 3000:
             npcs = 150
@@ -634,61 +640,62 @@ class SAM(object):
             npcs = 350
         elif npcs is None:
             npcs = 500
-        
-        tinit = time.time()
-        
-        edm = sp.coo_matrix((numcells,numcells),dtype='i').tolil()
-        nums = np.arange(edm.shape[1])
-        RINDS = np.random.randint(0,numcells,(self.k-1)*numcells).reshape((numcells,(self.k-1)))
-        RINDS = np.hstack((nums[:,None],RINDS))
 
-        edm[np.tile(np.arange(RINDS.shape[0])[:,None],(1,RINDS.shape[1])).flatten(),RINDS.flatten()]=1
-        edm=edm.tocsr()
-        
-        print('RUNNING SAM')         
-            
+        tinit = time.time()
+
+        edm = sp.coo_matrix((numcells, numcells), dtype='i').tolil()
+        nums = np.arange(edm.shape[1])
+        RINDS = np.random.randint(
+            0, numcells, (self.k - 1) * numcells).reshape((numcells, 
+                                                                 (self.k - 1)))
+        RINDS = np.hstack((nums[:, None], RINDS))
+
+        edm[np.tile(np.arange(RINDS.shape[0])[:, None],
+                    (1, RINDS.shape[1])).flatten(), RINDS.flatten()] = 1
+        edm = edm.tocsr()
+
+        print('RUNNING SAM')
+
         W = self.dispersion_ranking_NN(
             edm, num_norm_avg=1)
-               
+
         old = np.zeros(W.size)
         new = W
-        
+
         i = 0
-        err = ((new-old)**2).mean()**0.5
+        err = ((new - old)**2).mean()**0.5
 
         if max_iter < 5:
             max_iter = 5
-            
-        nnas=num_norm_avg
-        
-        
+
+        nnas = num_norm_avg
+
         while (i < max_iter and err > stopping_condition):
-        
+
             conv = err
             if(verbose):
                 print('Iteration: ' + str(i) + ', Convergence: ' + str(conv))
 
             i += 1
             old = new
-                        
-            W,wPCA_data,EDM, = self.calculate_nnm(D,W,n_genes,preprocessing,npcs,numcells,nnas)                        
-            new = W
-            err = ((new-old)**2).mean()**0.5
 
-        
+            W, wPCA_data, EDM, = self.calculate_nnm(
+                D, W, n_genes, preprocessing, npcs, numcells, nnas)
+            new = W
+            err = ((new - old)**2).mean()**0.5
+
         all_gene_names = np.array(list(self.adata.var_names))
         indices = np.argsort(-W)
         ranked_genes = all_gene_names[indices]
 
         self.corr_bin_genes(number_of_features=1000)
 
-        
         self.adata.uns['ranked_genes'] = ranked_genes
-        
-        self.adata.obsm['X_pca']=wPCA_data
-        
-        self.adata.uns['neighbors']={}
-        self.adata.uns['neighbors']['connectivities']=EDM
+
+        self.adata.obsm['X_pca'] = wPCA_data
+
+        self.adata.uns['neighbors'] = {}
+        self.adata.uns['neighbors']['connectivities'] = EDM
 
         if(projection == 'tsne'):
             print('Computing the t-SNE embedding...')
@@ -696,61 +703,71 @@ class SAM(object):
         elif(projection == 'umap'):
             print('Computing the UMAP embedding...')
             self.run_umap()
-        
-        
-        elapsed = time.time()-tinit
+
+        elapsed = time.time() - tinit
         if verbose:
             print('Elapsed time: ' + str(elapsed) + ' seconds')
-    
-    def calculate_nnm(self,D,W,n_genes,preprocessing,npcs,numcells,num_norm_avg):
+
+    def calculate_nnm(
+            self,
+            D,
+            W,
+            n_genes,
+            preprocessing,
+            npcs,
+            numcells,
+            num_norm_avg):
         if(n_genes is None):
             gkeep = np.arange(W.size)
         else:
             gkeep = np.sort(np.argsort(-W)[:n_genes])
-        
+
         if preprocessing == 'Normalizer':
-            Ds = D[:,gkeep].toarray()            
+            Ds = D[:, gkeep].toarray()
             Ds = Normalizer().fit_transform(Ds)
-                       
+
         elif preprocessing == 'StandardScaler':
-            Ds = D[:,gkeep].toarray()                
-            Ds=StandardScaler(with_mean=True).fit_transform(Ds)            
-            Ds[Ds>5]=5
-            Ds[Ds<-5]=-5
-            
+            Ds = D[:, gkeep].toarray()
+            Ds = StandardScaler(with_mean=True).fit_transform(Ds)
+            Ds[Ds > 5] = 5
+            Ds[Ds < -5] = -5
+
         else:
-            Ds = D[:,gkeep].toarray()
-            
-        
-        D_sub = Ds*(W[gkeep])
+            Ds = D[:, gkeep].toarray()
+
+        D_sub = Ds * (W[gkeep])
 
         if numcells > 500:
-            g_weighted,pca = ut.weighted_PCA(D_sub,npcs=min(npcs,min(D.shape)),do_weight=True,solver='auto')
+            g_weighted, pca = ut.weighted_PCA(D_sub, npcs=min(
+                npcs, min(D.shape)), do_weight=True, solver='auto')
         else:
-            g_weighted,pca = ut.weighted_PCA(D_sub,npcs=min(npcs,min(D.shape)),do_weight=True,solver='full')
-        
-        if self.distance=='euclidean':
+            g_weighted, pca = ut.weighted_PCA(D_sub, npcs=min(
+                npcs, min(D.shape)), do_weight=True, solver='full')
+
+        if self.distance == 'euclidean':
             g_weighted = Normalizer().fit_transform(g_weighted)
-        
+
         self.adata.uns['pca_obj'] = pca
-    
+
         if g_weighted.shape[0] > 8000:
-            nnm,dists = ut.nearest_neighbors(g_weighted,n_neighbors=self.k,metric=self.distance)                
-            EDM = sp.coo_matrix((numcells,numcells),dtype='i').tolil()                            
-            EDM[np.tile(np.arange(nnm.shape[0])[:,None],(1,nnm.shape[1])).flatten(),nnm.flatten()]=1
-            EDM=EDM.tocsr()
-        else:                        
+            nnm, dists = ut.nearest_neighbors(
+                g_weighted, n_neighbors=self.k, metric=self.distance)
+            EDM = sp.coo_matrix((numcells, numcells), dtype='i').tolil()
+            EDM[np.tile(np.arange(nnm.shape[0])[:, None],
+                        (1, nnm.shape[1])).flatten(), nnm.flatten()] = 1
+            EDM = EDM.tocsr()
+        else:
             dist = ut.compute_distances(g_weighted, self.distance)
-            nnm = ut.dist_to_nn(dist,self.k)                
+            nnm = ut.dist_to_nn(dist, self.k)
             EDM = sp.csr_matrix(nnm)
 
         W = self.dispersion_ranking_NN(
             EDM, num_norm_avg=num_norm_avg)
-        
+
         self.adata.uns['X_processed'] = D_sub
-        
-        return W,g_weighted,EDM
-        
+
+        return W, g_weighted, EDM
+
     def save(self, savename, dirname=None, exc=None):
         """Saves all SAM attributes to a Pickle file.
 
@@ -771,15 +788,15 @@ class SAM(object):
         exc - array-like of strings, optional, default None
             A vector of SAM attributes to exclude from the saved file. Use this
             to exclude bulky objects that do not need to be saved.
-            
+
         """
         self._create_dict(exc)
         if savename[-2:] != '.p':
             savename = savename + '.p'
-            
+
         if(dirname is not None):
-            ut.create_folder(dirname+"/")
-            f = open(dirname+"/" + savename, 'wb')
+            ut.create_folder(dirname + "/")
+            f = open(dirname + "/" + savename, 'wb')
         else:
             f = open(savename, 'wb')
 
@@ -811,7 +828,7 @@ class SAM(object):
                 try:
                     del self.pickle_dict[exc[i]]
                 except NameError:
-                    0  
+                    0
 
     def plot_correlated_groups(self, group=None, n_genes=5, **kwargs):
         """Plots orthogonal expression patterns.
@@ -843,7 +860,12 @@ class SAM(object):
             for i in range(n_genes):
                 self.show_gene_expression(geneID_groups[group][i], **kwargs)
 
-    def plot_correlated_genes(self, name, n_genes=5,number_of_features=1000, **kwargs):
+    def plot_correlated_genes(
+            self,
+            name,
+            n_genes=5,
+            number_of_features=1000,
+            **kwargs):
         """Plots gene expression patterns correlated with the input gene.
 
         Parameters
@@ -860,31 +882,33 @@ class SAM(object):
             are eligible.
         """
         all_gene_names = np.array(list(self.adata.var_names))
-        if((all_gene_names==name).sum()==0):
+        if((all_gene_names == name).sum() == 0):
             print(
                 "Gene not found in the filtered dataset. Note that genes "
                 "are case sensitive.")
             return
-        sds = self.corr_bin_genes(input_gene=name, number_of_features=number_of_features)
-        if (n_genes+1 > sds.size):
+        sds = self.corr_bin_genes(
+            input_gene=name,
+            number_of_features=number_of_features)
+        if (n_genes + 1 > sds.size):
             x = sds.size
         else:
-            x = n_genes+1
-            
-        for i in range(1,x):
+            x = n_genes + 1
+
+        for i in range(1, x):
             self.show_gene_expression(sds[i], **kwargs)
         return sds[1:]
 
     def corr_bin_genes(self, number_of_features=None, input_gene=None):
         """A (hacky) method for binning groups of genes correlated along the
         SAM manifold.
-        
+
         Parameters
         ----------
         number_of_features - int, optional, default None
             The number of genes to bin. Capped at 5000 due to memory
             considerations.
-        
+
         input_gene - str, optional, default None
             If not None, use this gene as the first seed when growing the
             correlation bins.
@@ -894,15 +918,15 @@ class SAM(object):
         weights = self.adata.var['spatial_dispersions'].values
         all_gene_names = np.array(list(self.adata.var_names))
         D_avg = self.adata.layers['X_knn_avg']
-        
-        idx2 = np.argsort(-weights)[:weights[weights>0].size]
-        
+
+        idx2 = np.argsort(-weights)[:weights[weights > 0].size]
+
         if(number_of_features is None or number_of_features > idx2.size):
             number_of_features = idx2.size
-        
+
         if number_of_features > 1000:
-            number_of_features = 1000;
-            
+            number_of_features = 1000
+
         if(input_gene is not None):
             input_gene = np.where(all_gene_names == input_gene)[0]
             if(input_gene.size == 0):
@@ -957,11 +981,11 @@ class SAM(object):
             for i in range(len(seeds)):
                 geneID_groups.append(
                     all_gene_names[seeds[i]])
-                
+
             self.adata.uns['gene_groups'] = geneID_groups
-            return geneID_groups    
-          
-    def run_tsne(self, X=None, metric='correlation',**kwargs):
+            return geneID_groups
+
+    def run_tsne(self, X=None, metric='correlation', **kwargs):
         """Wrapper for sklearn's t-SNE implementation.
 
         See sklearn for the t-SNE documentation. All arguments are the same
@@ -969,14 +993,15 @@ class SAM(object):
         implying that this function expects a distance matrix by default.
         """
         if(X is not None):
-            dt = man.TSNE(metric=metric,**kwargs).fit_transform(X)
+            dt = man.TSNE(metric=metric, **kwargs).fit_transform(X)
             return dt
-        
+
         else:
-            dt = man.TSNE(metric=self.distance,**kwargs).fit_transform(self.adata.obsm['X_pca'])
+            dt = man.TSNE(metric=self.distance,
+                          **kwargs).fit_transform(self.adata.obsm['X_pca'])
             tsne2d = dt
             self.adata.obsm['X_tsne'] = tsne2d
-    
+
     def run_umap(self, X=None, metric=None, **kwargs):
         """Wrapper for umap-learn.
 
@@ -988,20 +1013,19 @@ class SAM(object):
 
         if metric is None:
             metric = self.distance
-        
+
         if(X is not None):
             umap_obj = umap.UMAP(metric=metric, **kwargs)
-            dt = umap_obj.fit_transform(X)            
+            dt = umap_obj.fit_transform(X)
             return dt
-        
+
         else:
             umap_obj = umap.UMAP(metric=metric, **kwargs)
             umap2d = umap_obj.fit_transform(self.adata.obsm['X_pca'])
             self.adata.obsm['X_umap'] = umap2d
-            
-        
+
     def scatter(self, projection=None, c=None, cmap='rainbow', linewidth=0.0,
-                edgecolor='k',axes=None,colorbar=True, s=10,**kwargs):
+                edgecolor='k', axes=None, colorbar=True, s=10, **kwargs):
         """Display a scatter plot.
 
         Displays a scatter plot using the SAM projection or another input
@@ -1020,11 +1044,11 @@ class SAM(object):
             Colors for each cell in the scatter plot. Can be a vector of
             floats or strings for cell annotations. Can also be a key
             for sam.adata.obs (i.e. 'louvain_clusters').
-        
+
         axes - matplotlib axis, optional, default None
             Plot output to the specified, existing axes. If None, create new
             figure window.
-        
+
         cmap - string, optional, default 'rainbow'
             The colormap to use for the input color values.
 
@@ -1040,13 +1064,13 @@ class SAM(object):
         if (not PLOTTING):
             print("matplotlib not installed!")
         else:
-            if(type(projection) is str):
+            if(isinstance(projection, str)):
                 try:
                     dt = self.adata.obsm[projection]
                 except KeyError:
                     print('Please create a projection first using run_umap or'
                           'run_tsne')
-                    
+
             elif(projection is None):
                 try:
                     dt = self.adata.obsm['X_umap']
@@ -1065,37 +1089,54 @@ class SAM(object):
                 axes = plt.gca()
 
             if(c is None):
-                plt.scatter(dt[:, 0], dt[:, 1],s=s,linewidth=linewidth,edgecolor=edgecolor, **kwargs)
+                plt.scatter(dt[:, 0], dt[:, 1], s=s,
+                            linewidth=linewidth, edgecolor=edgecolor, **kwargs)
             else:
-                
-                if type(c) is str:
+
+                if isinstance(c, str):
                     try:
                         c = self.adata.obs[c].values
                     except KeyError:
-                        0; # do nothing
-                
-                if((type(c[0]) is str or type(c[0]) is np.str_) and
-                   (type(c) is np.ndarray or type(c) is list)):
+                        0  # do nothing
+
+                if((isinstance(c[0], str) or isinstance(c[0], np.str_)) and
+                   (isinstance(c, np.ndarray) or isinstance(c, list))):
                     i = ut.convert_annotations(c)
                     ui, ai = np.unique(i, return_index=True)
-                    cax = axes.scatter(
-                        dt[:, 0], dt[:, 1], c=i, cmap=cmap,s=s,linewidth=linewidth,edgecolor=edgecolor, **kwargs)
+                    cax = axes.scatter(dt[:,
+                                          0],
+                                       dt[:,
+                                           1],
+                                       c=i,
+                                       cmap=cmap,
+                                       s=s,
+                                       linewidth=linewidth,
+                                       edgecolor=edgecolor,
+                                       **kwargs)
 
                     if(colorbar):
-                        cbar = plt.colorbar(cax,ax = axes, ticks=ui)
-                        cbar.ax.set_yticklabels(c[ai])                  
+                        cbar = plt.colorbar(cax, ax=axes, ticks=ui)
+                        cbar.ax.set_yticklabels(c[ai])
                 else:
-                    if not (type(c) is np.ndarray or type(c) is list):
+                    if not (isinstance(c, np.ndarray) or isinstance(c, list)):
                         colorbar = False
                     i = c
 
-                    cax = axes.scatter(
-                        dt[:, 0], dt[:, 1], c=i, cmap=cmap,s=s,linewidth=linewidth,edgecolor=edgecolor, **kwargs)
+                    cax = axes.scatter(dt[:,
+                                          0],
+                                       dt[:,
+                                           1],
+                                       c=i,
+                                       cmap=cmap,
+                                       s=s,
+                                       linewidth=linewidth,
+                                       edgecolor=edgecolor,
+                                       **kwargs)
 
                     if(colorbar):
-                        plt.colorbar(cax,ax = axes)
+                        plt.colorbar(cax, ax=axes)
 
-    def show_gene_expression(self, gene, avg=True, axes=None,**kwargs):
+    def show_gene_expression(self, gene, avg=True, axes=None, **kwargs):
         """Display a gene's expressions.
 
         Displays a scatter plot using the SAM projection or another input
@@ -1111,19 +1152,19 @@ class SAM(object):
             If True, the plots use the k-nearest-neighbor-averaged expression
             values to smooth out noisy expression patterns and improves
             visualization.
-        
+
         axes - matplotlib axis, optional, default None
             Plot output to the specified, existing axes. If None, create new
             figure window.
-            
+
         **kwargs - all keyword arguments in 'SAM.scatter' are eligible.
 
         """
-        
+
         all_gene_names = np.array(list(self.adata.var_names))
         cell_names = np.array(list(self.adata.obs_names))
         all_cell_names = np.array(list(self.adata_raw.obs_names))
-        
+
         idx = np.where(all_gene_names == gene)[0]
         name = gene
         if(idx.size == 0):
@@ -1134,53 +1175,54 @@ class SAM(object):
 
         if(avg):
             a = self.adata.layers['X_knn_avg'][:, idx].toarray().flatten()
-            
+
             if a.sum() == 0:
-                a = np.log2(self.adata_raw.X[np.in1d(all_cell_names,cell_names),:][:,
-                                                 idx].toarray().flatten()+1)    
+                a = np.log2(self.adata_raw.X[np.in1d(
+                    all_cell_names, cell_names), :][:,
+                                                idx].toarray().flatten() + 1)
         else:
-            a = np.log2(self.adata_raw.X[np.in1d(all_cell_names,cell_names),:][:,
-                                             idx].toarray().flatten()+1)  
+            a = np.log2(self.adata_raw.X[np.in1d(
+                all_cell_names, cell_names), :][:,
+                                                idx].toarray().flatten() + 1)
 
         if axes is None:
-            plt.figure();
+            plt.figure()
             axes = plt.gca()
-            
-        self.scatter(c=a,axes=axes, **kwargs)
+
+        self.scatter(c=a, axes=axes, **kwargs)
         axes.set_title(name)
-      
-    
-    def density_clustering(self,X = None, eps = 1,metric='euclidean',**kwargs):
+
+    def density_clustering(self, X=None, eps=1, metric='euclidean', **kwargs):
         from sklearn.cluster import DBSCAN
-        
+
         if X is None:
             X = self.adata.obsm['X_umap']
-            save=True
+            save = True
         else:
-            save=False
-        
-        cl=DBSCAN(eps=eps,metric=metric,**kwargs).fit_predict(X)
+            save = False
+
+        cl = DBSCAN(eps=eps, metric=metric, **kwargs).fit_predict(X)
         if save:
             self.adata.obs['density_clusters'] = cl
         else:
             return cl
-        
-    def louvain_clustering(self,X=None, res=1,method='modularity'):
+
+    def louvain_clustering(self, X=None, res=1, method='modularity'):
         """Runs Louvain clustering using the vtraag implementation. Assumes
         that 'louvain' optional dependency is installed.
-        
+
         Parameters
         ----------
         res - float, optional, default 1
             The resolution parameter which tunes the number of clusters Louvain
-            finds.       
-        
+            finds.
+
         method - str, optional, default 'modularity'
-            Can be 'modularity' or 'significance', which are two different 
+            Can be 'modularity' or 'significance', which are two different
             optimizing funcitons in the Louvain algorithm.
-        
+
         """
-        
+
         if X is None:
             X = self.adata.uns['neighbors']['connectivities']
             save = True
@@ -1188,82 +1230,90 @@ class SAM(object):
             if not sp.isspmatrix_csr(X):
                 X = sp.csr_matrix(X)
             save = False
-            
+
         import igraph as ig
         import louvain
 
-        adjacency = sparse_knn(X.dot(X.T)/self.k,self.k).tocsr()
+        adjacency = sparse_knn(X.dot(X.T) / self.k, self.k).tocsr()
         sources, targets = adjacency.nonzero()
         weights = adjacency[sources, targets]
         if isinstance(weights, np.matrix):
             weights = weights.A1
         g = ig.Graph(directed=True)
-        g.add_vertices(adjacency.shape[0])  
+        g.add_vertices(adjacency.shape[0])
         g.add_edges(list(zip(sources, targets)))
         try:
             g.es['weight'] = weights
-        except:
+        except BaseException:
             pass
 
         if method == 'significance':
-            cl=louvain.find_partition(g,louvain.SignificanceVertexPartition)
+            cl = louvain.find_partition(g, louvain.SignificanceVertexPartition)
         else:
-            cl=louvain.find_partition(g,louvain.RBConfigurationVertexPartition,
-                               resolution_parameter=res)
-        
-        if save:            
+            cl = louvain.find_partition(
+                g,
+                louvain.RBConfigurationVertexPartition,
+                resolution_parameter=res)
+
+        if save:
             self.adata.obs['louvain_clusters'] = np.array(cl.membership)
         else:
             return np.array(cl.membership)
 
-    def kmeans_clustering(self,numc,X=None,npcs = 15):
+    def kmeans_clustering(self, numc, X=None, npcs=15):
         """Performs k-means clustering.
-        
+
         Parameters
         ----------
         numc - int
             Number of clusters
-        
+
         npcs - int, optional, default 15
-            Number of principal components to use as inpute for k-means clustering.
-               
+            Number of principal components to use as inpute for k-means
+            clustering.
+
         """
-        
+
         from sklearn.cluster import KMeans
         if X is None:
             D_sub = self.adata.uns['X_processed']
-            X = (D_sub-D_sub.mean(0)).dot(self.adata.uns['pca_obj'].components_[:npcs,:].T)
-            save=True
+            X = (
+                D_sub -
+                D_sub.mean(0)).dot(
+                self.adata.uns['pca_obj'].components_[
+                    :npcs,
+                    :].T)
+            save = True
         else:
-            save=False
-        
-        cl = KMeans(n_clusters=numc).fit_predict(Normalizer().fit_transform(X))        
-        
+            save = False
+
+        cl = KMeans(n_clusters=numc).fit_predict(Normalizer().fit_transform(X))
+
         if save:
             self.adata.obs['kmeans_clusters'] = cl
         else:
             return cl
-        
-    def hdbknn_clustering(self,X=None,k=None,**kwargs):    
+
+    def hdbknn_clustering(self, X=None, k=None, **kwargs):
         import hdbscan
         if X is None:
-            X=self.adata.obsm['X_pca']
-            save=True
+            X = self.adata.obsm['X_pca']
+            save = True
         else:
-            save=False
-                
+            save = False
+
         if k is None:
             k = self.k
-                        
+
         X = Normalizer().fit_transform(X)
-        hdb = hdbscan.HDBSCAN(metric='euclidean',**kwargs)
-    
+        hdb = hdbscan.HDBSCAN(metric='euclidean', **kwargs)
+
         cl = hdb.fit_predict(X)
-        
+
         idx0 = np.where(cl != -1)[0]
         idx1 = np.where(cl == -1)[0]
         if idx1.size > 0 and idx0.size > 0:
-            xcmap = ut.generate_euclidean_map(X[idx0,:],X[idx1,:])
+            xcmap = ut.generate_euclidean_map(X[idx0, :], X[idx1, :])
             knn = np.argsort(xcmap.T, axis=1)[:, :k]
             nnm = np.zeros(xcmap.shape).T
             nnm[np.tile(np.arange(knn.shape[0])[:, None],
@@ -1272,118 +1322,122 @@ class SAM(object):
             nnmc = np.zeros((nnm.shape[0], cl.max() + 1))
             for i in range(cl.max() + 1):
                 nnmc[:, i] = nnm[:, cl[idx0] == i].sum(1)
-    
+
             cl[idx1] = np.argmax(nnmc, axis=1)
-        
+
         if save:
             self.adata.obs['hdbknn_clusters'] = cl
         else:
             return cl
-        
+
     def identify_marker_genes_rf(self, labels=None,
-                              n_genes_subset=3000, svm=False):
+                                 n_genes_subset=3000, svm=False):
         """
-        Ranks marker genes for each cluster using a random forest classification
-        approach.
-        
+        Ranks marker genes for each cluster using a random forest
+        classification approach.
+
         Parameters
         ----------
-        
+
         labels - numpy.array or str, optional, default None
             Cluster labels to use for marker gene identification. If None,
             assumes that one of SAM's clustering algorithms has been run. Can
             be a string (i.e. 'louvain_clusters', 'kmeans_clusters', etc) to
             specify specific cluster labels in adata.obs.
-        
+
         n_genes_subset - int, optional, default 3000
-            By default, trains the classifier on the top 3000 SAM-weighted genes.           
-        
+            By default, trains the classifier on the top 3000 SAM-weighted
+            genes.
+
         """
         if(labels is None):
             try:
                 keys = np.array(list(self.adata.obs_keys()))
-                lbls = self.adata.obs[ut.search_string(keys,'_clusters')[0][0]].values          
+                lbls = self.adata.obs[ut.search_string(
+                    keys, '_clusters')[0][0]].values
             except KeyError:
                 print("Please generate cluster labels first or set the "
                       "'labels' keyword argument.")
                 return
-        elif type(labels) is str:
+        elif isinstance(labels, str):
             lbls = self.adata.obs[labels].values.flatten()
         else:
             lbls = labels
 
         from sklearn.ensemble import RandomForestClassifier
 
-        markers=[]
+        markers = []
         lblsu = np.unique(lbls)
-        
+
         indices = np.argsort(-self.adata.var['weights'].values)
-        X=self.adata.layers['X_disp'][:,indices[:n_genes_subset]].toarray()
-        for K in range(lblsu.size):            
+        X = self.adata.layers['X_disp'][:, indices[:n_genes_subset]].toarray()
+        for K in range(lblsu.size):
             y = np.zeros(lbls.size)
 
-            y[lbls==lblsu[K]]=1                    
-            
+            y[lbls == lblsu[K]] = 1
+
             clf = RandomForestClassifier(n_estimators=100, max_depth=None,
-                                  random_state=0)
-    
+                                         random_state=0)
+
             clf.fit(X, y)
 
             idx = np.argsort(-clf.feature_importances_)
 
             markers.append(self.adata.uns['ranked_genes'][idx])
-    
-        markers = np.vstack(markers)                
+
+        markers = np.vstack(markers)
         self.adata.uns['marker_genes_rf'] = markers
-        
+
         return markers
-    
+
     def identify_marker_genes_ratio(self, labels=None):
         """
         Ranks marker genes for each cluster by computing using a SAM-weighted
         expression-ratio approach (works quite well). Marker genes saved in
         'SAM.output_vars' and 'SAM.marker_genes_ratio'.
-        
+
         Parameters
         ----------
-        
+
         labels - numpy.array or str, optional, default None
             Cluster labels to use for marker gene identification. If None,
             assumes that one of SAM's clustering algorithms has been run. Can
             be a string (i.e. 'louvain_clusters', 'kmeans_clusters', etc) to
             specify specific cluster labels in adata.obs.
-                
-        """        
+
+        """
         if(labels is None):
             try:
                 keys = np.array(list(self.adata.obs_keys()))
-                lbls = self.adata.obs[ut.search_string(keys,'_clusters')[0][0]].values                 
+                lbls = self.adata.obs[ut.search_string(
+                    keys, '_clusters')[0][0]].values
             except KeyError:
                 print("Please generate cluster labels first or set the "
                       "'labels' keyword argument.")
                 return
-        elif type(labels) is str:
+        elif isinstance(labels, str):
             lbls = self.adata.obs[labels].values.flatten()
         else:
             lbls = labels
-        
-        all_gene_names = np.array(list(self.adata.var_names))
-        
-        markers = np.zeros(
-            (lbls.max()+1, all_gene_names.size), dtype=all_gene_names.dtype)        
-        markers_ratio = np.zeros(markers.shape)
-        
-        s = np.array(self.adata.layers['X_disp'].sum(0)).flatten()
-       
-        for i in range(lbls.max()+1):
-            d = np.array(self.adata.layers['X_disp'][lbls==i,:].sum(0)).flatten()
-            rat = np.zeros(d.size)
-            rat[s>0] = d[s>0]**2 / s[s>0] * self.adata.var['weights'].values[s>0]
-            x = np.argsort(-rat)
-            markers[i,:]=all_gene_names[x[:]]
-            markers_ratio[i,:] = rat[x[:]]
-        
-        self.adata.uns['marker_genes_ratio'] = markers
-        
-        return markers
 
+        all_gene_names = np.array(list(self.adata.var_names))
+
+        markers = np.zeros(
+            (lbls.max() + 1, all_gene_names.size), dtype=all_gene_names.dtype)
+        markers_ratio = np.zeros(markers.shape)
+
+        s = np.array(self.adata.layers['X_disp'].sum(0)).flatten()
+
+        for i in range(lbls.max() + 1):
+            d = np.array(self.adata.layers['X_disp']
+                         [lbls == i, :].sum(0)).flatten()
+            rat = np.zeros(d.size)
+            rat[s > 0] = d[s > 0]**2 / s[s > 0] * \
+                self.adata.var['weights'].values[s > 0]
+            x = np.argsort(-rat)
+            markers[i, :] = all_gene_names[x[:]]
+            markers_ratio[i, :] = rat[x[:]]
+
+        self.adata.uns['marker_genes_ratio'] = markers
+
+        return markers
