@@ -1347,7 +1347,7 @@ class SAM(object):
             return cl
 
     def identify_marker_genes_rf(self, labels=None,
-                                 n_genes_subset=3000, svm=False):
+                                 n_genes_subset=3000):
         """
         Ranks marker genes for each cluster using a random forest
         classification approach.
