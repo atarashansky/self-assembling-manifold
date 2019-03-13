@@ -16,10 +16,6 @@ matrix:
       os: linux
       dist: xenial
       sudo: true
-    - python: 3.5
-      os: linux
-      dist: trusty
-      sudo: true
     - env: CC=gcc PYTHON_VERSION='3.7'
       language: generic
       os: osx
