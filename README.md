@@ -30,7 +30,7 @@ Please see the updated tutorials for any usage changes.
    - `hdbscan`
 
 ## Installation
-SAM has been most extensively tested using python3.6 but presumably should work on python>=3.5. Python can be installed using Anaconda.
+SAM has been most extensively tested using python3.6 but presumably should work on python>=3.6. Python can be installed using Anaconda.
 
 Download Anacodna from here:
     https://www.anaconda.com/download/
