@@ -7,8 +7,6 @@ content:    Tests for SAM.
 """
 # Modules
 from SAM import SAM
-import pandas as pd 
-import numpy as np
 
 
 # Script
