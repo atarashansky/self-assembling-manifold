@@ -1428,13 +1428,8 @@ class SAM(object):
         else:
             return cl
 
-<<<<<<< HEAD
     def identify_marker_genes_rf(self, labels=None, clusters=None,
                                  n_genes=4000):
-=======
-    def identify_marker_genes_rf(self, labels=None,
-                                 n_genes_subset=3000):
->>>>>>> refs/remotes/origin/master
         """
         Ranks marker genes for each cluster using a random forest
         classification approach.
