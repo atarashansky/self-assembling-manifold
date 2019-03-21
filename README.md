@@ -3,15 +3,13 @@
 # self-assembling-manifold
 The Self-Assembling-Manifold (SAM) algorithm.
 
-# Update (3/10/2019) -- SAM version 0.4.3
+# Update (3/21/2019) -- SAM version 0.4.4
 
-Please see the updated tutorials for any usage changes.
-
-- Input and output has been further streamlined: `load_data` will now be used for loading both tabular csv/txt files as well as pickled sparse data structures. Note that `load_data` no longer preprocesses the data automatically, and `filter_data` was renamed to `preprocess_data`.
-- In preparation for integrating with the Scanpy package (https://github.com/theislab/scanpy), SAM can now accept as input to its constructor (via the `counts` argument) an AnnData object. It also stores all key SAM outputs in an AnnData object (`.adata`).
-- New clustering methods have been added (DBSCAN in `density_clustering` and HDBSCAN in `hdbknn_clustering`). `hdbknn_clustering` is a slightly extended version of HDBSCAN in which outlier cells (i.e. cells that were not assigned to a cluster) are assigned to the clusters that were found using a kNN classification approach.
-- A Random Forest classification approach for marker gene identification was added (in `identify_marker_genes_rf`).
-
+- Added Diffusion UMAP (`run_diff_umap()`) an experimental projection method in which UMAP is applied to a diffusion map calculated from the SAM nearest neighbor graph. Requires scanpy.
+- Added a wrapper function for Leiden clustering, an improved version of Louvain clustering.
+- Added two additional normalization methods in `prepocess_data()`, `norm='ftt'` and `norm='multinomial'`. The former applies the Freeman-Tukey variance-stabilization transformation. The latter utilizes the Pearson-residual normalization strategy (https://www.biorxiv.org/content/10.1101/574574v1). This should be only used for un-normalized, UMI datasets.
+- Added `sum_norm` argument to `preprocess_data()`. `sum_norm` can be `'gene_median'`, `'cell_median'`, or any number. If `'cell_median'`, each cell is normalized to have the median total read count per cell. If `'gene_median'`, each gene is normalized to have the median total read count per gene. If a number, each cell is normalized to have total number of read counts equal to that number. If using `sum_norm='gene_median'`, I recommend using it in conjunction with `norm='ftt'`.
+- Added yet another method for marker gene identification (in `identify_marker_genes_corr`). In the future, all the marker gene identification functions will be merged into a single function `identify_marker_genes`, with a parameter to choose which specific method to use.
 
 ## Requirements
  - `numpy`
@@ -21,6 +19,7 @@ Please see the updated tutorials for any usage changes.
  - `umap-learn`
  - `numba`
  - `anndata`
+ - `scanpy`
 
 ### Optional dependencies
  - Plotting

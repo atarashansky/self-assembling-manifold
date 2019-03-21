@@ -9,6 +9,7 @@ import utilities as ut
 import sklearn.manifold as man
 import sklearn.utils.sparsefuncs as sf
 import warnings
+import scanpy.api as sc
 
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
@@ -21,60 +22,12 @@ except ImportError:
     PLOTTING = False
 
 
-__version__ = '0.4.3'
+__version__ = '0.4.4'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
 Email: <tarashan@stanford.edu>
 """
-
-
-def save_figures(filename, fig_IDs=None, **kwargs):
-    """
-    Save figures.
-
-    Parameters
-    ----------
-    filename - str
-        Name of output file
-
-    fig_IDs - int, numpy.array, list, optional, default None
-        A list of open figure IDs or a figure ID that will be saved to a
-        pdf/png file respectively.
-
-    **kwargs -
-        Extra keyword arguments passed into 'matplotlib.pyplot.savefig'.
-
-    """
-    if(fig_IDs is not None):
-        if(isinstance(fig_IDs, list)):
-            savetype = 'pdf'
-        else:
-            savetype = 'png'
-    else:
-        savetype = 'pdf'
-
-    if(savetype == 'pdf'):
-        from matplotlib.backends.backend_pdf import PdfPages
-
-        if(len(filename.split('.')) == 1):
-            filename = filename + '.pdf'
-        else:
-            filename = '.'.join(filename.split('.')[:-1]) + '.pdf'
-
-        pdf = PdfPages(filename)
-
-        if fig_IDs is None:
-            figs = [plt.figure(n) for n in plt.get_fignums()]
-        else:
-            figs = [plt.figure(n) for n in fig_IDs]
-
-        for fig in figs:
-            fig.savefig(pdf, format='pdf', **kwargs)
-        pdf.close()
-    elif(savetype == 'png'):
-        plt.figure(fig_IDs).savefig(filename, **kwargs)
-
 
 def sparse_knn(D, k):
     D1 = D.tocoo()
@@ -165,6 +118,8 @@ class SAM(object):
             all_cell_names=np.array(list(counts.obs_names))
             all_gene_names=np.array(list(counts.var_names))
             self.adata_raw = counts
+            
+            
 
         elif counts is not None:
             raise Exception(
@@ -175,7 +130,7 @@ class SAM(object):
         if(annotations is not None):
             annotations = np.array(list(annotations))
             if counts is not None:
-                self.adata_raw.obs['annotations'] = annotations
+                self.adata_raw.obs['annotations'] = pd.Categorical(annotations)
 
         if(counts is not None):
             if(np.unique(all_gene_names).size != all_gene_names.size):
@@ -204,14 +159,20 @@ class SAM(object):
             The factor by which to randomly downsample the data. If 0, the
             data will not be downsampled.
 
-        sum_norm : float, optional, default None
-            If specified, the total number of transcripts in each cell will be
-            normalized to this value prior to log normalization and filtering.
-            Otherwise, nothing happens.
+        sum_norm : str or float, optional, default None
+            If a float, the total number of transcripts in each cell will be
+            normalized to this value prior to normalization and filtering.
+            Otherwise, nothing happens. If 'cell_median', each cell is
+            normalized to have the median total read count per cell. If
+            'gene_median', each gene is normalized to have the median total
+            read count per gene.
 
         norm : str, optional, default 'log'
-            If 'log', log-normalizes the expression data. If the loaded data is
-            already log-normalized, set norm = None.
+            If 'log', log-normalizes the expression data. If 'ftt', applies the
+            Freeman-Tukey variance-stabilization transformation. If
+            'multinomial', applies the Pearson-residual transformation (this is
+            experimental and should only be used for raw, un-normalized UMI
+            datasets). If None, the data is not normalized.
 
         include_genes : array-like of string, optional, default None
             A vector of gene names or indices that specifies the genes to keep.
@@ -250,40 +211,20 @@ class SAM(object):
             filtered.
 
         """
+        # load data
         try:
-            D = self.adata_raw.X.copy()
+            D= self.adata_raw.X
+
         except AttributeError:
             print('No data loaded')
-
+        
+        # filter cells
         cell_names = np.array(list(self.adata_raw.obs_names))
-        gene_names = np.array(list(self.adata_raw.var_names))
-
-        if (sum_norm is not None):
-            D = D.multiply(1 / D.sum(1).A.flatten()[:,
-                    None] * sum_norm).tocsr()
-
-        if(norm.lower() == 'log'):
-            D.data[:] = np.log2(D.data / div + 1)
-        else:
-            D.data[:] = (D.data / div)
-
-        idx_genes = np.arange(D.shape[1])
         idx_cells = np.arange(D.shape[0])
-        if(include_genes is not None):
-            include_genes = np.array(list(include_genes))
-            idx = np.where(np.in1d(gene_names, include_genes))[0]
-            idx_genes = np.array(list(set(idx) & set(idx_genes)))
-
         if(include_cells is not None):
             include_cells = np.array(list(include_cells))
             idx2 = np.where(np.in1d(cell_names, include_cells))[0]
             idx_cells = np.array(list(set(idx2) & set(idx_cells)))
-
-        if(exclude_genes is not None):
-            exclude_genes = np.array(list(exclude_genes))
-            idx3 = np.where(np.in1d(gene_names, exclude_genes,
-                                    invert=True))[0]
-            idx_genes = np.array(list(set(idx3) & set(idx_genes)))
 
         if(exclude_cells is not None):
             exclude_cells = np.array(list(exclude_cells))
@@ -295,42 +236,114 @@ class SAM(object):
             numcells = int(D.shape[0] / downsample)
             rand_ind = np.random.choice(np.arange(D.shape[0]),
                                         size=numcells, replace=False)
-
             idx_cells = np.array(list(set(rand_ind) & set(idx_cells)))
-
         else:
             numcells = D.shape[0]
 
+        mask_cells = np.zeros(numcells, dtype='bool')
+        mask_cells[idx_cells] = True
+        
+        self.adata = self.adata_raw[mask_cells,:].copy()
+        D = self.adata.X
+        if isinstance(D,np.ndarray):
+            D=sp.csr_matrix(D,dtype='float32')
+        else:
+            D=D.astype('float32')
+            D.sort_indices()
+        
+        if(D.getformat() == 'csc'):
+            D=D.tocsr();
+        
+        # sum-normalize
+        if (sum_norm == 'cell_median' and norm != 'multinomial'):
+            s = D.sum(1).A.flatten()
+            sum_norm = np.median(s)
+            D = D.multiply(1 / s[:,None] * sum_norm).tocsr()
+        elif (sum_norm == 'gene_median' and norm != 'multinomial'):
+            s = D.sum(0).A.flatten()
+            sum_norm = np.median(s)
+            s[s==0]=1
+            D = D.multiply(1 / s[None,:] * sum_norm).tocsr()
+
+        elif sum_norm is not None and norm != 'multinomial':
+            D = D.multiply(1 / D.sum(1).A.flatten()[:,
+                    None] * sum_norm).tocsr()
+        
+        # normalize
+        self.adata.X = D
+        if norm is None:
+            D.data[:] = (D.data / div)
+            
+        elif(norm.lower() == 'log'):
+            D.data[:] = np.log2(D.data / div + 1)
+            
+        elif(norm.lower() == 'ftt'):
+            D.data[:] = np.sqrt(D.data/div) + np.sqrt(D.data/div+1)
+            
+        elif norm.lower() == 'multinomial':
+            ni = D.sum(1).A.flatten() #cells
+            pj = (D.sum(0) / D.sum()).A.flatten() #genes
+            col = D.indices
+            row=[]
+            for i in range(D.shape[0]):
+                row.append(i*np.ones(D.indptr[i+1]-D.indptr[i]))                
+            row = np.concatenate(row).astype('int32')            
+            mu = sp.coo_matrix((ni[row]*pj[col], (row,col))).tocsr()
+            mu2 = mu.copy()            
+            mu2.data[:]=mu2.data**2
+            mu2 = mu2.multiply(1/ni[:,None])  
+            mu.data[:] = (D.data - mu.data) / np.sqrt(mu.data - mu2.data)
+         
+            self.adata.X = mu
+            if sum_norm is None:
+                sum_norm = np.median(ni)
+            D = D.multiply(1 / ni[:,None] * sum_norm).tocsr()            
+            D.data[:] = np.log2(D.data / div + 1)
+
+        else:
+            D.data[:] = (D.data / div)
+
+        # zero-out low-expressed genes      
         idx = np.where(D.data <= min_expression)[0]
         D.data[idx] = 0
         D.eliminate_zeros()
-        D = D.astype('float32')
         
-        if(filter_genes):
-            if(D.getformat() == 'csc'):
-                D=D.tocsr();
-                
+        # filter genes
+        gene_names = np.array(list(self.adata.var_names))
+        idx_genes = np.arange(D.shape[1])            
+        if(include_genes is not None):
+            include_genes = np.array(list(include_genes))
+            idx = np.where(np.in1d(gene_names, include_genes))[0]
+            idx_genes = np.array(list(set(idx) & set(idx_genes)))
+
+        if(exclude_genes is not None):
+            exclude_genes = np.array(list(exclude_genes))
+            idx3 = np.where(np.in1d(gene_names, exclude_genes,
+                                    invert=True))[0]
+            idx_genes = np.array(list(set(idx3) & set(idx_genes)))
+        
+        if(filter_genes):                
             a, ct = np.unique(D.indices, return_counts=True)
             c = np.zeros(D.shape[1])
             c[a] = ct
 
             keep = np.where(np.logical_and(c / D.shape[0] > thresh,
-                                           c / D.shape[0] < 1 - thresh))[0]
+                                           c / D.shape[0] <= 1 - thresh))[0]
 
             idx_genes = np.array(list(set(keep) & set(idx_genes)))
+        
         
         mask_genes = np.zeros(D.shape[1], dtype='bool')
         mask_genes[idx_genes] = True
 
-        mask_cells = np.zeros(D.shape[0], dtype='bool')
-        mask_cells[idx_cells] = True
-        
-        self.adata = self.adata_raw[mask_cells, :].copy()
-        self.adata.X = D[mask_cells, :].multiply(mask_genes[None, :]).tocsr()
-        self.adata.X.eliminate_zeros()
-        self.adata.layers['X_disp'] = self.adata.X
-        self.adata.var['mask_genes'] = mask_genes
-        
+        self.adata.X = self.adata.X.multiply(mask_genes[None, :]).tocsr()
+        self.adata.var['mask_genes']=mask_genes
+        if norm is not None:
+            if norm == 'multinomial':
+                self.adata.layers['X_disp'] = D.multiply(mask_genes[None, :]).tocsr()
+            else:
+                self.adata.layers['X_disp'] = self.adata.X
+                
 
     def load_data(self, filename, transpose=True,
                   save_sparse_file=True, sep=','):
@@ -370,6 +383,8 @@ class SAM(object):
                 if raw_data.getformat()=='csc':
                     print("Converting sparse matrix to csr format...")
                     raw_data=raw_data.tocsr()
+            
+            save_sparse_file = False
 
         else:
             df = pd.read_csv(filename, sep=sep, index_col=0)
@@ -382,16 +397,6 @@ class SAM(object):
             all_cell_names = np.array(list(dataset.index.values))
             all_gene_names = np.array(list(dataset.columns.values))
 
-            if(save_sparse_file):
-                new_sparse_file = filename.split('/')[-1].split('.')[0]
-                path = filename[:filename.find(filename.split('/')[-1])]
-                self.save_sparse_data(
-                    path +
-                    new_sparse_file +
-                    '_sparse.p',
-                    raw_data.T,
-                    all_cell_names,
-                    all_gene_names)
 
         self.adata_raw = AnnData(X=raw_data, obs={'obs_names': all_cell_names},
                                  var={'var_names': all_gene_names})
@@ -403,8 +408,13 @@ class SAM(object):
         
         self.adata = self.adata_raw.copy()
         self.adata.layers['X_disp'] = raw_data
+        
+        if(save_sparse_file):
+            new_sparse_file = filename.split('/')[-1].split('.')[0]
+            path = filename[:filename.find(filename.split('/')[-1])]
+            self.save_sparse_data(path + new_sparse_file + '_sparse.p')
 
-    def save_sparse_data(self, fname, data, cell_names, gene_names):
+    def save_sparse_data(self, fname):
         """Saves the tuple (raw_data,all_cell_names,all_gene_names) in a
         Pickle file.
 
@@ -414,6 +424,13 @@ class SAM(object):
             The filename of the output file.
 
         """
+        data = self.adata_raw.X.T
+        if data.getformat()=='csr':
+            data=data.tocsc()
+
+        cell_names = np.array(list(self.adata_raw.obs_names))
+        gene_names = np.array(list(self.adata_raw.var_names))
+        
         pickle.dump((data, cell_names, gene_names), open(fname, 'wb'))
 
     def load_annotations(self, aname, sep=','):
@@ -434,18 +451,18 @@ class SAM(object):
         all_cell_names = np.array(list(self.adata_raw.obs_names))
 
         if(ann.shape[1] > 1):
-            ann = pd.read_csv(aname, index_col=0)
+            ann = pd.read_csv(aname, index_col=0, sep=sep)
             if(ann.shape[0] != all_cell_names.size):
-                ann = pd.read_csv(aname, index_col=0, header=None)
+                ann = pd.read_csv(aname, index_col=0, header=None, sep=sep)
         else:
             if(ann.shape[0] != all_cell_names.size):
-                ann = pd.read_csv(aname, header=None)
-
+                ann = pd.read_csv(aname, header=None, sep=sep)
+        ann.index = np.array(list(ann.index.astype('<U100')))
         ann1 = np.array(list(ann.T[cell_names].T.values.flatten()))
         ann2 = np.array(list(ann.values.flatten()))
 
-        self.adata_raw.obs['annotations'] = ann2
-        self.adata.obs['annotations'] = ann1
+        self.adata_raw.obs['annotations'] = pd.Categorical(ann2)
+        self.adata.obs['annotations'] = pd.Categorical(ann1)
 
     def dispersion_ranking_NN(self, nnm, num_norm_avg=50):
         """Computes the spatial dispersion factors for each gene.
@@ -471,9 +488,8 @@ class SAM(object):
             The vector of gene weights.
         """
 
-        D_avg = (nnm / self.k).dot(self.adata.layers['X_disp'])
-
-        self.adata.layers['X_knn_avg'] = D_avg
+        self.knn_avg(nnm)
+        D_avg = self.adata.layers['X_knn_avg']
 
         mu, var = sf.mean_variance_axis(D_avg, axis=0)
 
@@ -577,7 +593,8 @@ class SAM(object):
             num_norm_avg=50,
             k=20,
             distance='correlation',
-            preprocessing='Normalizer'):
+            preprocessing='Normalizer',
+            proj_kwargs={}):
         """Runs the Self-Assembling Manifold algorithm.
 
         Parameters
@@ -620,12 +637,14 @@ class SAM(object):
             normalization factor when calculating the weights. This prevents
             genes with large spatial dispersions from skewing the distribution
             of weights.
+            
+        proj_kwargs - dict, optional, default {}
+            A dictionary of keyword arguments to pass to the projection
+            functions.
         """
 
         self.distance = distance
-
         D = self.adata.X
-
         self.k = k
         if(self.k < 5):
             self.k = 5
@@ -685,7 +704,8 @@ class SAM(object):
             max_iter = 5
 
         nnas = num_norm_avg
-
+        self.Ns=[edm]
+        self.Ws = [W]
         while (i < max_iter and err > stopping_condition):
 
             conv = err
@@ -699,7 +719,14 @@ class SAM(object):
                 D, W, n_genes, preprocessing, npcs, numcells, nnas)
             new = W
             err = ((new - old)**2).mean()**0.5
+            
+            self.Ns.append(EDM)
+            self.Ws.append(W)
 
+        W, wPCA_data, EDM, = self.calculate_nnm(
+                D, W, n_genes, preprocessing, npcs, numcells, nnas)
+        self.Ns.append(EDM)
+        
         all_gene_names = np.array(list(self.adata.var_names))
         indices = np.argsort(-W)
         ranked_genes = all_gene_names[indices]
@@ -715,14 +742,20 @@ class SAM(object):
 
         if(projection == 'tsne'):
             print('Computing the t-SNE embedding...')
-            self.run_tsne()
+            self.run_tsne(**proj_kwargs)
         elif(projection == 'umap'):
             print('Computing the UMAP embedding...')
-            self.run_umap()
-
+            self.run_umap(**proj_kwargs)
+        elif(projection == 'diff_umap'):
+            print('Computing the diffusion UMAP embedding...')
+            self.run_diff_umap(**proj_kwargs)
+            
         elapsed = time.time() - tinit
         if verbose:
             print('Elapsed time: ' + str(elapsed) + ' seconds')
+            
+
+       
 
     def calculate_nnm(
             self,
@@ -764,7 +797,17 @@ class SAM(object):
             g_weighted = Normalizer().fit_transform(g_weighted)
 
         self.adata.uns['pca_obj'] = pca
+        EDM = self.calc_nnm(g_weighted)
+        
+        W = self.dispersion_ranking_NN(
+            EDM, num_norm_avg=num_norm_avg)
 
+        self.adata.uns['X_processed'] = D_sub
+
+        return W, g_weighted, EDM
+        
+    def calc_nnm(self,g_weighted):
+        numcells=g_weighted.shape[0]
         if g_weighted.shape[0] > 8000:
             nnm, dists = ut.nearest_neighbors(
                 g_weighted, n_neighbors=self.k, metric=self.distance)
@@ -776,14 +819,8 @@ class SAM(object):
             dist = ut.compute_distances(g_weighted, self.distance)
             nnm = ut.dist_to_nn(dist, self.k)
             EDM = sp.csr_matrix(nnm)
-
-        W = self.dispersion_ranking_NN(
-            EDM, num_norm_avg=num_norm_avg)
-
-        self.adata.uns['X_processed'] = D_sub
-
-        return W, g_weighted, EDM
-
+        return EDM
+    
     def save(self, savename, dirname=None, exc=None):
         """Saves all SAM attributes to a Pickle file.
 
@@ -958,7 +995,6 @@ class SAM(object):
                 maxd = np.mean(pw_corr[i, :][pw_corr[i, :] > 0])
                 maxi = 0
                 for j in range(len(seeds)):
-                    #print(np.where(idx2 == seeds[j][0])[0])
                     if(pw_corr[np.where(idx2 == seeds[j][0])[0], i]
                        > maxd):
                         maxd = pw_corr[np.where(idx2 == seeds[j][0])[0], i]
@@ -1040,6 +1076,32 @@ class SAM(object):
             umap2d = umap_obj.fit_transform(self.adata.obsm['X_pca'])
             self.adata.obsm['X_umap'] = umap2d
 
+    def run_diff_umap(self,use_rep='X_pca', metric='euclidean', n_comps=15,
+                      method='gauss', **kwargs):
+        """
+        Experimental -- running UMAP on the diffusion components        
+        """             
+        sc.pp.neighbors(self.adata,use_rep=use_rep,n_neighbors=self.k,
+                                       metric=self.distance,method=method)
+        sc.tl.diffmap(self.adata, n_comps=n_comps)
+        
+        sc.pp.neighbors(self.adata,use_rep='X_diffmap',n_neighbors=self.k,
+                                       metric='euclidean',method=method)
+                
+        if 'X_umap' in self.adata.obsm.keys():
+                self.adata.obsm['X_umap_sam'] = self.adata.obsm['X_umap']
+                
+        sc.tl.umap(self.adata,min_dist=0.1,copy=False)
+        
+    def knn_avg(self, nnm=None):
+        
+        if (nnm is None):
+            nnm = self.adata.uns['neighbors']['connectivities']
+            
+        D_avg = (nnm / self.k).dot(self.adata.layers['X_disp'])
+        self.adata.layers['X_knn_avg'] = D_avg
+
+        
     def scatter(self, projection=None, c=None, cmap='rainbow', linewidth=0.0,
                 edgecolor='k', axes=None, colorbar=True, s=10, **kwargs):
         """Display a scatter plot.
@@ -1111,7 +1173,7 @@ class SAM(object):
 
                 if isinstance(c, str):
                     try:
-                        c = self.adata.obs[c].values
+                        c = self.adata.obs[c].get_values()
                     except KeyError:
                         0  # do nothing
 
@@ -1119,13 +1181,7 @@ class SAM(object):
                    (isinstance(c, np.ndarray) or isinstance(c, list))):
                     i = ut.convert_annotations(c)
                     ui, ai = np.unique(i, return_index=True)
-                    cax = axes.scatter(dt[:,
-                                          0],
-                                       dt[:,
-                                           1],
-                                       c=i,
-                                       cmap=cmap,
-                                       s=s,
+                    cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
                                        linewidth=linewidth,
                                        edgecolor=edgecolor,
                                        **kwargs)
@@ -1138,13 +1194,7 @@ class SAM(object):
                         colorbar = False
                     i = c
 
-                    cax = axes.scatter(dt[:,
-                                          0],
-                                       dt[:,
-                                           1],
-                                       c=i,
-                                       cmap=cmap,
-                                       s=s,
+                    cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
                                        linewidth=linewidth,
                                        edgecolor=edgecolor,
                                        **kwargs)
@@ -1218,8 +1268,25 @@ class SAM(object):
             save = False
 
         cl = DBSCAN(eps=eps, metric=metric, **kwargs).fit_predict(X)
+        
+        idx0 = np.where(cl != -1)[0]
+        idx1 = np.where(cl == -1)[0]
+        if idx1.size > 0 and idx0.size > 0:
+            xcmap = ut.generate_euclidean_map(X[idx0, :], X[idx1, :])
+            knn = np.argsort(xcmap.T, axis=1)[:, :self.k]
+            nnm = np.zeros(xcmap.shape).T
+            nnm[np.tile(np.arange(knn.shape[0])[:, None],
+                        (1, knn.shape[1])).flatten(),
+                knn.flatten()] = 1
+            nnmc = np.zeros((nnm.shape[0], cl.max() + 1))
+            for i in range(cl.max() + 1):
+                nnmc[:, i] = nnm[:, cl[idx0] == i].sum(1)
+
+            cl[idx1] = np.argmax(nnmc, axis=1)
+            
+            
         if save:
-            self.adata.obs['density_clusters'] = cl
+            self.adata.obs['density_clusters'] = pd.Categorical(cl)
         else:
             return cl
 
@@ -1272,7 +1339,7 @@ class SAM(object):
                 resolution_parameter=res)
 
         if save:
-            self.adata.obs['louvain_clusters'] = np.array(cl.membership)
+            self.adata.obs['louvain_clusters'] = pd.Categorical(np.array(cl.membership))
         else:
             return np.array(cl.membership)
 
@@ -1306,22 +1373,37 @@ class SAM(object):
         cl = KMeans(n_clusters=numc).fit_predict(Normalizer().fit_transform(X))
 
         if save:
-            self.adata.obs['kmeans_clusters'] = cl
+            self.adata.obs['kmeans_clusters'] = pd.Categorical(cl)
         else:
             return cl
-
+    
+    def leiden_clustering(self, X=None, res = 1):
+        if X is None:            
+            sc.tl.leiden(self.adata, resolution = res,
+                             key_added='leiden_clusters')           
+            self.adata.obs['leiden_clusters'] = pd.Categorical(self.adata.obs[
+                                'leiden_clusters'].get_values().astype('int'))            
+        else:
+            sc.tl.leiden(self.adata, resolution = res, adjacency = X,
+                             key_added='leiden_clusters_X')
+            self.adata.obs['leiden_clusters_X'] =pd.Categorical(self.adata.obs[
+                              'leiden_clusters_X'].get_values().astype('int'))
+        
+        
     def hdbknn_clustering(self, X=None, k=None, **kwargs):
         import hdbscan
         if X is None:
-            X = self.adata.obsm['X_pca']
+            #X = self.adata.obsm['X_pca']
+            D = self.adata.uns['X_processed']
+            X = (D-D.mean(0)).dot(self.adata.uns['pca_obj'].components_.T)[:,:15]
+            X = Normalizer().fit_transform(X)
             save = True
         else:
             save = False
 
         if k is None:
-            k = self.k
+            k = 20#self.k
 
-        X = Normalizer().fit_transform(X)
         hdb = hdbscan.HDBSCAN(metric='euclidean', **kwargs)
 
         cl = hdb.fit_predict(X)
@@ -1342,12 +1424,17 @@ class SAM(object):
             cl[idx1] = np.argmax(nnmc, axis=1)
 
         if save:
-            self.adata.obs['hdbknn_clusters'] = cl
+            self.adata.obs['hdbknn_clusters'] = pd.Categorical(cl)
         else:
             return cl
 
+<<<<<<< HEAD
+    def identify_marker_genes_rf(self, labels=None, clusters=None,
+                                 n_genes=4000):
+=======
     def identify_marker_genes_rf(self, labels=None,
                                  n_genes_subset=3000):
+>>>>>>> refs/remotes/origin/master
         """
         Ranks marker genes for each cluster using a random forest
         classification approach.
@@ -1360,9 +1447,14 @@ class SAM(object):
             assumes that one of SAM's clustering algorithms has been run. Can
             be a string (i.e. 'louvain_clusters', 'kmeans_clusters', etc) to
             specify specific cluster labels in adata.obs.
+            
+        clusters - int or array-like, default None
+            A number or vector corresponding to the specific cluster ID(s)
+            for which marker genes will be calculated. If None, marker genes
+            will be computed for all clusters.
 
-        n_genes_subset - int, optional, default 3000
-            By default, trains the classifier on the top 3000 SAM-weighted
+        n_genes - int, optional, default 4000
+            By default, trains the classifier on the top 4000 SAM-weighted
             genes.
 
         """
@@ -1370,24 +1462,28 @@ class SAM(object):
             try:
                 keys = np.array(list(self.adata.obs_keys()))
                 lbls = self.adata.obs[ut.search_string(
-                    keys, '_clusters')[0][0]].values
+                    keys, '_clusters')[0][0]].get_values()
             except KeyError:
                 print("Please generate cluster labels first or set the "
                       "'labels' keyword argument.")
                 return
         elif isinstance(labels, str):
-            lbls = self.adata.obs[labels].values.flatten()
+            lbls = self.adata.obs[labels].get_values().flatten()
         else:
             lbls = labels
 
         from sklearn.ensemble import RandomForestClassifier
 
-        markers = []
-        lblsu = np.unique(lbls)
+        markers = {}
+        if clusters == None:
+            lblsu = np.unique(lbls)
+        else:
+            lblsu = np.unique(clusters)
 
         indices = np.argsort(-self.adata.var['weights'].values)
-        X = self.adata.layers['X_disp'][:, indices[:n_genes_subset]].toarray()
+        X = self.adata.layers['X_disp'][:, indices[:n_genes]].toarray()
         for K in range(lblsu.size):
+            print(K)
             y = np.zeros(lbls.size)
 
             y[lbls == lblsu[K]] = 1
@@ -1399,18 +1495,17 @@ class SAM(object):
 
             idx = np.argsort(-clf.feature_importances_)
 
-            markers.append(self.adata.uns['ranked_genes'][idx])
-
-        markers = np.vstack(markers)
-        self.adata.uns['marker_genes_rf'] = markers
+            markers[lblsu[K]] = self.adata.uns['ranked_genes'][idx]
+        
+        if clusters is None:
+            self.adata.uns['marker_genes_rf'] = markers
 
         return markers
 
     def identify_marker_genes_ratio(self, labels=None):
         """
-        Ranks marker genes for each cluster by computing using a SAM-weighted
-        expression-ratio approach (works quite well). Marker genes saved in
-        'SAM.output_vars' and 'SAM.marker_genes_ratio'.
+        Ranks marker genes for each cluster using a SAM-weighted
+        expression-ratio approach (works quite well). 
 
         Parameters
         ----------
@@ -1426,34 +1521,87 @@ class SAM(object):
             try:
                 keys = np.array(list(self.adata.obs_keys()))
                 lbls = self.adata.obs[ut.search_string(
-                    keys, '_clusters')[0][0]].values
+                    keys, '_clusters')[0][0]].get_values()
             except KeyError:
                 print("Please generate cluster labels first or set the "
                       "'labels' keyword argument.")
                 return
         elif isinstance(labels, str):
-            lbls = self.adata.obs[labels].values.flatten()
+            lbls = self.adata.obs[labels].get_values().flatten()
         else:
             lbls = labels
 
         all_gene_names = np.array(list(self.adata.var_names))
 
-        markers = np.zeros(
-            (lbls.max() + 1, all_gene_names.size), dtype=all_gene_names.dtype)
-        markers_ratio = np.zeros(markers.shape)
+        markers={}
 
         s = np.array(self.adata.layers['X_disp'].sum(0)).flatten()
-
-        for i in range(lbls.max() + 1):
+        lblsu=np.unique(lbls)
+        for i in lblsu:
             d = np.array(self.adata.layers['X_disp']
                          [lbls == i, :].sum(0)).flatten()
             rat = np.zeros(d.size)
             rat[s > 0] = d[s > 0]**2 / s[s > 0] * \
                 self.adata.var['weights'].values[s > 0]
             x = np.argsort(-rat)
-            markers[i, :] = all_gene_names[x[:]]
-            markers_ratio[i, :] = rat[x[:]]
+            markers[i] = all_gene_names[x[:]]
 
         self.adata.uns['marker_genes_ratio'] = markers
 
         return markers
+    
+    def identify_marker_genes_corr(self, labels=None, n_genes=4000):
+        """
+        Ranking marker genes based on their respective magnitudes in the
+        correlation dot products with cluster-specific reference expression
+        profiles. 
+
+        Parameters
+        ----------
+
+        labels - numpy.array or str, optional, default None
+            Cluster labels to use for marker gene identification. If None,
+            assumes that one of SAM's clustering algorithms has been run. Can
+            be a string (i.e. 'louvain_clusters', 'kmeans_clusters', etc) to
+            specify specific cluster labels in adata.obs.
+
+        n_genes - int, optional, default 4000
+            By default, computes correlations on the top 4000 SAM-weighted genes.            
+
+        """
+        if(labels is None):
+            try:
+                keys = np.array(list(self.adata.obs_keys()))
+                lbls = self.adata.obs[ut.search_string(
+                    keys, '_clusters')[0][0]].get_values()
+            except KeyError:
+                print("Please generate cluster labels first or set the "
+                      "'labels' keyword argument.")
+                return
+        elif isinstance(labels, str):
+            lbls = self.adata.obs[labels].get_values().flatten()
+        else:
+            lbls = labels
+
+
+        w=self.adata.var['weights'].values
+        s = StandardScaler()
+        idxg = np.argsort(-w)[:n_genes]
+        y1=s.fit_transform(self.adata.layers['X_disp'][:,idxg].A)*w[idxg]
+        
+        all_gene_names = np.array(list(self.adata.var_names))[idxg]
+
+        markers = {}
+        lblsu=np.unique(lbls)
+        for i in lblsu:
+            Gcells = np.array(list(self.adata.obs_names[lbls==i]))
+            z1 = y1[np.in1d(self.adata.obs_names,Gcells),:]
+            m1 = (z1 - z1.mean(1)[:,None])/z1.std(1)[:,None]            
+            ref = z1.mean(0)
+            ref = (ref-ref.mean())/ref.std()
+            g2 = (m1*ref).mean(0)    
+            markers[i] = all_gene_names[np.argsort(-g2)]
+            
+
+        self.adata.uns['marker_genes_corr'] = markers
+        return markers    

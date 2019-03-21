@@ -14,7 +14,7 @@ from umap.nndescent import (
 INT32_MIN = np.iinfo(np.int32).min + 1
 INT32_MAX = np.iinfo(np.int32).max - 1
 
-__version__ = '0.4.3'
+__version__ = '0.4.4'
 
 
 def nearest_neighbors(X, n_neighbors=15, seed=0, metric='correlation'):
@@ -59,9 +59,55 @@ def knndist(nnma):
     dist = np.ones(knn.shape)
     return knn, dist
 
+def save_figures(filename, fig_IDs=None, **kwargs):
+    """
+    Save figures.
+    
+    Parameters
+    ----------
+    filename - str
+        Name of output file
+        
+    fig_IDs - int, numpy.array, list, optional, default None
+        A list of open figure IDs or a figure ID that will be saved to a
+        pdf/png file respectively.
+    
+    **kwargs - 
+        Extra keyword arguments passed into 'matplotlib.pyplot.savefig'.
+        
+    """
+    import matplotlib.pyplot as plt
+    if(fig_IDs is not None):
+        if(type(fig_IDs) is list):
+            savetype = 'pdf'
+        else:
+            savetype = 'png'
+    else:
+        savetype = 'pdf'
+
+    if(savetype == 'pdf'):
+        from matplotlib.backends.backend_pdf import PdfPages
+
+        if(len(filename.split('.')) == 1):
+            filename = filename + '.pdf'
+        else:
+            filename = '.'.join(filename.split('.')[:-1])+'.pdf'
+
+        pdf = PdfPages(filename)
+
+        if fig_IDs is None:
+            figs = [plt.figure(n) for n in plt.get_fignums()]
+        else:
+            figs = [plt.figure(n) for n in fig_IDs]
+
+        for fig in figs:
+            fig.savefig(pdf, format='pdf', **kwargs)
+        pdf.close()
+    elif(savetype == 'png'):
+        plt.figure(fig_IDs).savefig(filename, **kwargs)
 
 def weighted_PCA(mat, do_weight=True, npcs=None, solver='auto'):
-    mat = (mat - np.mean(mat, axis=0))
+    #mat = (mat - np.mean(mat, axis=0))
     if(do_weight):
         if(min(mat.shape) >= 10000 and npcs is None):
             print(
@@ -104,7 +150,6 @@ def weighted_sparse_PCA(mat, do_weight=True, npcs=None):
 
         pca = TruncatedSVD(n_components=ncom)
         reduced = pca.fit_transform(mat)
-        # pca.explained_variance_/pca.explained_variance_.max()
         scaled_eigenvalues = reduced.var(0)
         scaled_eigenvalues = scaled_eigenvalues / scaled_eigenvalues.max()
         reduced_weighted = reduced * scaled_eigenvalues[None, :]**0.5
@@ -120,9 +165,9 @@ def weighted_sparse_PCA(mat, do_weight=True, npcs=None):
 
 
 def transform_wPCA(mat, pca):
-    mat = (mat - mat.mean(0))
+    mat = (mat - pca.mean_)
     reduced = mat.dot(pca.components_.T)
-    v = reduced.var(0)
+    v = pca.explained_variance_#.var(0)
     scaled_eigenvalues = v / v.max()
     reduced_weighted = np.array(reduced) * scaled_eigenvalues[None, :]**0.5
     return reduced_weighted
