@@ -17,7 +17,7 @@ setup(
         'pandas',
         'scikit-learn',
 	'numba>=0.37',
-	'umap-learn', 'anndata', 'scanpy'],
+	'umap-learn', 'anndata'],
     extras_require={
         'louvain': [
             'louvain'],
@@ -25,5 +25,7 @@ setup(
             'hdbscan'],
         'plot': [
             'matplotlib'],
+        'scanpy': [
+            'scanpy'],	    
         },
 )
