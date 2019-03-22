@@ -15,6 +15,7 @@ if __name__ == '__main__':
     sam = SAM()
     sam.load_data('example_data/GSE74596_data.csv.gz')
     sam.load_annotations('example_data/GSE74596_ann.csv')
+    sam.preprocess_data()
     sam.run(projection=None)
     sam.run_umap()
     sam.run_tsne()
