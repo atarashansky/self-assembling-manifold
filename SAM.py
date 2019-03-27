@@ -341,15 +341,14 @@ class SAM(object):
         if norm == 'multinomial':
             self.adata.layers['X_disp'] = D.multiply(mask_genes[None, :]).tocsr()
         else:
-            self.adata.layers['X_disp'] = self.adata.X
-                
+            self.adata.layers['X_disp'] = self.adata.X      
 
     def load_data(self, filename, transpose=True,
-                  save_sparse_file=True, sep=','):
+                  save_sparse_file='h5ad', sep=',', **kwargs):
         """Loads the specified data file. The file can be a table of
         read counts (i.e. '.csv' or '.txt'), with genes as rows and cells
         as columns by default. The file can also be a pickle file (output from
-        'save_sparse_data').
+        'save_sparse_data') or an h5ad file (output from 'save_anndata').
 
         This function that loads the file specified by 'filename'.
 
@@ -362,10 +361,12 @@ class SAM(object):
             The delimeter used to read the input data table. By default
             assumes the input table is delimited by commas.
 
-        save_sparse_file - bool, optional, default True
-            If True, pickles the sparse data structure, cell names, and gene
-            names in the same folder as the original data for faster loading in
-            the future.
+        save_sparse_file - str, optional, default 'h5ad'
+            If 'h5ad', writes the SAM 'adata_raw' object to a h5ad file
+            (the native AnnData file format) to the same folder as the original
+            data for faster loading in the future. If 'p', pickles the sparse
+            data structure, cell names, and gene names in the same folder as
+            the original data for faster loading in the future.
 
         transpose - bool, optional, default True
             By default, assumes file is (genes x cells). Set this to False if
@@ -383,9 +384,8 @@ class SAM(object):
                     print("Converting sparse matrix to csr format...")
                     raw_data=raw_data.tocsr()
             
-            save_sparse_file = False
-
-        else:
+            save_sparse_file = None
+        elif filename.split('.')[-1] != 'h5ad':
             df = pd.read_csv(filename, sep=sep, index_col=0)
             if(transpose):
                 dataset = df.T
@@ -396,22 +396,33 @@ class SAM(object):
             all_cell_names = np.array(list(dataset.index.values))
             all_gene_names = np.array(list(dataset.columns.values))
 
+        if filename.split('.')[-1] != 'h5ad':
+            self.adata_raw = AnnData(X=raw_data, obs={'obs_names': all_cell_names},
+                                     var={'var_names': all_gene_names})
+            
+            if(np.unique(all_gene_names).size != all_gene_names.size):
+                self.adata_raw.var_names_make_unique()
+            if(np.unique(all_cell_names).size != all_cell_names.size):
+                self.adata_raw.obs_names_make_unique()
+            
+            self.adata = self.adata_raw.copy()
+            self.adata.layers['X_disp'] = raw_data
 
-        self.adata_raw = AnnData(X=raw_data, obs={'obs_names': all_cell_names},
-                                 var={'var_names': all_gene_names})
-        
-        if(np.unique(all_gene_names).size != all_gene_names.size):
-            self.adata_raw.var_names_make_unique()
-        if(np.unique(all_cell_names).size != all_cell_names.size):
-            self.adata_raw.obs_names_make_unique()
-        
-        self.adata = self.adata_raw.copy()
-        self.adata.layers['X_disp'] = raw_data
-        
-        if(save_sparse_file):
-            new_sparse_file = filename.split('/')[-1].split('.')[0]
+        else:
+            self.adata_raw = anndata.read_h5ad(filename, **kwargs)
+            self.adata = self.adata_raw.copy()
+            if 'X_disp' not in list(self.adata.layers.keys()):
+                self.adata.layers['X_disp'] = self.adata.X
+            save_sparse_file = None
+                
+        if(save_sparse_file == 'p'):
+            new_sparse_file = '.'.join(filename.split('/')[-1].split('.')[:-1])
             path = filename[:filename.find(filename.split('/')[-1])]
             self.save_sparse_data(path + new_sparse_file + '_sparse.p')
+        elif(save_sparse_file == 'h5ad'):
+            new_sparse_file = '.'.join(filename.split('/')[-1].split('.')[:-1])
+            path = filename[:filename.find(filename.split('/')[-1])]
+            self.save_anndata(path + new_sparse_file + '_SAM.h5ad')
 
     def save_sparse_data(self, fname):
         """Saves the tuple (raw_data,all_cell_names,all_gene_names) in a
@@ -431,6 +442,18 @@ class SAM(object):
         gene_names = np.array(list(self.adata_raw.var_names))
         
         pickle.dump((data, cell_names, gene_names), open(fname, 'wb'))
+        
+    def save_anndata(self, fname, **kwargs):
+        """Saves `adata_raw` to a .h5ad file (AnnData's native file format).
+
+        Parameters
+        ----------
+        fname - string
+            The filename of the output file.
+
+        """
+                
+        self.adata_raw.write_h5ad(fname, **kwargs)
 
     def load_annotations(self, aname, sep=','):
         """Loads cell annotations.
