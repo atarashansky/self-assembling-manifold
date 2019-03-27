@@ -337,11 +337,11 @@ class SAM(object):
 
         self.adata.X = self.adata.X.multiply(mask_genes[None, :]).tocsr()
         self.adata.var['mask_genes']=mask_genes
-        if norm is not None:
-            if norm == 'multinomial':
-                self.adata.layers['X_disp'] = D.multiply(mask_genes[None, :]).tocsr()
-            else:
-                self.adata.layers['X_disp'] = self.adata.X
+        
+        if norm == 'multinomial':
+            self.adata.layers['X_disp'] = D.multiply(mask_genes[None, :]).tocsr()
+        else:
+            self.adata.layers['X_disp'] = self.adata.X
                 
 
     def load_data(self, filename, transpose=True,
