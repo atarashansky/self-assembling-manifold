@@ -239,7 +239,7 @@ class SAM(object):
         else:
             numcells = D.shape[0]
 
-        mask_cells = np.zeros(numcells, dtype='bool')
+        mask_cells = np.zeros(D.shape[0], dtype='bool')
         mask_cells[idx_cells] = True
         
         self.adata = self.adata_raw[mask_cells,:].copy()
