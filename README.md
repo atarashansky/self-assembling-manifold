@@ -8,6 +8,7 @@ The Self-Assembling-Manifold (SAM) algorithm.
 - Added Diffusion UMAP (`run_diff_umap()`) an experimental projection method in which UMAP is applied to a diffusion map calculated from the SAM nearest neighbor graph. Requires `scanpy`.
 - Added a wrapper function for Leiden clustering, an improved version of Louvain clustering. Requires `scanpy`.
 - Added yet another method for marker gene identification (in `identify_marker_genes_corr`). In the future, all the marker gene identification functions will be merged into a single function `identify_marker_genes`, with a parameter to choose which specific method to use.
+- Can now directly load `h5ad` files (the native file format of AnnData) using `load_data`. `save_anndata` saves the `adata_raw` object to an `h5ad` file so that it can be used for faster loading in the future.
 
 ## Requirements
  - `numpy`
