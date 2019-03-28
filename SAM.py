@@ -444,7 +444,7 @@ class SAM(object):
         
         pickle.dump((data, cell_names, gene_names), open(fname, 'wb'))
         
-    def save_anndata(self, fname, **kwargs):
+    def save_anndata(self, fname, data = 'adata_raw', **kwargs):
         """Saves `adata_raw` to a .h5ad file (AnnData's native file format).
 
         Parameters
@@ -453,8 +453,8 @@ class SAM(object):
             The filename of the output file.
 
         """
-                
-        self.adata_raw.write_h5ad(fname, **kwargs)
+        x = self.__dict__[data]
+        x.write_h5ad(fname, **kwargs)
 
     def load_annotations(self, aname, sep=','):
         """Loads cell annotations.
@@ -843,59 +843,6 @@ class SAM(object):
             nnm = ut.dist_to_nn(dist, self.k)
             EDM = sp.csr_matrix(nnm)
         return EDM
-    
-    def save(self, savename, dirname=None, exc=None):
-        """Saves all SAM attributes to a Pickle file.
-
-        Saves all SAM attributes to a Pickle file which can be later loaded
-        into an empty SAM object.
-
-        Parameters
-        ----------
-        savename - string
-            The name of the pickle file (not including the file extension) to
-            write to.
-
-        dirname - string, optional, default None
-            The path/name of the directory in which the Pickle file will be
-            saved. If None, the file will be saved to the current working
-            directory.
-
-        exc - array-like of strings, optional, default None
-            A vector of SAM attributes to exclude from the saved file. Use this
-            to exclude bulky objects that do not need to be saved.
-
-        """
-        self._create_dict(exc)
-        if savename[-2:] != '.p':
-            savename = savename + '.p'
-
-        if(dirname is not None):
-            ut.create_folder(dirname + "/")
-            f = open(dirname + "/" + savename, 'wb')
-        else:
-            f = open(savename, 'wb')
-
-        pickle.dump(self.pickle_dict, f)
-        f.close()
-
-    def load(self, n):
-        """Loads SAM attributes from a Pickle file.
-
-        Loads all SAM attributes from the specified Pickle file into the SAM
-        object.
-
-        Parameters
-        ----------
-        n - string
-            The path of the Pickle file.
-        """
-        f = open(n, 'rb')
-        pick_dict = pickle.load(f)
-        for i in range(len(pick_dict)):
-            self.__dict__[list(pick_dict.keys())[i]
-                          ] = pick_dict[list(pick_dict.keys())[i]]
-        f.close()
 
     def _create_dict(self, exc):
         self.pickle_dict = self.__dict__.copy()
