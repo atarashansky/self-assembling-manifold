@@ -61,21 +61,11 @@ pip install jupyter
 ```
 in your conda environment. The tutorial assumes that all optional dependencies are installed.
 
-## Basic usage
+# Basic usage
 
-There are a number of ways to load data into the SAM object:
+There are a number of different ways to load data into the SAM object. 
 
-### Loading data from a file:
-```
-from SAM import SAM #import SAM
-sam=SAM() #initialize SAM object
-sam.load_data('/path/to/expression_data_file.csv') #load data from a csv file
-sam.preprocess_data() # log transforms and filters the data
-sam.load_annotations('/path/to/annotations_file.csv')
-sam.run()
-sam.scatter()
-```
-
+## Using the SAM constructor
 ### Using preloaded scipy.sparse or numpy expression matrix, gene IDs, and cell IDs:
 ```
 from SAM import SAM #import SAM
@@ -102,6 +92,18 @@ sam.run() #run with default parameters
 sam.scatter() #display resulting UMAP plot
 ```
 
+## Using the `load_data` function
+### Loading data from a tabular file (e.g. csv or txt):
+```
+from SAM import SAM #import SAM
+sam=SAM() #initialize SAM object
+sam.load_data('/path/to/expression_data_file.csv') #load data from a csv file
+#sam.load_data('/path/to/expression_data_file.txt', sep='\t') #load data from a txt file with tab delimiters
+sam.preprocess_data() # log transforms and filters the data
+sam.load_annotations('/path/to/annotations_file.csv')
+sam.run()
+sam.scatter()
+```
 ### Loading an existing AnnData object: 
 
 If loading tabular data (e.g. from a `csv`), `load_data` by default saves the sparse data structure to a `h5ad` file in the same location as the tabular file for faster loading in subsequent analyses. This file can be loaded as:
@@ -109,13 +111,13 @@ If loading tabular data (e.g. from a `csv`), `load_data` by default saves the sp
 ```
 from SAM import SAM #import SAM
 sam=SAM() #initialize SAM object
-sam.load_data('/path/to/h5ad_file.h5ad') #load data from a pickle file
+sam.load_data('/path/to/h5ad_file.h5ad') #load data from a h5ad file
 sam.preprocess_data() # log transforms and filters the data
 sam.run()
 sam.scatter()
 ```
 
-If you wish to save the SAM analysis, you can write `sam.adata` to a `h5ad` file as follows:
+If you wish to save the SAM outputs and filtered data, you can write `sam.adata` to a `h5ad` file as follows:
 `sam.save_anndata(filename, data = 'adata')`.
 
 If for whatever reason you wish to save the raw, unfiltered AnnData object,
