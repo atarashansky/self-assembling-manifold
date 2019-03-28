@@ -305,7 +305,6 @@ class SAM(object):
         # zero-out low-expressed genes      
         idx = np.where(D.data <= min_expression)[0]
         D.data[idx] = 0
-        D.eliminate_zeros()
         
         # filter genes
         gene_names = np.array(list(self.adata.var_names))
@@ -336,10 +335,12 @@ class SAM(object):
         mask_genes[idx_genes] = True
 
         self.adata.X = self.adata.X.multiply(mask_genes[None, :]).tocsr()
+        self.adata.X.eliminate_zeros()
         self.adata.var['mask_genes']=mask_genes
         
         if norm == 'multinomial':
             self.adata.layers['X_disp'] = D.multiply(mask_genes[None, :]).tocsr()
+            self.adata.layers['X_disp'].eliminate_zeros()
         else:
             self.adata.layers['X_disp'] = self.adata.X      
 
