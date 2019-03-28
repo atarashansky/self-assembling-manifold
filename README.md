@@ -9,6 +9,7 @@ The Self-Assembling-Manifold (SAM) algorithm.
 - Added a wrapper function for Leiden clustering, an improved version of Louvain clustering. Requires `scanpy`.
 - Added yet another method for marker gene identification (in `identify_marker_genes_corr`). In the future, all the marker gene identification functions will be merged into a single function `identify_marker_genes`, with a parameter to choose which specific method to use.
 - Can now directly load `h5ad` files (the native file format of AnnData) using `load_data`. `save_anndata` saves the `adata_raw` object to an `h5ad` file so that it can be used for faster loading in the future.
+- Removed `save` and `load` functions as all of the SAM attributes are now contained within its `AnnData` objects, so saving the SAM attribute dictionary is no longer required. `sam.save_anndata(filename, data='adata')` should be used to save `sam.adata` to a `h5ad` file.
 
 ## Requirements
  - `numpy`
@@ -101,35 +102,25 @@ sam.run() #run with default parameters
 sam.scatter() #display resulting UMAP plot
 ```
 
-### Loading a pickle file previously output by SAM: 
+### Loading an existing AnnData object: 
 
-Finally, `load_data` by default saves the sparse data structure to a pickle file (`_sparse.p`) for faster loading in subsequent analyses. This file can be loaded as:
+If loading tabular data (e.g. from a `csv`), `load_data` by default saves the sparse data structure to a `h5ad` file in the same location as the tabular file for faster loading in subsequent analyses. This file can be loaded as:
 
 ```
 from SAM import SAM #import SAM
 sam=SAM() #initialize SAM object
-sam.load_data('/path/to/sparse_expression_pickle_file_sparse.p') #load data from a pickle file
+sam.load_data('/path/to/h5ad_file.h5ad') #load data from a pickle file
 sam.preprocess_data() # log transforms and filters the data
 sam.run()
 sam.scatter()
 ```
 
-### Saving and loading a pickled SAM object:
-```
-from SAM import SAM #import SAM
+If you wish to save the SAM analysis, you can write `sam.adata` to a `h5ad` file as follows:
+`sam.save_anndata(filename, data = 'adata')`.
 
-#Save
-sam=SAM() #initialize SAM object
-sam.load_data('/path/to/expression_data_file.csv') #load data from a csv file and filter with default parameters
-sam.preprocess_data() # log transforms and filters the data
-sam.run()
-sam.save('/desired/output/path') #pickle the SAM object with all its attributes
+If for whatever reason you wish to save the raw, unfiltered AnnData object,
+`sam.save_anndata(filename, data = 'adata_raw')`.
 
-#Load
-sam = SAM()
-sam.load('/desired/output/path.p') #load the SAM object and all its attributes
-sam.scatter() #visualize UMAP output
-```
 ## Citation
 If using the SAM algorithm, please cite the following preprint:
 https://www.biorxiv.org/content/early/2018/07/07/364166
