@@ -104,7 +104,7 @@ sam.load_annotations('/path/to/annotations_file.csv')
 sam.run()
 sam.scatter()
 ```
-### Loading an existing AnnData object: 
+### Loading an existing AnnData `h5ad` file: 
 
 If loading tabular data (e.g. from a `csv`), `load_data` by default saves the sparse data structure to a `h5ad` file in the same location as the tabular file for faster loading in subsequent analyses. This file can be loaded as:
 
