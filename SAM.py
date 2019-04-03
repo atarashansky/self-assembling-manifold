@@ -213,7 +213,7 @@ class SAM(object):
         # load data
         try:
             D= self.adata_raw.X
-            self.adata = self.adata_raw
+            self.adata = self.adata_raw.copy()
             
         except AttributeError:
             print('No data loaded')
