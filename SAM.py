@@ -1,5 +1,6 @@
 import numpy as np
 from anndata import AnnData
+import anndata
 import scipy.sparse as sp
 import time
 from sklearn.preprocessing import Normalizer, StandardScaler
