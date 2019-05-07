@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='sam-algorithm',
-    version='0.4.5',
+    version='0.4.6',
     description='The Self-Assembling-Manifold algorithm',
     long_description="The Self-Assembling-Manifold algorithm for analyzing single-cell RNA sequencing data.",
     long_description_content_type='text/markdown',
@@ -17,7 +17,7 @@ setup(
         'pandas',
         'scikit-learn',
 	'numba<0.43.0',
-	'umap-learn', 'anndata'],
+	'umap-learn', 'anndata<=0.6.19'],
     extras_require={
         'louvain': [
             'louvain'],
