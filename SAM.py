@@ -10,6 +10,7 @@ import utilities as ut
 import sklearn.manifold as man
 import sklearn.utils.sparsefuncs as sf
 import warnings
+import scanpy.api as sc
 
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
@@ -22,30 +23,12 @@ except ImportError:
     PLOTTING = False
 
 
-__version__ = '0.4.4'
+__version__ = '0.4.5'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
 Email: <tarashan@stanford.edu>
 """
-
-def sparse_knn(D, k):
-    D1 = D.tocoo()
-    idr = np.argsort(D1.row)
-    D1.row[:] = D1.row[idr]
-    D1.col[:] = D1.col[idr]
-    D1.data[:] = D1.data[idr]
-
-    _, ind = np.unique(D1.row, return_index=True)
-    ind = np.append(ind, D1.data.size)
-    for i in range(ind.size - 1):
-        idx = np.argsort(D1.data[ind[i]:ind[i + 1]])
-        if idx.size > k:
-            idx = idx[:-k]
-            D1.data[np.arange(ind[i], ind[i + 1])[idx]] = 0
-    D1.eliminate_zeros()
-    return D1
-
 
 class SAM(object):
     """Self-Assembling Manifolds single-cell RNA sequencing analysis tool.
@@ -215,7 +198,7 @@ class SAM(object):
         try:
             D= self.adata_raw.X
             self.adata = self.adata_raw.copy()
-            
+
         except AttributeError:
             print('No data loaded')
         
@@ -243,13 +226,16 @@ class SAM(object):
 
         mask_cells = np.zeros(D.shape[0], dtype='bool')
         mask_cells[idx_cells] = True
+
+        if mask_cells.sum() < mask_cells.size:
+            self.adata = self.adata_raw[mask_cells,:].copy()
         
-        self.adata = self.adata_raw[mask_cells,:].copy()
         D = self.adata.X
         if isinstance(D,np.ndarray):
             D=sp.csr_matrix(D,dtype='float32')
         else:
-            D=D.astype('float32')
+            if str(D.dtype) != 'float32':
+                D=D.astype('float32')
             D.sort_indices()
         
         if(D.getformat() == 'csc'):
@@ -339,12 +325,13 @@ class SAM(object):
         self.adata.X = self.adata.X.multiply(mask_genes[None, :]).tocsr()
         self.adata.X.eliminate_zeros()
         self.adata.var['mask_genes']=mask_genes
-        
+
         if norm == 'multinomial':
             self.adata.layers['X_disp'] = D.multiply(mask_genes[None, :]).tocsr()
             self.adata.layers['X_disp'].eliminate_zeros()
         else:
-            self.adata.layers['X_disp'] = self.adata.X      
+            self.adata.layers['X_disp'] = self.adata.X
+        
 
     def load_data(self, filename, transpose=True,
                   save_sparse_file='h5ad', sep=',', **kwargs):
@@ -458,7 +445,7 @@ class SAM(object):
         x = self.__dict__[data]
         x.write_h5ad(fname, **kwargs)
 
-    def load_annotations(self, aname, sep=','):
+    def load_annotations(self, aname, sep=',', key_added = 'annotations'):
         """Loads cell annotations.
 
         Loads the cell annoations specified by the 'aname' path.
@@ -470,26 +457,28 @@ class SAM(object):
             and second column should be the desired annotations.
 
         """
-        ann = pd.read_csv(aname)
+        ann = pd.read_csv(aname,sep=sep,index_col=0)
 
         cell_names = np.array(list(self.adata.obs_names))
         all_cell_names = np.array(list(self.adata_raw.obs_names))
-
-        if(ann.shape[1] > 1):
-            ann = pd.read_csv(aname, index_col=0, sep=sep)
-            if(ann.shape[0] != all_cell_names.size):
-                ann = pd.read_csv(aname, index_col=0, header=None, sep=sep)
-        else:
-            if(ann.shape[0] != all_cell_names.size):
-                ann = pd.read_csv(aname, header=None, sep=sep)
+        
+        
         ann.index = np.array(list(ann.index.astype('<U100')))
-        ann1 = np.array(list(ann.T[cell_names].T.values.flatten()))
-        ann2 = np.array(list(ann.values.flatten()))
+        ann1 = ann.T[cell_names].T
+        ann2 = ann.T[all_cell_names].T
+        
+        if ann.shape[1] > 1:
+            for i in range(ann.shape[1]):
+                x=np.array(list(ann2[ann2.columns[i]].values.flatten()))
+                y=np.array(list(ann1[ann1.columns[i]].values.flatten()))
+                
+                self.adata_raw.obs[ann2.columns[i]] = pd.Categorical(x)
+                self.adata.obs[ann1.columns[i]] = pd.Categorical(y)
+        else:
+            self.adata_raw.obs[key_added] = pd.Categorical(ann2.values.flatten())
+            self.adata.obs[key_added] = pd.Categorical(ann1.values.flatten())
 
-        self.adata_raw.obs['annotations'] = pd.Categorical(ann2)
-        self.adata.obs['annotations'] = pd.Categorical(ann1)
-
-    def dispersion_ranking_NN(self, nnm, num_norm_avg=50):
+    def dispersion_ranking_NN(self, nnm = None, num_norm_avg=50):
         """Computes the spatial dispersion factors for each gene.
 
         Parameters
@@ -512,10 +501,13 @@ class SAM(object):
         weights - ndarray, float
             The vector of gene weights.
         """
-
-        self.knn_avg(nnm)
-        D_avg = self.adata.layers['X_knn_avg']
-
+        if (nnm is None):
+            nnm = self.adata.uns['neighbors']['connectivities']
+            
+        D_avg = (nnm.multiply(1/nnm.sum(1).A)).dot(self.adata.layers['X_disp'])
+        
+        self.adata.layers['X_knn_avg'] = D_avg
+        
         mu, var = sf.mean_variance_axis(D_avg, axis=0)
 
         dispersions = np.zeros(var.size)
@@ -530,6 +522,11 @@ class SAM(object):
 
         self.adata.var['weights'] = weights
 
+        all_gene_names = np.array(list(self.adata.var_names))
+        indices = np.argsort(-weights)
+        ranked_genes = all_gene_names[indices]        
+        self.adata.uns['ranked_genes'] = ranked_genes
+        
         return weights
 
     def calculate_regression_PCs(self, genes=None, npcs=None, plot=False):
@@ -673,8 +670,8 @@ class SAM(object):
         self.k = k
         if(self.k < 5):
             self.k = 5
-        elif(self.k > 100):
-            self.k = 100
+        #elif(self.k > 100):
+        #   self.k = 100
 
         if(self.k > D.shape[0] - 1):
             self.k = D.shape[0] - 2
@@ -690,7 +687,7 @@ class SAM(object):
             n_genes = 6000
         elif n_genes > 8000:
             n_genes = 8000
-
+        
         npcs = None
         if npcs is None and numcells > 3000:
             npcs = 150
@@ -730,7 +727,6 @@ class SAM(object):
 
         nnas = num_norm_avg
 
-        
         while (i < max_iter and err > stopping_condition):
 
             conv = err
@@ -744,10 +740,6 @@ class SAM(object):
                 D, W, n_genes, preprocessing, npcs, numcells, nnas)
             new = W
             err = ((new - old)**2).mean()**0.5
-
-        W, wPCA_data, EDM, = self.calculate_nnm(
-                D, W, n_genes, preprocessing, npcs, numcells, nnas)
-        self.Ns.append(EDM)
         
         all_gene_names = np.array(list(self.adata.var_names))
         indices = np.argsort(-W)
@@ -819,7 +811,7 @@ class SAM(object):
             g_weighted = Normalizer().fit_transform(g_weighted)
 
         self.adata.uns['pca_obj'] = pca
-        EDM = self.calc_nnm(g_weighted)
+        EDM = ut.calc_nnm(g_weighted,self.k,self.distance)
         
         W = self.dispersion_ranking_NN(
             EDM, num_norm_avg=num_norm_avg)
@@ -828,21 +820,6 @@ class SAM(object):
 
         return W, g_weighted, EDM
         
-    def calc_nnm(self,g_weighted):
-        numcells=g_weighted.shape[0]
-        if g_weighted.shape[0] > 8000:
-            nnm, dists = ut.nearest_neighbors(
-                g_weighted, n_neighbors=self.k, metric=self.distance)
-            EDM = sp.coo_matrix((numcells, numcells), dtype='i').tolil()
-            EDM[np.tile(np.arange(nnm.shape[0])[:, None],
-                        (1, nnm.shape[1])).flatten(), nnm.flatten()] = 1
-            EDM = EDM.tocsr()
-        else:
-            dist = ut.compute_distances(g_weighted, self.distance)
-            nnm = ut.dist_to_nn(dist, self.k)
-            EDM = sp.csr_matrix(nnm)
-        return EDM
-
     def _create_dict(self, exc):
         self.pickle_dict = self.__dict__.copy()
         if(exc):
@@ -1041,7 +1018,7 @@ class SAM(object):
             return dt
 
         else:
-            umap_obj = umap.UMAP(metric=metric, **kwargs)
+            umap_obj = umap.UMAP(metric=metric, n_neighbors=self.k, **kwargs)
             umap2d = umap_obj.fit_transform(self.adata.obsm['X_pca'])
             self.adata.obsm['X_umap'] = umap2d
 
@@ -1050,7 +1027,6 @@ class SAM(object):
         """
         Experimental -- running UMAP on the diffusion components        
         """             
-        import scanpy.api as sc
         sc.pp.neighbors(self.adata,use_rep=use_rep,n_neighbors=self.k,
                                        metric=self.distance,method=method)
         sc.tl.diffmap(self.adata, n_comps=n_comps)
@@ -1063,14 +1039,6 @@ class SAM(object):
                 
         sc.tl.umap(self.adata,min_dist=0.1,copy=False)
         
-    def knn_avg(self, nnm=None):
-        
-        if (nnm is None):
-            nnm = self.adata.uns['neighbors']['connectivities']
-            
-        D_avg = (nnm / self.k).dot(self.adata.layers['X_disp'])
-        self.adata.layers['X_knn_avg'] = D_avg
-
         
     def scatter(self, projection=None, c=None, cmap='rainbow', linewidth=0.0,
                 edgecolor='k', axes=None, colorbar=True, s=10, **kwargs):
@@ -1211,11 +1179,11 @@ class SAM(object):
 
         if(avg):
             a = self.adata.layers['X_knn_avg'][:, idx].toarray().flatten()
-
             if a.sum() == 0:
                 a = np.log2(self.adata_raw.X[np.in1d(
                     all_cell_names, cell_names), :][:,
                                                 idx].toarray().flatten() + 1)
+
         else:
             a = np.log2(self.adata_raw.X[np.in1d(
                 all_cell_names, cell_names), :][:,
@@ -1287,7 +1255,7 @@ class SAM(object):
         import igraph as ig
         import louvain
 
-        adjacency = sparse_knn(X.dot(X.T) / self.k, self.k).tocsr()
+        adjacency = X#ut.to_sparse_knn(X.dot(X.T) / self.k, self.k).tocsr()
         sources, targets = adjacency.nonzero()
         weights = adjacency[sources, targets]
         if isinstance(weights, np.matrix):
@@ -1330,25 +1298,17 @@ class SAM(object):
         from sklearn.cluster import KMeans
         if X is None:
             D_sub = self.adata.uns['X_processed']
-            X = (
-                D_sub -
-                D_sub.mean(0)).dot(
-                self.adata.uns['pca_obj'].components_[
-                    :npcs,
-                    :].T)
-            save = True
-        else:
-            save = False
+            X = (D_sub - D_sub.mean(0)).dot(self.adata.uns[
+                    'pca_obj'].components_[:npcs,:].T)
 
-        cl = KMeans(n_clusters=numc).fit_predict(Normalizer().fit_transform(X))
-
-        if save:
-            self.adata.obs['kmeans_clusters'] = pd.Categorical(cl)
-        else:
-            return cl
+        km = KMeans(n_clusters = numc)
+        cl = km.fit_predict(Normalizer().fit_transform(X))
+        
+        self.adata.obs['kmeans_clusters'] = pd.Categorical(cl)
+        return cl,km
+        
     
     def leiden_clustering(self, X=None, res = 1):
-        import scanpy.api as sc
         if X is None:            
             sc.tl.leiden(self.adata, resolution = res,
                              key_added='leiden_clusters')           
@@ -1449,7 +1409,7 @@ class SAM(object):
         indices = np.argsort(-self.adata.var['weights'].values)
         X = self.adata.layers['X_disp'][:, indices[:n_genes]].toarray()
         for K in range(lblsu.size):
-            print(K)
+            #print(K)
             y = np.zeros(lbls.size)
 
             y[lbls == lblsu[K]] = 1
@@ -1570,4 +1530,58 @@ class SAM(object):
             
 
         self.adata.uns['marker_genes_corr'] = markers
-        return markers    
+        return markers   
+    
+    
+    def save(self, savename, dirname=None, exc=None):
+        """Saves all SAM attributes to a Pickle file.
+
+        Saves all SAM attributes to a Pickle file which can be later loaded
+        into an empty SAM object.
+
+        Parameters
+        ----------
+        savename - string
+            The name of the pickle file (not including the file extension) to
+            write to.
+
+        dirname - string, optional, default None
+            The path/name of the directory in which the Pickle file will be
+            saved. If None, the file will be saved to the current working
+            directory.
+
+        exc - array-like of strings, optional, default None
+            A vector of SAM attributes to exclude from the saved file. Use this
+            to exclude bulky objects that do not need to be saved.
+
+        """
+        self._create_dict(exc)
+        if savename[-2:] != '.p':
+            savename = savename + '.p'
+
+        if(dirname is not None):
+            ut.create_folder(dirname + "/")
+            f = open(dirname + "/" + savename, 'wb')
+        else:
+            f = open(savename, 'wb')
+
+        pickle.dump(self.pickle_dict, f)
+        f.close()
+
+    def load(self, n):
+        """Loads SAM attributes from a Pickle file.
+
+        Loads all SAM attributes from the specified Pickle file into the SAM
+        object.
+
+        Parameters
+        ----------
+        n - string
+            The path of the Pickle file.
+        """
+        f = open(n, 'rb')
+        pick_dict = pickle.load(f)
+        for i in range(len(pick_dict)):
+            self.__dict__[list(pick_dict.keys())[i]
+                          ] = pick_dict[list(pick_dict.keys())[i]]
+        f.close()
