@@ -23,7 +23,7 @@ except ImportError:
     PLOTTING = False
 
 
-__version__ = '0.4.6'
+__version__ = '0.4.7'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.

@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='sam-algorithm',
-    version='0.4.6',
+    version='0.4.7',
     description='The Self-Assembling-Manifold algorithm',
     long_description="The Self-Assembling-Manifold algorithm for analyzing single-cell RNA sequencing data.",
     long_description_content_type='text/markdown',
@@ -13,7 +13,7 @@ setup(
     py_modules=["SAM", "utilities"],
     install_requires=[
         'numpy',
-        'scipy',
+        'scipy==1.2.0',
         'pandas',
         'scikit-learn',
 	'numba<0.43.0',
