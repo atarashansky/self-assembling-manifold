@@ -728,8 +728,8 @@ class SAM(object):
             max_iter = 5
 
         nnas = num_norm_avg
-        self.Ns=[edm]
-        self.Ws = [W]
+
+        
         while (i < max_iter and err > stopping_condition):
 
             conv = err
@@ -743,9 +743,6 @@ class SAM(object):
                 D, W, n_genes, preprocessing, npcs, numcells, nnas)
             new = W
             err = ((new - old)**2).mean()**0.5
-            
-            self.Ns.append(EDM)
-            self.Ws.append(W)
 
         W, wPCA_data, EDM, = self.calculate_nnm(
                 D, W, n_genes, preprocessing, npcs, numcells, nnas)
