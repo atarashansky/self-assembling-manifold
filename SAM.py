@@ -10,7 +10,7 @@ import utilities as ut
 import sklearn.manifold as man
 import sklearn.utils.sparsefuncs as sf
 import warnings
-import scanpy.api as sc
+
 
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
@@ -23,7 +23,7 @@ except ImportError:
     PLOTTING = False
 
 
-__version__ = '0.4.7'
+__version__ = '0.4.8'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
