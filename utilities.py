@@ -14,7 +14,7 @@ from umap.nndescent import (
 INT32_MIN = np.iinfo(np.int32).min + 1
 INT32_MAX = np.iinfo(np.int32).max - 1
 
-__version__ = '0.4.8'
+__version__ = '0.4.9'
 
 
 def nearest_neighbors(X, n_neighbors=15, seed=0, metric='correlation'):
@@ -58,6 +58,15 @@ def knndist(nnma):
     knn = np.vstack(knn)
     dist = np.ones(knn.shape)
     return knn, dist
+
+"""
+def affinity_calc(data, d = 'correlation', k=20):
+    dist = compute_distances(data,d)
+    local_scale = np.sort(dist,axis=1)[:,k].flatten()
+    affinity = np.exp(-dist**2 / (local_scale[:,None] * local_scale[None,:]))
+    nnm = sp.sparse.csr_matrix(dist_to_nn(1-affinity,k)*affinity)
+    return nnm
+"""
 
 def save_figures(filename, fig_IDs=None, **kwargs):
     """
@@ -260,6 +269,26 @@ def convert_annotations(A):
 
     return y.astype('int')
 
+def calc_nnm(g_weighted,k,distance):
+    numcells=g_weighted.shape[0]
+    if g_weighted.shape[0] > 8000:
+        try:
+            nnm, dists = nearest_neighbors(
+                g_weighted, n_neighbors=k, metric=distance)
+        except SystemError:
+            print('Adding noise...')
+            g_weighted = g_weighted + np.random.normal(loc=0,scale=g_weighted.flatten().std()/4,size=g_weighted.shape)
+            nnm, dists = nearest_neighbors(
+                g_weighted, n_neighbors=k, metric=distance)
+        EDM = sp.sparse.coo_matrix((numcells, numcells), dtype='i').tolil()
+        EDM[np.tile(np.arange(nnm.shape[0])[:, None],
+                    (1, nnm.shape[1])).flatten(), nnm.flatten()] = 1
+        EDM = EDM.tocsr()
+    else:
+        dist = compute_distances(g_weighted, distance)
+        nnm = dist_to_nn(dist, k)
+        EDM = sp.sparse.csr_matrix(nnm)
+    return EDM
 
 def compute_distances(A, dm):
     if(dm == 'euclidean'):
@@ -287,3 +316,41 @@ def dist_to_nn(d, K):
     E[E < M] = 0
     E[E > 0] = 1
     return E  # ,x
+
+"""
+def to_sparse_knn(D1, k):
+    D1 = D1.tocoo()
+    idr = np.argsort(D1.row)
+    D1.row[:] = D1.row[idr]
+    D1.col[:] = D1.col[idr]
+    D1.data[:] = D1.data[idr]
+
+    _, ind = np.unique(D1.row, return_index=True)
+    ind = np.append(ind, D1.data.size)
+    for i in range(ind.size - 1):
+        idx = np.argsort(D1.data[ind[i]:ind[i + 1]])
+        if idx.size > k:
+            idx = idx[:-k]
+            D1.data[np.arange(ind[i], ind[i + 1])[idx]] = 0
+    D1.eliminate_zeros()
+    return D1
+"""
+def to_sparse_knn(D1,k):
+    for i in range(D1.shape[0]):      
+        x = D1.data[D1.indptr[i]:D1.indptr[i+1]]
+        idx = np.argsort(x)
+        if idx.size > k:
+            x[idx[:-k]]=0
+        D1.data[D1.indptr[i]:D1.indptr[i+1]] = x
+    D1.eliminate_zeros()
+    return D1
+def gen_sparse_knn(knni, knnd, shape = None):
+    if shape is None:
+        shape = (knni.shape[0],knni.shape[0])
+        
+    D1 = sp.sparse.lil_matrix(shape)
+    
+    D1[np.tile(np.arange(knni.shape[0])[:,None],(1,knni.shape[1])).flatten(),
+       knni.flatten()] = knnd.flatten()
+    D1=D1.tocsr()
+    return D1
