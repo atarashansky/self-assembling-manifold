@@ -10,20 +10,25 @@ import utilities as ut
 import sklearn.manifold as man
 import sklearn.utils.sparsefuncs as sf
 import warnings
-
+import scanpy.api as sc
+#from ipywidgets import widgets, interactive
 
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 
 try:
     import matplotlib.pyplot as plt
+    from matplotlib.widgets import TextBox, Button, Slider
+    #import matplotlib
+    from matplotlib.patches import Rectangle
+    
     PLOTTING = True
 except ImportError:
     print('matplotlib not installed. Plotting functions disabled')
     PLOTTING = False
 
 
-__version__ = '0.4.9'
+__version__ = '0.5.0'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -123,6 +128,8 @@ class SAM(object):
                 
             self.adata = self.adata_raw.copy()
             self.adata.layers['X_disp'] = self.adata.X
+        
+        self.run_args = {}
 
     def preprocess_data(self, div=1, downsample=0, sum_norm=None,
                         include_genes=None, exclude_genes=None,
@@ -266,7 +273,8 @@ class SAM(object):
             
         elif(norm.lower() == 'ftt'):
             D.data[:] = np.sqrt(D.data/div) + np.sqrt(D.data/div+1)
-            
+        elif(norm.lower() == 'asin'):
+            D.data[:] = np.arcsinh(D.data/div)
         elif norm.lower() == 'multinomial':
             ni = D.sum(1).A.flatten() #cells
             pj = (D.sum(0) / D.sum()).A.flatten() #genes
@@ -616,6 +624,7 @@ class SAM(object):
             k=20,
             distance='correlation',
             preprocessing='Normalizer',
+            npcs=None,
             proj_kwargs={}):
         """Runs the Self-Assembling Manifold algorithm.
 
@@ -665,6 +674,19 @@ class SAM(object):
             functions.
         """
 
+        self.run_args = {
+                'max_iter':max_iter,
+                'verbose':verbose,
+                'projection':projection,
+                'stopping_condition':stopping_condition,
+                'num_norm_avg':num_norm_avg,
+                'k':k,
+                'distance':distance,
+                'preprocessing':preprocessing,
+                'npcs':npcs,
+                'proj_kwargs':proj_kwargs,
+                }
+        
         self.distance = distance
         D = self.adata.X
         self.k = k
@@ -688,7 +710,7 @@ class SAM(object):
         elif n_genes > 8000:
             n_genes = 8000
         
-        npcs = None
+        #npcs = None
         if npcs is None and numcells > 3000:
             npcs = 150
         elif npcs is None and numcells > 2000:
@@ -745,8 +767,6 @@ class SAM(object):
         indices = np.argsort(-W)
         ranked_genes = all_gene_names[indices]
 
-        self.corr_bin_genes(number_of_features=1000)
-
         self.adata.uns['ranked_genes'] = ranked_genes
 
         self.adata.obsm['X_pca'] = wPCA_data
@@ -792,8 +812,8 @@ class SAM(object):
         elif preprocessing == 'StandardScaler':
             Ds = D[:, gkeep].toarray()
             Ds = StandardScaler(with_mean=True).fit_transform(Ds)
-            Ds[Ds > 5] = 5
-            Ds[Ds < -5] = -5
+            Ds[Ds > 10] = 10
+            Ds[Ds < -10] = -10
 
         else:
             Ds = D[:, gkeep].toarray()
@@ -828,160 +848,6 @@ class SAM(object):
                     del self.pickle_dict[exc[i]]
                 except NameError:
                     0
-
-    def plot_correlated_groups(self, group=None, n_genes=5, **kwargs):
-        """Plots orthogonal expression patterns.
-
-        In the default mode, plots orthogonal gene expression patterns. A
-        specific correlated group of genes can be specified to plot gene
-        expression patterns within that group.
-
-        Parameters
-        ----------
-        group - int, optional, default None
-            If specified, display the genes within the desired correlated
-            group. Otherwise, display the top ranked gene within each distinct
-            correlated group.
-
-        n_genes - int, optional, default 5
-            The number of top ranked genes to display within a correlated
-            group if 'group' is specified.
-
-        **kwargs -
-            All keyword arguments in 'show_gene_expression' and 'scatter'
-            are eligible.
-        """
-        geneID_groups = self.adata.uns['gene_groups']
-        if(group is None):
-            for i in range(len(geneID_groups)):
-                self.show_gene_expression(geneID_groups[i][0], **kwargs)
-        else:
-            for i in range(n_genes):
-                self.show_gene_expression(geneID_groups[group][i], **kwargs)
-
-    def plot_correlated_genes(
-            self,
-            name,
-            n_genes=5,
-            number_of_features=1000,
-            **kwargs):
-        """Plots gene expression patterns correlated with the input gene.
-
-        Parameters
-        ----------
-        name - string
-            The name of the gene with respect to which correlated gene
-            expression patterns will be displayed.
-
-        n_genes - int, optional, default 5
-            The number of top ranked correlated genes to display.
-
-        **kwargs -
-            All keyword arguments in 'show_gene_expression' and 'scatter'
-            are eligible.
-        """
-        all_gene_names = np.array(list(self.adata.var_names))
-        if((all_gene_names == name).sum() == 0):
-            print(
-                "Gene not found in the filtered dataset. Note that genes "
-                "are case sensitive.")
-            return
-        sds = self.corr_bin_genes(
-            input_gene=name,
-            number_of_features=number_of_features)
-        if (n_genes + 1 > sds.size):
-            x = sds.size
-        else:
-            x = n_genes + 1
-
-        for i in range(1, x):
-            self.show_gene_expression(sds[i], **kwargs)
-        return sds[1:]
-
-    def corr_bin_genes(self, number_of_features=None, input_gene=None):
-        """A (hacky) method for binning groups of genes correlated along the
-        SAM manifold.
-
-        Parameters
-        ----------
-        number_of_features - int, optional, default None
-            The number of genes to bin. Capped at 5000 due to memory
-            considerations.
-
-        input_gene - str, optional, default None
-            If not None, use this gene as the first seed when growing the
-            correlation bins.
-
-        """
-
-        weights = self.adata.var['spatial_dispersions'].values
-        all_gene_names = np.array(list(self.adata.var_names))
-        D_avg = self.adata.layers['X_knn_avg']
-
-        idx2 = np.argsort(-weights)[:weights[weights > 0].size]
-
-        if(number_of_features is None or number_of_features > idx2.size):
-            number_of_features = idx2.size
-
-        if number_of_features > 1000:
-            number_of_features = 1000
-
-        if(input_gene is not None):
-            input_gene = np.where(all_gene_names == input_gene)[0]
-            if(input_gene.size == 0):
-                print(
-                    "Gene note found in the filtered dataset. Note "
-                    "that genes are case sensitive.")
-                return
-            seeds = [np.array([input_gene])]
-            pw_corr = np.corrcoef(
-                D_avg[:, idx2[:number_of_features]].T.toarray())
-            for i in range(1, number_of_features):
-                flag = False
-                maxd = np.mean(pw_corr[i, :][pw_corr[i, :] > 0])
-                maxi = 0
-                for j in range(len(seeds)):
-                    if(pw_corr[np.where(idx2 == seeds[j][0])[0], i]
-                       > maxd):
-                        maxd = pw_corr[np.where(idx2 == seeds[j][0])[0], i]
-                        maxi = j
-                        flag = True
-                if(not flag):
-                    seeds.append(np.array([idx2[i]]))
-                else:
-                    seeds[maxi] = np.append(seeds[maxi], idx2[i])
-
-            geneID_groups = []
-            for i in range(len(seeds)):
-                geneID_groups.append(all_gene_names[seeds[i]])
-
-            return geneID_groups[0]
-        else:
-            seeds = [np.array([idx2[0]])]
-            pw_corr = np.corrcoef(
-                D_avg[:, idx2[:number_of_features]].T.toarray())
-            for i in range(1, number_of_features):
-                flag = False
-                maxd = np.mean(pw_corr[i, :][pw_corr[i, :] > 0])
-                maxi = 0
-                for j in range(len(seeds)):
-                    if(pw_corr[np.where(idx2 == seeds[j][0])[0], i]
-                       > maxd):
-                        maxd = pw_corr[np.where(idx2 == seeds[j][0])[0], i]
-                        maxi = j
-                        flag = True
-                if(not flag):
-                    seeds.append(np.array([idx2[i]]))
-                else:
-                    seeds[maxi] = np.append(seeds[maxi], idx2[i])
-
-            geneID_groups = []
-            for i in range(len(seeds)):
-                geneID_groups.append(
-                    all_gene_names[seeds[i]])
-
-            self.adata.uns['gene_groups'] = geneID_groups
-            return geneID_groups
 
     def run_tsne(self, X=None, metric='correlation', **kwargs):
         """Wrapper for sklearn's t-SNE implementation.
@@ -1041,7 +907,7 @@ class SAM(object):
         
         
     def scatter(self, projection=None, c=None, cmap='rainbow', linewidth=0.0,
-                edgecolor='k', axes=None, colorbar=True, s=10, **kwargs):
+                axes=None, colorbar=True, s=10, do_GUI = True, **kwargs):
         """Display a scatter plot.
 
         Displays a scatter plot using the SAM projection or another input
@@ -1099,14 +965,17 @@ class SAM(object):
                         return
             else:
                 dt = projection
-
+            
             if(axes is None):
-                plt.figure()
+                plt.figure(figsize=(6,6))
                 axes = plt.gca()
-
+            else:
+                do_GUI=False
+                
+            cstr = c
             if(c is None):
                 plt.scatter(dt[:, 0], dt[:, 1], s=s,
-                            linewidth=linewidth, edgecolor=edgecolor, **kwargs)
+                            linewidth=linewidth, **kwargs)
             else:
 
                 if isinstance(c, str):
@@ -1117,11 +986,10 @@ class SAM(object):
 
                 if((isinstance(c[0], str) or isinstance(c[0], np.str_)) and
                    (isinstance(c, np.ndarray) or isinstance(c, list))):
-                    i = ut.convert_annotations(c)
+                    i = ut.convert_annotations(np.array(c))
                     ui, ai = np.unique(i, return_index=True)
                     cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
                                        linewidth=linewidth,
-                                       edgecolor=edgecolor,
                                        **kwargs)
 
                     if(colorbar):
@@ -1134,13 +1002,22 @@ class SAM(object):
 
                     cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
                                        linewidth=linewidth,
-                                       edgecolor=edgecolor,
                                        **kwargs)
 
                     if(colorbar):
                         plt.colorbar(cax, ax=axes)
-
-    def show_gene_expression(self, gene, avg=True, axes=None, **kwargs):
+        
+            axes.figure.canvas.draw()
+            
+            if do_GUI:
+                axes.figure.subplots_adjust(bottom=0.2)                
+                self.ps = point_selector(axes,self, linewidth=linewidth,
+                                         projection=projection, c=cstr, cmap=cmap,
+                                         colorbar=colorbar, s=s, **kwargs)
+        
+        return axes
+    
+    def show_gene_expression(self, gene, avg=True, **kwargs):
         """Display a gene's expressions.
 
         Displays a scatter plot using the SAM projection or another input
@@ -1189,12 +1066,12 @@ class SAM(object):
                 all_cell_names, cell_names), :][:,
                                                 idx].toarray().flatten() + 1)
 
-        if axes is None:
-            plt.figure()
-            axes = plt.gca()
-
-        self.scatter(c=a, axes=axes, **kwargs)
-        axes.set_title(name)
+       
+        
+        ax = self.scatter(c=a, do_GUI = False, **kwargs)        
+        ax.set_title(name)
+        
+        return ax
 
     def density_clustering(self, X=None, eps=1, metric='euclidean', **kwargs):
         from sklearn.cluster import DBSCAN
@@ -1585,3 +1462,370 @@ class SAM(object):
             self.__dict__[list(pick_dict.keys())[i]
                           ] = pick_dict[list(pick_dict.keys())[i]]
         f.close()
+
+
+class point_selector:
+    def __init__(self,ax,sam, **kwargs):
+        self.fig=ax.figure
+        
+        self.scatter_dict = kwargs
+        
+        self.projection = kwargs.get('projection',None)
+        
+        self.sam=sam
+        self.ax = ax
+        
+        self.cid1 = self.fig.canvas.mpl_connect('scroll_event', self.on_scroll)
+        self.cid2 = self.fig.canvas.mpl_connect('button_press_event', self.on_press)
+        self.cid3 = self.fig.canvas.mpl_connect('button_release_event', self.on_release)
+        self.cid4 = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
+        
+        self.cid_motion = None
+        self.cid_panning = None
+        
+        self.patch = None
+  
+        self.AXSUBPLOT = type(self.ax)
+        
+        self.selected_points = np.array([])
+        self.selected_cells = np.array([])
+        
+        self.sam_subcluster = None
+        self.eps = 0.25
+        
+        axbox = self.fig.add_axes([0.5,0.08,0.48,0.05])            
+        self.text_box = TextBox(axbox, '', initial='')            
+        self.text_box.on_submit(self.show_expression)
+
+        axnext = self.fig.add_axes([0.12,0.08,0.3,0.05])            
+        self.button= Button(axnext, 'Subcluster')
+        self.button.on_clicked(self.subcluster)
+        
+        axnext = self.fig.add_axes([0.12,0.02,0.3,0.05])            
+        self.button2= Button(axnext, 'Density Cluster')
+        self.button2.on_clicked(self.density_cluster)
+                    
+        axslider = self.fig.add_axes([0.45,0.02,0.48,0.022],facecolor='lightgoldenrodyellow')
+        
+        self.slider1 = Slider(axslider, '', 0, 50, valinit=0, valstep=1)
+        self.slider1.on_changed(self.gene_update)
+        
+        axslider = self.fig.add_axes([0.45,0.051,0.48,0.022],facecolor='lightgoldenrodyellow')
+        
+        self.slider2 = Slider(axslider, '', 0.25, 2, valinit=0.5, valstep=0.01)
+        self.slider2.on_changed(self.eps_update)            
+         
+        self.markers = None
+    def eps_update(self,val):
+        self.eps=val
+    
+    def gene_update(self,val):
+        if self.sam_subcluster is None:
+            s=self.sam
+        else:
+            s=self.sam_subcluster
+            
+        if self.markers is None:
+            gene = np.argsort(-s.adata.var['weights'])[int(val)]
+            gene = s.adata.var_names[gene]
+        else:
+            gene = self.markers[int(val)]
+            
+        self.text_box.set_val(gene)
+        
+        self.fig.canvas.draw_idle()    
+        
+    def subcluster(self,event):
+        if self.selected_points.size > 0:
+            # add saved filtering parameters to SAM object so you can pass them here
+            if self.sam_subcluster is None:
+                self.sam_subcluster = SAM(counts = self.sam.adata[
+                            self.sam.adata.obs_names[self.selected_points],:].copy())
+            else:
+                self.sam_subcluster = SAM(counts = self.sam_subcluster.adata[
+                            self.sam_subcluster.adata.obs_names[self.selected_points],:].copy())
+            
+            #self.sam_subcluster.preprocess_data()
+            self.sam_subcluster.run(**self.sam.run_args);
+            
+
+            for i in self.ax.figure.axes:
+                if type(i) is self.AXSUBPLOT:
+                    i.remove()
+            
+            self.fig.add_subplot(111)
+            self.ax = self.fig.axes[-1]
+            self.sam_subcluster.scatter(axes = self.ax, **self.scatter_dict)
+            self.selected_points=np.array([])
+            self.selected_cells=np.array([])
+      
+    def density_cluster(self,event):
+        if self.sam_subcluster is None:
+            s=self.sam
+        else:
+            s=self.sam_subcluster
+            
+        s.density_clustering(eps = self.eps)
+        
+        
+        for i in self.ax.figure.axes:
+            if type(i) is self.AXSUBPLOT:
+                i.remove()
+        
+        sc = self.scatter_dict.copy() 
+        sc['c'] ='density_clusters'
+        self.fig.add_subplot(111)
+        self.ax = self.fig.axes[-1]
+        s.scatter(axes = self.ax, **sc)
+        self.selected_points=np.array([])        
+        self.selected_cells=np.array([])     
+        
+        
+    def show_expression(self,gene):
+        
+        if self.sam_subcluster is None:
+            s = self.sam
+        else:
+            s = self.sam_subcluster
+            
+        try:
+            s.adata[:,gene];
+
+            for i in self.ax.figure.axes:
+                if type(i) is self.AXSUBPLOT:
+                    i.remove()
+            
+            self.fig.add_subplot(111)
+            self.ax = self.fig.axes[-1]
+            s.show_gene_expression(gene,axes = self.ax, projection = self.projection)
+                                 
+
+        except IndexError:
+            0; # do nothing
+                
+        #self.selected_points=np.array([])
+        
+        self.fig.canvas.draw_idle()
+
+        
+    def on_press(self, event):    
+        if event.button == 1:            
+            x = event.xdata
+            y = event.ydata
+            if x is not None and y is not None:
+                self.lastX = x
+                self.lastY = y
+                self.cid_motion = self.fig.canvas.mpl_connect('motion_notify_event', lambda event: self.on_motion(event, x, y))
+            else:
+                self.cid_motion = None
+        elif event.button == 2:
+            x = event.xdata
+            y = event.ydata
+            if x is not None and y is not None:
+                self.lastXp = x
+                self.lastYp = y
+                self.cid_panning = self.fig.canvas.mpl_connect('motion_notify_event', self.on_motion_pan)
+            else:
+                self.cid_panning = None
+       
+        elif event.button == 3:
+
+            for i in self.ax.figure.axes:
+                if type(i) is self.AXSUBPLOT:
+                    i.remove()
+       
+        
+            if self.sam_subcluster is not None:
+                s = self.sam_subcluster
+            else:
+                s = self.sam              
+                                
+            self.fig.add_subplot(111)
+            self.ax = self.fig.axes[-1]
+            s.scatter(axes = self.ax, **self.scatter_dict)
+                    
+            self.markers = None
+            self.selected_points=np.array([])
+            self.selected_cells = np.array([])
+                            
+            self.fig.canvas.draw_idle()
+
+    def on_key_press(self, event):
+        if not self.text_box.capturekeystrokes:
+            if self.sam_subcluster is not None:
+                s=self.sam_subcluster
+            else:
+                s=self.sam            
+                
+                
+            if event.key == 'right':
+                self.slider1.set_val(self.slider1.val+1)
+            elif event.key == 'left':
+                x = self.slider1.val-1
+                if x < 0:
+                    x=0
+                self.slider1.set_val(x)
+            
+            elif event.key == 'enter' and self.selected_points.size > 0:
+                print('Identifying marker genes')
+                a = np.zeros(s.adata.shape[0])
+                a[self.selected_points]=1
+                self.markers = s.identify_marker_genes_rf(labels = a,clusters = 1)[1]
+                
+            elif event.key == 'escape':
+    
+                
+                for i in self.ax.figure.axes:
+                    if type(i) is self.AXSUBPLOT:
+                        i.remove()
+                
+                if self.sam_subcluster is not None:
+                    self.sam_subcluster = None
+                          
+                self.fig.add_subplot(111)
+                self.ax = self.fig.axes[-1]
+                self.sam.scatter(axes = self.ax, **self.scatter_dict)
+                
+                
+                self.selected_points=np.array([])
+                self.selected_cells=np.array([])
+                self.markers = None
+                self.fig.canvas.draw_idle()            
+        
+    def on_release(self, event):
+        if event.button == 1:
+            if self.patch is not None:
+                self.patch.remove()
+                self.patch = None
+                        
+            if self.cid_motion is not None:
+                self.fig.canvas.mpl_disconnect(self.cid_motion)
+        elif event.button == 2:
+            if self.cid_panning is not None:
+                self.fig.canvas.mpl_disconnect(self.cid_panning)            
+
+        
+        self.fig.canvas.draw_idle()
+
+
+    def on_motion_pan(self, event):
+
+        if event.inaxes is self.ax:
+            # CURRENT
+            xn = event.xdata
+            yn = event.ydata
+            # LAST
+            xo = self.lastXp
+            yo = self.lastYp
+            
+            translationX = -(xn - xo)
+            translationY = -(yn - yo)
+            
+            # LAST UPDATED TO CURRENT VALUE
+            self.lastXp = xn+translationX
+            self.lastYp = yn+translationY
+            
+            x0p,x1p = self.ax.get_xlim()        
+            y0p,y1p = self.ax.get_ylim()
+            
+            
+            x0p+=translationX
+            x1p+=translationX
+            y0p+=translationY
+            y1p+=translationY
+            
+            self.ax.set_ylim([y0p,y1p])
+            self.ax.set_xlim([x0p,x1p])
+            self.fig.canvas.draw_idle()
+        
+    def on_motion(self, event, xo, yo):
+        
+        xn = event.xdata
+        yn = event.ydata
+        
+        if event.inaxes is not self.ax:
+            xn = self.lastX
+            yn = self.lastY
+        
+        width = xn-xo
+        height = yn-yo
+        if self.patch is not None:
+            self.patch.remove()    
+        
+        self.patch = self.ax.add_patch(Rectangle((xo,yo), width, height,
+                                                alpha=1,edgecolor='k',fill=False))   
+        
+        x1 = min((xn,xo))
+        x2 = max((xn,xo))
+        y1 = min((yn,yo))
+        y2 = max((yn,yo))
+        
+        offsets = self.ax.collections[0].get_offsets()
+        sp = np.where(np.logical_and(np.logical_and(offsets[:,0]>x1,offsets[:,0]<x2),
+                       np.logical_and(offsets[:,1]>y1,offsets[:,1]<y2)))[0]
+        
+        
+        if sp.size>0:
+            self.selected_points = np.unique(np.append(self.selected_points,sp)).astype('int')
+            
+            if self.sam_subcluster is None:
+                s=self.sam
+            else:
+                s=self.sam_subcluster
+            
+            self.selected_cells = np.array(list(s.adata.obs_names[self.selected_points]))
+            
+            lw = self.ax.collections[0].get_linewidths().copy()
+            ec = self.ax.collections[0].get_edgecolors().copy()
+            ss = self.ax.collections[0].get_sizes().copy()
+
+            if len(ss) == 1:
+                ss = np.ones(offsets.shape[0])*ss[0]
+                
+            if ec.shape[0] == 1:
+                ec = np.tile(ec,(offsets.shape[0],1))
+            if len(lw) == 1:
+                lw = np.ones(offsets.shape[0])*lw[0]
+            lw = np.array(lw)
+            lw[self.selected_points] = 1
+            ec[self.selected_points,:] = np.array([0,0,0,1])
+            ss[self.selected_points] = self.scatter_dict['s']*1.5
+
+            self.ax.collections[0].set_linewidths(lw)
+            self.ax.collections[0].set_edgecolors(ec)
+            self.ax.collections[0].set_sizes(ss)
+            
+        self.lastX = xn
+        self.lastY = yn
+        self.fig.canvas.draw_idle()
+    
+    def on_scroll(self, event):
+        y0,y1 = self.ax.get_ylim()
+        x0,x1 = self.ax.get_xlim()
+        zoom_point_x = event.xdata
+        zoom_point_y = event.ydata
+        
+        if zoom_point_x is not None and zoom_point_y is not None:
+           
+            if event.button == 'up':
+                scale_change = -0.1
+        
+            elif event.button == 'down':
+                scale_change = 0.1
+            
+        
+            new_width = (x1-x0)*(1+scale_change)
+            new_height= (y1-y0)*(1+scale_change)
+        
+            relx = (x1-zoom_point_x)/(x1-x0)
+            rely = (y1-zoom_point_y)/(y1-y0)
+            curr_xlim = [zoom_point_x-new_width*(1-relx),
+                        zoom_point_x+new_width*(relx)]
+            curr_ylim = [zoom_point_y-new_height*(1-rely),
+                                zoom_point_y+new_height*(rely)]
+            self.ax.set_xlim(curr_xlim)
+            self.ax.set_ylim(curr_ylim)
+        
+            self.fig.canvas.draw_idle()    
+        
+

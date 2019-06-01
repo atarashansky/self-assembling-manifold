@@ -3,13 +3,44 @@
 # self-assembling-manifold
 The Self-Assembling-Manifold (SAM) algorithm.
 
-# Update (3/21/2019) -- SAM version 0.4.4
+# Update (6/1/2019) -- SAM version 0.5.0
 
-- Added Diffusion UMAP (`run_diff_umap()`) an experimental projection method in which UMAP is applied to a diffusion map calculated from the SAM nearest neighbor graph. Requires `scanpy`.
-- Added a wrapper function for Leiden clustering, an improved version of Louvain clustering. Requires `scanpy`.
-- Added yet another method for marker gene identification (in `identify_marker_genes_corr`). In the future, all the marker gene identification functions will be merged into a single function `identify_marker_genes`, with a parameter to choose which specific method to use.
-- Can now directly load `h5ad` files (the native file format of AnnData) using `load_data`. `save_anndata` saves the `adata_raw` object to an `h5ad` file so that it can be used for faster loading in the future.
-- Removed `save` and `load` functions as all of the SAM attributes are now contained within its `AnnData` objects, so saving the SAM attribute dictionary is no longer required. `sam.save_anndata(filename, data='adata')` should be used to save `sam.adata` to a `h5ad` file.
+Made use of matplotlib widgets to add interactivity to the scatter plots. The interactive plot can be accessed via the `scatter` function.
+
+Scroll wheel:
+ - Zoom in and out
+ - Click and hold to pan
+
+Left click:
+ - Click and drag to highlight cells. Highlighted indices and cell IDs are stored in `sam.ps.selected_points` and `sam.ps.selected_cells`, respectively.
+
+Right click:
+ - Resets the plot and unselects all cells (if subclustering has been done, the plot is reset to the default view for the subclustering analysis), removes markers.
+
+ESC (keyboard):
+ - Resets the plot to the original SAM object (removes subclustering), unselects all cells, removes markers.
+
+Enter (keyboard):
+ - If cells are selected, pressing Enter will identify marker genes for those cells. The bottom slider can be used to scroll through and display the ranked list of marker genes.
+
+Left/Right arrows (keyboard):
+ - Can be used to scroll through the slider/
+
+Subcluster (button widget):
+ - If cells are selected, pressing this button will rerun SAM on the selected cells.
+
+Density cluster (button widget):
+ - Pressing this button will perform density clustering on the current UMAP projection.
+
+Slider (upper widget):
+ - Selects the epsilon (distance) parameter for the density clustering algorithm.
+
+Slider (lower widget):
+ - If marker genes for a particular cluster have been identified, this slider scrolls through and displays the ranked list of marker genes.
+ - If marker genes were not identified, this slider scrolls through and displays the ranked list of genes according to their SAM weights.
+
+Text box:
+ - Type a gene ID and press enter to display the corresponding expression pattern.
 
 ## Requirements
  - `numpy`
