@@ -10,7 +10,6 @@ import utilities as ut
 import sklearn.manifold as man
 import sklearn.utils.sparsefuncs as sf
 import warnings
-import scanpy.api as sc
 #from ipywidgets import widgets, interactive
 
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
@@ -892,7 +891,9 @@ class SAM(object):
                       method='gauss', **kwargs):
         """
         Experimental -- running UMAP on the diffusion components        
-        """             
+        """        
+        import scanpy.api as sc
+
         sc.pp.neighbors(self.adata,use_rep=use_rep,n_neighbors=self.k,
                                        metric=self.distance,method=method)
         sc.tl.diffmap(self.adata, n_comps=n_comps)
@@ -1186,6 +1187,8 @@ class SAM(object):
         
     
     def leiden_clustering(self, X=None, res = 1):
+        import scanpy.api as sc
+
         if X is None:            
             sc.tl.leiden(self.adata, resolution = res,
                              key_added='leiden_clusters')           
