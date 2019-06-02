@@ -24,7 +24,7 @@ Enter (keyboard):
  - If cells are selected, pressing Enter will identify marker genes for those cells. The bottom slider can be used to scroll through and display the ranked list of marker genes.
 
 Left/Right arrows (keyboard):
- - Can be used to scroll through the slider/
+ - Can be used to scroll through the bottom slider.
 
 Subcluster (button widget):
  - If cells are selected, pressing this button will rerun SAM on the selected cells.
