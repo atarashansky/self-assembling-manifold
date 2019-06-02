@@ -1603,7 +1603,8 @@ class point_selector:
         except IndexError:
             0; # do nothing
                 
-        #self.selected_points=np.array([])
+        self.selected_points=np.array([])
+        self.selected_cells=np.array([])
         
         self.fig.canvas.draw_idle()
 
