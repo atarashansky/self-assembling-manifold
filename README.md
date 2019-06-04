@@ -11,12 +11,13 @@ Side note: to enable the interactivity in Jupyter notebooks please run `%matplot
 
 In brief, 
 
-You can now scroll hovering over the clustering button to change the clustering algorithm. The clustering parameter slider also changes depending on the clustering algorithm.
+You can now scroll while hovering over the clustering button to change the clustering algorithm. The clustering parameter slider also changes depending on the clustering algorithm.
 
 Added a new button to display any existing annotations in the AnnData.obs slot. Hovering over the button and scrolling will scroll through any existing annotations. Click on the button to display the desired annotation.
 
 When annotations (i.e. cluster assignments or annotations loaded from a file) are displayed, a legend appears on the righthand side in the light-gray axes. Clicking on the box next to the annotation label will unselect/select those corresponding cells. Unselected cells appear gray in the plot. The remaining cells can then be subclustered using the "Subcluster" button.
 
+You can interactively annotate the plot by double clicking and typing out a label. Pressing enter will place the label. Pressing escape will remove the label.
 
 # Update (6/1/2019) -- SAM version 0.5.0
 
