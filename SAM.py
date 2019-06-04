@@ -1564,14 +1564,16 @@ class point_selector:
         self.rax.set_yticks([])   
         
         axnext = self.fig.add_axes([0.80,0.26,0.19,0.05])            
-        self.button4= Button(axnext, 'Unselect all')
-        self.button4.on_clicked(self.unselect_all)            
+        self.button5= Button(axnext, 'Unselect all')
+        self.button5.on_clicked(self.unselect_all)            
         
         fc = self.ax.collections[0].get_facecolors().copy()
         if fc.shape[0] == 1:
             fc = np.tile(fc,(self.sam.adata.shape[0],1))
         self.fcolors = fc
       
+        self.writing_text=False
+        
     def unselect_all(self, event):
         self.selected[:]=False
         
@@ -1876,36 +1878,57 @@ class point_selector:
         
         self.fig.canvas.draw_idle()
 
-    def on_add_text(self,event, cid):
-        let = list(string.printable)
-        let.append(' ')
-        if event.key == 'enter':
-            self.fig.canvas.mpl_disconnect(cid)
-            self.cid4 = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
-        elif event.key == 'escape':
-            self.txt.remove()
-            self.fig.canvas.mpl_disconnect(cid)
-            self.cid4 = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)            
-        else:
-            if event.key in let:
-                self.txt.set_text(self.txt.get_text()+event.key)
-            elif event.key == 'backspace':
-                s = self.txt.get_text()
-                if len(s)>0:
-                    s = s[:-1]
-                self.txt.set_text(s)
+    def on_add_text(self,event, cid, cid1):
+        if not self.text_box.capturekeystrokes and not self.text_box2.capturekeystrokes:            
+            let = list(string.printable)
+            let.append(' ')
+            if event.key == 'enter':
+                self.fig.canvas.mpl_disconnect(cid)
+                self.fig.canvas.mpl_disconnect(cid1)
+                self.cid4 = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
+                self.cid1 = self.fig.canvas.mpl_connect('scroll_event', self.on_scroll) 
+                self.writing_text=False
+            elif event.key == 'escape':
+                self.txt.remove()
+                self.fig.canvas.mpl_disconnect(cid)
+                self.fig.canvas.mpl_disconnect(cid1)
+                self.cid4 = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press) 
+                self.cid1 = self.fig.canvas.mpl_connect('scroll_event', self.on_scroll) 
+                self.writing_text=False
+            else:
+                if event.key in let:
+                    self.txt.set_text(self.txt.get_text()+event.key)
+                elif event.key == 'backspace':
+                    s = self.txt.get_text()
+                    if len(s)>0:
+                        s = s[:-1]
+                    self.txt.set_text(s)
+    
+            self.fig.canvas.draw_idle()
 
+    
+    def on_txt_scroll(self, event):
+        if event.button == 'down':
+            self.txt.set_fontsize(self.txt.get_fontsize()*1.05)
+        elif event.button == 'up':
+            self.txt.set_fontsize(self.txt.get_fontsize()*0.95)
+        self.txt.set_position((event.xdata,event.ydata))
         self.fig.canvas.draw_idle()
-            
+        
+
     def on_press(self, event):    
         if event.button == 1:            
             x = event.xdata
             y = event.ydata
             
-            if event.dblclick:
+            if event.dblclick and not self.writing_text:
                 self.fig.canvas.mpl_disconnect(self.cid4)
-                cid = self.fig.canvas.mpl_connect('key_press_event', lambda event: self.on_add_text(event, cid))                
+                cid = self.fig.canvas.mpl_connect('key_press_event', lambda event: self.on_add_text(event, cid, cid1))
                 self.txt = self.ax.text(x, y, '', fontsize=12, clip_on=True)
+                
+                self.fig.canvas.mpl_disconnect(self.cid1)
+                cid1 = self.fig.canvas.mpl_connect('scroll_event', self.on_txt_scroll)
+                self.writing_text=True
                 
             else:   
                 if x is not None and y is not None:
@@ -2116,26 +2139,6 @@ class point_selector:
                 
             ss[np.invert(self.selected)] = self.scatter_dict['s']/1.5
             self.ax.collections[0].set_sizes(ss)
-            
-            #lw = self.ax.collections[0].get_linewidths().copy()
-            #ec = self.ax.collections[0].get_edgecolors().copy()
-            #ss = self.ax.collections[0].get_sizes().copy()
-
-            #if len(ss) == 1:
-            #    ss = np.ones(offsets.shape[0])*ss[0]
-                
-            #if ec.shape[0] == 1:
-            #    ec = np.tile(ec,(offsets.shape[0],1))
-            #if len(lw) == 1:
-            #    lw = np.ones(offsets.shape[0])*lw[0]
-            #lw = np.array(lw)
-            #lw[self.selected] = 1
-            #ec[self.selected,:] = np.array([0,0,0,1])
-            #ss[self.selected] = self.scatter_dict['s']*1.5
-
-            #self.ax.collections[0].set_linewidths(lw)
-            #self.ax.collections[0].set_edgecolors(ec)
-            #self.ax.collections[0].set_sizes(ss)
             
         self.lastX = xn
         self.lastY = yn
