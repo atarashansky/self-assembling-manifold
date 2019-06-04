@@ -1516,42 +1516,49 @@ class point_selector:
         self.eps = 0.25
         
         # Top row
-        axbox = self.fig.add_axes([0.45,0.14,0.48,0.05])            
+        axbox = self.fig.add_axes([0.45,0.165,0.48,0.05])            
         self.text_box = TextBox(axbox, '', initial='')            
         self.text_box.on_submit(self.show_expression)
         
-        axnext = self.fig.add_axes([0.12,0.14,0.3,0.05])            
+        axnext = self.fig.add_axes([0.12,0.165,0.3,0.05])            
         self.button= Button(axnext, 'Subcluster')
         self.button.on_clicked(self.subcluster)
         
         # Middle row
-        axnext = self.fig.add_axes([0.12,0.08,0.3,0.05])            
+        axnext = self.fig.add_axes([0.12,0.105,0.3,0.05])            
         self.button2= Button(axnext, 'Louvain cluster')
         self.button2.on_clicked(self.louvain_cluster)
                     
-        axslider = self.fig.add_axes([0.45,0.08,0.48,0.022],facecolor='lightgoldenrodyellow')
+        axslider = self.fig.add_axes([0.45,0.105,0.48,0.022],facecolor='lightgoldenrodyellow')
         
         self.slider1 = Slider(axslider, '', 0, 50, valinit=0, valstep=1)
         self.slider1.on_changed(self.gene_update)
         
-        axslider = self.fig.add_axes([0.45,0.11,0.48,0.022],facecolor='lightgoldenrodyellow')
+        axslider = self.fig.add_axes([0.45,0.135,0.48,0.022],facecolor='lightgoldenrodyellow')
         
         self.slider2 = Slider(axslider, '', 0.1, 10, valinit=0, valstep=0.1)
         self.slider2.on_changed(self.eps_update)            
         self.slider2.set_val(1)
          
         # Bottom row
-        axnext = self.fig.add_axes([0.12,0.02,0.2,0.05])            
+        axnext = self.fig.add_axes([0.12,0.045,0.2,0.05])            
         self.button3= Button(axnext, '')
         self.button3.on_clicked(self.annotate)        
 
-        axnext = self.fig.add_axes([0.33,0.02,0.2,0.05])            
+        axnext = self.fig.add_axes([0.33,0.045,0.2,0.05])            
         self.button4= Button(axnext, 'Save figure')
         self.button4.on_clicked(self.save_fig) 
         
-        axbox = self.fig.add_axes([0.55,0.02,0.38,0.05])            
+        axbox = self.fig.add_axes([0.55,0.045,0.38,0.05])            
         self.text_box2 = TextBox(axbox, '', initial='')   
         self.text_box2.on_submit(self.clip_text_settings)
+        
+        #very bottom
+        axslider = self.fig.add_axes([0.12,0.015,0.81,0.022],facecolor='lightgray')        
+        self.slider3 = Slider(axslider, '', 0, 1, valinit=0, valstep=0)
+        self.slider3.set_active(False)
+        self.slider3.on_changed(self.threshold_selection)
+        
         
         self.markers = None
         
@@ -1574,6 +1581,30 @@ class point_selector:
       
         self.writing_text=False
         
+        self.curr_lim = self.ax.get_xlim(),self.ax.get_ylim()
+
+    def threshold_selection(self, val):
+        if self.sam_subcluster is None:
+            s=self.sam;
+        else:
+            s=self.sam_subcluster
+            
+        self.selected[:]=False
+        self.selected[self.gene_expression>=val]=True
+        self.selected_cells=np.array(list(s.adata.obs_names))[self.selected]
+        
+        fc = self.fcolors.copy()
+        fc[np.invert(self.selected),:] = np.array([0.7,0.7,0.7,0.45])
+        self.ax.collections[0].set_facecolors(fc)
+        
+        ss = self.ax.collections[0].get_sizes().copy()
+        if len(ss) == 1:
+            ss = np.ones(self.selected.size)*self.scatter_dict['s']
+            
+        ss[np.invert(self.selected)] = self.scatter_dict['s']/1.5
+        self.ax.collections[0].set_sizes(ss)
+        self.fig.canvas.draw_idle()        
+                
     def unselect_all(self, event):
         self.selected[:]=False
         
@@ -1588,17 +1619,16 @@ class point_selector:
             self.active_rects[:] = False
         
             for i,rec in enumerate(self.ANN_RECTS):
-                rec.set_facecolor('lightgray')            
-            
-                
+                rec.set_facecolor('lightgray')
+
         lw = self.ax.collections[0].get_linewidths().copy()
         ss = self.ax.collections[0].get_sizes().copy()
         fc = self.ax.collections[0].get_facecolors().copy()
 
         if len(lw) == 1:
-            lw = np.ones(self.selected.size)*lw[0]          
+            lw = np.ones(self.selected.size)*lw[0]
         if len(ss) == 1:
-            ss = np.ones(self.selected.size)*ss[0]                          
+            ss = np.ones(self.selected.size)*ss[0]
         if fc.shape[0] == 1:
             fc = np.tile(fc,(self.selected.size,1))
         lw=np.array(lw);
@@ -1610,13 +1640,9 @@ class point_selector:
             
         self.ax.collections[0].set_facecolors(fc)
         self.ax.collections[0].set_linewidths(lw)
-        self.ax.collections[0].set_sizes(ss)            
+        self.ax.collections[0].set_sizes(ss)
         self.fig.canvas.draw_idle()
-            
-        
-        
-        
-        
+                  
     def clip_text_settings(self,event):
         self.text_box2.text_disp.set_clip_on(True)
         self.fig.canvas.draw_idle()
@@ -1626,9 +1652,10 @@ class point_selector:
             items=[]
             for ax in axs:
                 ax.figure.canvas.draw()
-                items += ax.get_xticklabels() + ax.get_yticklabels() 
-                items += [ax, ax.title]
-                items += [ax, ax.title, ax.xaxis.label, ax.yaxis.label]
+                items=[ax]
+                #items += ax.get_xticklabels() + ax.get_yticklabels() 
+                #items += [ax, ax.title]
+                #items += [ax, ax.title, ax.xaxis.label, ax.yaxis.label]
                 
             bbox = Bbox.union([item.get_window_extent() for item in items])
             return bbox.expanded(1.0 + pad, 1.0 + pad)
@@ -1796,6 +1823,8 @@ class point_selector:
             self.rax.set_yticks([])
             self.ANN_TEXTS = []
             self.ANN_RECTS = []
+            self.curr_lim = self.ax.get_xlim(),self.ax.get_ylim()
+            
             fc = self.ax.collections[0].get_facecolors().copy()
             if fc.shape[0] == 1:
                 fc = np.tile(fc,(self.sam_subcluster.adata.shape[0],1))
@@ -1857,26 +1886,38 @@ class point_selector:
             
             self.fig.add_subplot(111)
             self.ax = self.fig.axes[-1]
-            s.show_gene_expression(gene,axes = self.ax, projection = self.projection)
+            _,c = s.show_gene_expression(gene,axes = self.ax, projection = self.projection)
                                  
+            self.selected[:] = True
+            self.selected_cells = np.array(list(s.adata.obs_names))
+            self.rax.cla()
+            self.rax.set_xticks([])
+            self.rax.set_yticks([])
+            self.ANN_TEXTS = []
+            self.ANN_RECTS = []        
+                        
+            fc = self.ax.collections[0].get_facecolors().copy()
+            if fc.shape[0] == 1:
+                fc = np.tile(fc,(s.adata.shape[0],1))
+            self.fcolors = fc
 
+            self.gene_expression = c
+            
+            self.slider3.set_active(True)
+            self.slider3.valmin = 0
+            self.slider3.valmax = c.max()+(c.max()-c.min())/100
+            self.slider3.valstep = (c.max()-c.min())/100
+            self.slider3.set_val(0)
+            self.slider3.valinit=0
+            self.slider3.ax.set_xlim(self.slider3.valmin,self.slider3.valmax)                
+            self.slider3.ax.set_facecolor('lightgoldenrodyellow')
+            
+            self.ax.set_xlim(self.curr_lim[0])
+            self.ax.set_ylim(self.curr_lim[1])
+            
+            self.fig.canvas.draw_idle()
         except IndexError:
             0; # do nothing
-                
-        self.selected[:] = True
-        self.selected_cells = np.array(list(s.adata.obs_names))
-        self.rax.cla()
-        self.rax.set_xticks([])
-        self.rax.set_yticks([])
-        self.ANN_TEXTS = []
-        self.ANN_RECTS = []        
-        
-        fc = self.ax.collections[0].get_facecolors().copy()
-        if fc.shape[0] == 1:
-            fc = np.tile(fc,(s.adata.shape[0],1))
-        self.fcolors = fc
-        
-        self.fig.canvas.draw_idle()
 
     def on_add_text(self,event, cid, cid1):
         if not self.text_box.capturekeystrokes and not self.text_box2.capturekeystrokes:            
@@ -1905,7 +1946,6 @@ class point_selector:
                     self.txt.set_text(s)
     
             self.fig.canvas.draw_idle()
-
     
     def on_txt_scroll(self, event):
         if event.button == 'down':
@@ -1915,7 +1955,6 @@ class point_selector:
         self.txt.set_position((event.xdata,event.ydata))
         self.fig.canvas.draw_idle()
         
-
     def on_press(self, event):    
         if event.button == 1:            
             x = event.xdata
@@ -1968,7 +2007,8 @@ class point_selector:
             self.markers = None
             self.selected[:] = True
             self.selected_cells = np.array(list(s.adata.obs_names))
-
+            self.slider3.set_active(False)
+            self.slider3.ax.set_facecolor('lightgray')
             self.rax.cla()
             self.rax.set_xticks([])
             self.rax.set_yticks([])
@@ -1978,6 +2018,7 @@ class point_selector:
             if fc.shape[0] == 1:
                 fc = np.tile(fc,(s.adata.shape[0],1))
             self.fcolors = fc
+            self.curr_lim = self.ax.get_xlim(),self.ax.get_ylim()
             self.fig.canvas.draw_idle()
 
     def on_key_press(self, event):
@@ -2017,8 +2058,6 @@ class point_selector:
                 self.markers = np.array(list(s.adata.var_names[np.argsort(-wmu)]))
             
             elif event.key == 'escape':
-    
-                
                 for i in self.ax.figure.axes:
                     if type(i) is self.AXSUBPLOT:
                         i.remove()
@@ -2035,6 +2074,9 @@ class point_selector:
                 self.selected_cells=np.array(list(self.sam.adata.obs_names))
                 self.markers = None
                 
+                self.slider3.set_active(False)
+                self.slider3.ax.set_facecolor('lightgray')
+                
                 self.rax.cla()
                 self.rax.set_xticks([])
                 self.rax.set_yticks([])
@@ -2044,6 +2086,7 @@ class point_selector:
                 if fc.shape[0] == 1:
                     fc = np.tile(fc,(self.sam.adata.shape[0],1))
                 self.fcolors = fc
+                self.curr_lim = self.ax.get_xlim(),self.ax.get_ylim()
                 self.fig.canvas.draw_idle()            
         
     def on_release(self, event):
@@ -2090,6 +2133,7 @@ class point_selector:
             
             self.ax.set_ylim([y0p,y1p])
             self.ax.set_xlim([x0p,x1p])
+            self.curr_lim = [x0p,x1p],[y0p,y1p]
             self.fig.canvas.draw_idle()
         
     def on_motion(self, event, xo, yo):
@@ -2172,7 +2216,7 @@ class point_selector:
                                     zoom_point_y+new_height*(rely)]
                 self.ax.set_xlim(curr_xlim)
                 self.ax.set_ylim(curr_ylim)
-            
+                self.curr_lim = curr_xlim,curr_ylim
                 self.fig.canvas.draw_idle()
         elif event.inaxes is self.button2.ax:
             if event.button == 'up':
@@ -2293,4 +2337,4 @@ class point_selector:
                 self.fig.canvas.draw_idle()
             
 
-            
+      
