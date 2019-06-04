@@ -15,7 +15,7 @@ You can now scroll while hovering over the clustering button to change the clust
 
 Added a new button to display any existing annotations in the AnnData.obs slot. Hovering over the button and scrolling will scroll through any existing annotations. Click on the button to display the desired annotation.
 
-When annotations (i.e. cluster assignments or annotations loaded from a file) are displayed, a legend appears on the righthand side in the light-gray axes. Clicking on the box next to the annotation label will unselect/select those corresponding cells. Unselected cells appear gray in the plot. The remaining cells can then be subclustered using the "Subcluster" button.
+When annotations (i.e. cluster assignments or annotations loaded from a file) are displayed, a legend appears on the righthand side in the light-gray axes. Clicking on the box next to the annotation label will unselect/select those corresponding cells. Unselected cells appear gray in the plot. The remaining cells can then be subclustered using the "Subcluster" button. You can scroll up and down to see all annotation labels if they do not all fit in the box.
 
 You can interactively annotate the plot by double clicking and typing out a label. Pressing enter will place the label. Pressing escape will remove the label.
 
