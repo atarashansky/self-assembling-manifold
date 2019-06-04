@@ -1642,55 +1642,55 @@ class point_selector:
             self.fig.savefig(path, bbox_inches=extent)
     
     def on_pick(self,event):
-        
-        if self.sam_subcluster is None:
-            s = self.sam
-        else:
-            s = self.sam_subcluster
-        
-        a = event.artist
-        
-        for i,rec in enumerate(self.ANN_RECTS):
-            if a is rec:
-                if self.active_rects[i]:
-                    rec.set_facecolor('lightgray')
-                else:
-                    rec.set_facecolor(self.rect_colors[i,:])
-                self.active_rects[i] = not self.active_rects[i]
-                break;
-                
-        cl = s.adata.obs[self.button3.ax.get_children()[0].get_text()].get_values()
-        clu = np.unique(cl)
-        idx = np.where(cl == clu[i])[0]
-
-        lw = self.ax.collections[0].get_linewidths().copy()
-        ss = self.ax.collections[0].get_sizes().copy()
-        fc = self.ax.collections[0].get_facecolors().copy()
-
-        if len(lw) == 1:
-            lw = np.ones(cl.size)*lw[0]          
-        if len(ss) == 1:
-            ss = np.ones(cl.size)*ss[0]                          
-        if fc.shape[0] == 1:
-            fc = np.tile(fc,(cl.size,1))
-        lw=np.array(lw);
-        
-        if self.active_rects[i]:
-            self.selected[idx] = True
-            ss[idx] = self.scatter_dict['s']
-            lw[idx] = 0.0
-            fc[idx,:] = self.rect_colors[i,:]
-        else:
-            self.selected[idx] = False            
-            lw[idx] = 0.0
-            ss[idx] = self.scatter_dict['s']/1.5
-            fc[idx,:] = np.array([0.7,0.7,0.7,0.45])
+        if event.mouseevent.button == 1:
+            if self.sam_subcluster is None:
+                s = self.sam
+            else:
+                s = self.sam_subcluster
             
-        self.selected_cells = np.array(list(s.adata.obs_names))[self.selected]            
-        self.ax.collections[0].set_facecolors(fc)
-        self.ax.collections[0].set_linewidths(lw)
-        self.ax.collections[0].set_sizes(ss)            
-        self.fig.canvas.draw_idle()
+            a = event.artist
+            
+            for i,rec in enumerate(self.ANN_RECTS):
+                if a is rec:
+                    if self.active_rects[i]:
+                        rec.set_facecolor('lightgray')
+                    else:
+                        rec.set_facecolor(self.rect_colors[i,:])
+                    self.active_rects[i] = not self.active_rects[i]
+                    break;
+                    
+            cl = s.adata.obs[self.button3.ax.get_children()[0].get_text()].get_values()
+            clu = np.unique(cl)
+            idx = np.where(cl == clu[i])[0]
+    
+            lw = self.ax.collections[0].get_linewidths().copy()
+            ss = self.ax.collections[0].get_sizes().copy()
+            fc = self.ax.collections[0].get_facecolors().copy()
+    
+            if len(lw) == 1:
+                lw = np.ones(cl.size)*lw[0]          
+            if len(ss) == 1:
+                ss = np.ones(cl.size)*ss[0]                          
+            if fc.shape[0] == 1:
+                fc = np.tile(fc,(cl.size,1))
+            lw=np.array(lw);
+            
+            if self.active_rects[i]:
+                self.selected[idx] = True
+                ss[idx] = self.scatter_dict['s']
+                lw[idx] = 0.0
+                fc[idx,:] = self.rect_colors[i,:]
+            else:
+                self.selected[idx] = False            
+                lw[idx] = 0.0
+                ss[idx] = self.scatter_dict['s']/1.5
+                fc[idx,:] = np.array([0.7,0.7,0.7,0.45])
+                
+            self.selected_cells = np.array(list(s.adata.obs_names))[self.selected]            
+            self.ax.collections[0].set_facecolors(fc)
+            self.ax.collections[0].set_linewidths(lw)
+            self.ax.collections[0].set_sizes(ss)            
+            self.fig.canvas.draw_idle()
     
     def annotate(self,event):
         if self.button3.ax.get_children()[0].get_text() != '':
