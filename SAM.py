@@ -1726,7 +1726,7 @@ class point_selector:
             self.ANN_RECTS = []
             
             matplotlib.cm.get_cmap(sc['cmap'])
-            self.rect_colors = matplotlib.cm.get_cmap('rainbow')(np.linspace(0,1,clu.size))
+            self.rect_colors = matplotlib.cm.get_cmap(sc['cmap'])(np.linspace(0,1,clu.size))
             self.fcolors = self.rect_colors[inv,:]
             for i,c in enumerate(clu):
                 t = self.rax.text(x,y,str(c), clip_on=True, color = 'k', fontweight='bold')
