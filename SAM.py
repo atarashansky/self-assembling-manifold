@@ -1558,9 +1558,61 @@ class point_selector:
         
         self.ANN_TEXTS=[]
         self.ANN_RECTS=[]
-        self.rax = self.fig.add_axes([0.80, 0.26, 0.19, 0.62], facecolor='lightgray')
+        self.rax = self.fig.add_axes([0.80, 0.31, 0.19, 0.57], facecolor='lightgray')
         self.rax.set_xticks([])
-        self.rax.set_yticks([])        
+        self.rax.set_yticks([])   
+        
+        axnext = self.fig.add_axes([0.80,0.26,0.19,0.05])            
+        self.button4= Button(axnext, 'Unselect all')
+        self.button4.on_clicked(self.unselect_all)            
+        
+        fc = self.ax.collections[0].get_facecolors().copy()
+        if fc.shape[0] == 1:
+            fc = np.tile(fc,(self.sam.adata.shape[0],1))
+        self.fcolors = fc
+      
+    def unselect_all(self, event):
+        self.selected[:]=False
+        
+        if self.sam_subcluster is None:
+            s = self.sam
+        else:
+            s = self.sam_subcluster
+            
+        self.selected_cells = np.array(list(s.adata.obs_names))[self.selected]
+        
+        if len(self.ANN_RECTS) > 0:
+            self.active_rects[:] = False
+        
+            for i,rec in enumerate(self.ANN_RECTS):
+                rec.set_facecolor('lightgray')            
+            
+                
+        lw = self.ax.collections[0].get_linewidths().copy()
+        ss = self.ax.collections[0].get_sizes().copy()
+        fc = self.ax.collections[0].get_facecolors().copy()
+
+        if len(lw) == 1:
+            lw = np.ones(self.selected.size)*lw[0]          
+        if len(ss) == 1:
+            ss = np.ones(self.selected.size)*ss[0]                          
+        if fc.shape[0] == 1:
+            fc = np.tile(fc,(self.selected.size,1))
+        lw=np.array(lw);
+        
+
+        lw[:] = 0.0
+        ss[:] = self.scatter_dict['s']/1.5
+        fc[:,:] = np.array([0.7,0.7,0.7,0.45])
+            
+        self.ax.collections[0].set_facecolors(fc)
+        self.ax.collections[0].set_linewidths(lw)
+        self.ax.collections[0].set_sizes(ss)            
+        self.fig.canvas.draw_idle()
+            
+        
+        
+        
         
     def clip_text_settings(self,event):
         self.text_box2.text_disp.set_clip_on(True)
@@ -1627,7 +1679,7 @@ class point_selector:
             self.selected[idx] = True
             ss[idx] = self.scatter_dict['s']
             lw[idx] = 0.0
-            fc[idx,:] = self.rect_colors[clu[i],:]
+            fc[idx,:] = self.rect_colors[i,:]
         else:
             self.selected[idx] = False            
             lw[idx] = 0.0
@@ -1660,7 +1712,7 @@ class point_selector:
             self.selected[:] = True
             self.selected_cells = np.array(list(s.adata.obs_names))
             
-            clu = np.unique(s.adata.obs[sc['c']].get_values())
+            clu,inv = np.unique(s.adata.obs[sc['c']].get_values(),return_inverse=True)
             
             s = 0;
             
@@ -1674,8 +1726,8 @@ class point_selector:
             self.ANN_RECTS = []
             
             matplotlib.cm.get_cmap(sc['cmap'])
-            
             self.rect_colors = matplotlib.cm.get_cmap('rainbow')(np.linspace(0,1,clu.size))
+            self.fcolors = self.rect_colors[inv,:]
             for i,c in enumerate(clu):
                 t = self.rax.text(x,y,str(c), clip_on=True, color = 'k', fontweight='bold')
                 p = self.rax.add_patch(Rectangle((0.05,y), 0.14, 0.025, picker = True,
@@ -1741,7 +1793,11 @@ class point_selector:
             self.rax.set_yticks([])
             self.ANN_TEXTS = []
             self.ANN_RECTS = []
-    
+            fc = self.ax.collections[0].get_facecolors().copy()
+            if fc.shape[0] == 1:
+                fc = np.tile(fc,(self.sam_subcluster.adata.shape[0],1))
+            self.fcolors = fc    
+            
     def kmeans_cluster(self,event):
         if self.sam_subcluster is None:
             s=self.sam
@@ -1811,6 +1867,11 @@ class point_selector:
         self.rax.set_yticks([])
         self.ANN_TEXTS = []
         self.ANN_RECTS = []        
+        
+        fc = self.ax.collections[0].get_facecolors().copy()
+        if fc.shape[0] == 1:
+            fc = np.tile(fc,(s.adata.shape[0],1))
+        self.fcolors = fc
         
         self.fig.canvas.draw_idle()
 
@@ -1889,7 +1950,10 @@ class point_selector:
             self.rax.set_yticks([])
             self.ANN_TEXTS = []
             self.ANN_RECTS = []
-            
+            fc = self.ax.collections[0].get_facecolors().copy()
+            if fc.shape[0] == 1:
+                fc = np.tile(fc,(s.adata.shape[0],1))
+            self.fcolors = fc
             self.fig.canvas.draw_idle()
 
     def on_key_press(self, event):
@@ -1952,7 +2016,10 @@ class point_selector:
                 self.rax.set_yticks([])
                 self.ANN_TEXTS = []
                 self.ANN_RECTS = []
-                
+                fc = self.ax.collections[0].get_facecolors().copy()
+                if fc.shape[0] == 1:
+                    fc = np.tile(fc,(self.sam.adata.shape[0],1))
+                self.fcolors = fc
                 self.fig.canvas.draw_idle()            
         
     def on_release(self, event):
@@ -1964,13 +2031,6 @@ class point_selector:
             if self.cid_motion is not None:
                 self.fig.canvas.mpl_disconnect(self.cid_motion)
                 
-            if not np.any(self.selected):
-                if self.sam_subcluster is None:
-                    s=self.sam
-                else:
-                    s=self.sam_subcluster                
-                self.selected[:] = True
-                self.selected_cells = np.array(list(s.adata.obs_names))
         elif event.button == 2:
             if self.cid_panning is not None:
                 self.fig.canvas.mpl_disconnect(self.cid_panning)            
@@ -2034,9 +2094,6 @@ class point_selector:
         sp = np.where(np.logical_and(np.logical_and(offsets[:,0]>x1,offsets[:,0]<x2),
                        np.logical_and(offsets[:,1]>y1,offsets[:,1]<y2)))[0]
         
-        if sp.size > 0 and np.all(self.selected):
-            self.selected[:]=False
-            self.selected_cells = np.array([])
             
         if sp.size>0:
             self.selected[sp] = True
@@ -2048,25 +2105,36 @@ class point_selector:
             
             self.selected_cells = np.array(list(s.adata.obs_names))[self.selected]
             
-            lw = self.ax.collections[0].get_linewidths().copy()
-            ec = self.ax.collections[0].get_edgecolors().copy()
+            fc = self.fcolors.copy()
+            fc[np.invert(self.selected),:] = np.array([0.7,0.7,0.7,0.45])
+            self.ax.collections[0].set_facecolors(fc)
+            
             ss = self.ax.collections[0].get_sizes().copy()
-
             if len(ss) == 1:
-                ss = np.ones(offsets.shape[0])*ss[0]
+                ss = np.ones(offsets.shape[0])*self.scatter_dict['s']
                 
-            if ec.shape[0] == 1:
-                ec = np.tile(ec,(offsets.shape[0],1))
-            if len(lw) == 1:
-                lw = np.ones(offsets.shape[0])*lw[0]
-            lw = np.array(lw)
-            lw[self.selected] = 1
-            ec[self.selected,:] = np.array([0,0,0,1])
-            ss[self.selected] = self.scatter_dict['s']*1.5
-
-            self.ax.collections[0].set_linewidths(lw)
-            self.ax.collections[0].set_edgecolors(ec)
+            ss[np.invert(self.selected)] = self.scatter_dict['s']/1.5
             self.ax.collections[0].set_sizes(ss)
+            
+            #lw = self.ax.collections[0].get_linewidths().copy()
+            #ec = self.ax.collections[0].get_edgecolors().copy()
+            #ss = self.ax.collections[0].get_sizes().copy()
+
+            #if len(ss) == 1:
+            #    ss = np.ones(offsets.shape[0])*ss[0]
+                
+            #if ec.shape[0] == 1:
+            #    ec = np.tile(ec,(offsets.shape[0],1))
+            #if len(lw) == 1:
+            #    lw = np.ones(offsets.shape[0])*lw[0]
+            #lw = np.array(lw)
+            #lw[self.selected] = 1
+            #ec[self.selected,:] = np.array([0,0,0,1])
+            #ss[self.selected] = self.scatter_dict['s']*1.5
+
+            #self.ax.collections[0].set_linewidths(lw)
+            #self.ax.collections[0].set_edgecolors(ec)
+            #self.ax.collections[0].set_sizes(ss)
             
         self.lastX = xn
         self.lastY = yn
