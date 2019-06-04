@@ -1824,7 +1824,7 @@ class point_selector:
             self.ANN_TEXTS = []
             self.ANN_RECTS = []
             self.curr_lim = self.ax.get_xlim(),self.ax.get_ylim()
-            
+            self.markers = None
             fc = self.ax.collections[0].get_facecolors().copy()
             if fc.shape[0] == 1:
                 fc = np.tile(fc,(self.sam_subcluster.adata.shape[0],1))
