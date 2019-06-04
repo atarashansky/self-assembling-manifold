@@ -1,3 +1,4 @@
+import string
 import numpy as np
 from anndata import AnnData
 import anndata
@@ -16,9 +17,10 @@ warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 
 try:
+    from matplotlib.transforms import Bbox
     import matplotlib.pyplot as plt
-    from matplotlib.widgets import TextBox, Button, Slider
-    #import matplotlib
+    from matplotlib.widgets import TextBox, Button, Slider, CheckButtons
+    import matplotlib
     from matplotlib.patches import Rectangle
     
     PLOTTING = True
@@ -129,6 +131,7 @@ class SAM(object):
             self.adata.layers['X_disp'] = self.adata.X
         
         self.run_args = {}
+        self.preprocess_args = {}        
 
     def preprocess_data(self, div=1, downsample=0, sum_norm=None,
                         include_genes=None, exclude_genes=None,
@@ -200,6 +203,19 @@ class SAM(object):
             filtered.
 
         """
+        
+        self.preprocess_args = {
+                'div':div,
+                'downsample':downsample,
+                'sum_norm':sum_norm,
+                'include_genes':include_genes,
+                'exclude_genes':exclude_genes,
+                'norm':norm,
+                'min_expression':min_expression,
+                'thresh':thresh,
+                'filter_genes':filter_genes
+                }
+        
         # load data
         try:
             D= self.adata_raw.X
@@ -891,9 +907,9 @@ class SAM(object):
                       method='gauss', **kwargs):
         """
         Experimental -- running UMAP on the diffusion components        
-        """        
+        """   
         import scanpy.api as sc
-
+          
         sc.pp.neighbors(self.adata,use_rep=use_rep,n_neighbors=self.k,
                                        metric=self.distance,method=method)
         sc.tl.diffmap(self.adata, n_comps=n_comps)
@@ -968,7 +984,7 @@ class SAM(object):
                 dt = projection
             
             if(axes is None):
-                plt.figure(figsize=(6,6))
+                plt.figure(figsize=(7,6))
                 axes = plt.gca()
             else:
                 do_GUI=False
@@ -1011,7 +1027,7 @@ class SAM(object):
             axes.figure.canvas.draw()
             
             if do_GUI:
-                axes.figure.subplots_adjust(bottom=0.2)                
+                axes.figure.subplots_adjust(bottom=0.26,right=0.8)                
                 self.ps = point_selector(axes,self, linewidth=linewidth,
                                          projection=projection, c=cstr, cmap=cmap,
                                          colorbar=colorbar, s=s, **kwargs)
@@ -1188,7 +1204,7 @@ class SAM(object):
     
     def leiden_clustering(self, X=None, res = 1):
         import scanpy.api as sc
-
+        
         if X is None:            
             sc.tl.leiden(self.adata, resolution = res,
                              key_added='leiden_clusters')           
@@ -1482,6 +1498,7 @@ class point_selector:
         self.cid2 = self.fig.canvas.mpl_connect('button_press_event', self.on_press)
         self.cid3 = self.fig.canvas.mpl_connect('button_release_event', self.on_release)
         self.cid4 = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
+        self.cid5 = self.fig.canvas.mpl_connect('pick_event', self.on_pick)
         
         self.cid_motion = None
         self.cid_panning = None
@@ -1490,35 +1507,188 @@ class point_selector:
   
         self.AXSUBPLOT = type(self.ax)
         
-        self.selected_points = np.array([])
-        self.selected_cells = np.array([])
+        self.selected = np.zeros(sam.adata.shape[0],dtype='bool')
+        self.selected[:] = True
+        self.selected_cells = np.array(list(sam.adata.obs_names))
         
         self.sam_subcluster = None
         self.eps = 0.25
         
-        axbox = self.fig.add_axes([0.5,0.08,0.48,0.05])            
+        # Top row
+        axbox = self.fig.add_axes([0.45,0.14,0.48,0.05])            
         self.text_box = TextBox(axbox, '', initial='')            
         self.text_box.on_submit(self.show_expression)
-
-        axnext = self.fig.add_axes([0.12,0.08,0.3,0.05])            
+        
+        axnext = self.fig.add_axes([0.12,0.14,0.3,0.05])            
         self.button= Button(axnext, 'Subcluster')
         self.button.on_clicked(self.subcluster)
         
-        axnext = self.fig.add_axes([0.12,0.02,0.3,0.05])            
-        self.button2= Button(axnext, 'Density Cluster')
-        self.button2.on_clicked(self.density_cluster)
+        # Middle row
+        axnext = self.fig.add_axes([0.12,0.08,0.3,0.05])            
+        self.button2= Button(axnext, 'Louvain cluster')
+        self.button2.on_clicked(self.louvain_cluster)
                     
-        axslider = self.fig.add_axes([0.45,0.02,0.48,0.022],facecolor='lightgoldenrodyellow')
+        axslider = self.fig.add_axes([0.45,0.08,0.48,0.022],facecolor='lightgoldenrodyellow')
         
         self.slider1 = Slider(axslider, '', 0, 50, valinit=0, valstep=1)
         self.slider1.on_changed(self.gene_update)
         
-        axslider = self.fig.add_axes([0.45,0.051,0.48,0.022],facecolor='lightgoldenrodyellow')
+        axslider = self.fig.add_axes([0.45,0.11,0.48,0.022],facecolor='lightgoldenrodyellow')
         
-        self.slider2 = Slider(axslider, '', 0.25, 2, valinit=0.5, valstep=0.01)
+        self.slider2 = Slider(axslider, '', 0.1, 10, valinit=0, valstep=0.1)
         self.slider2.on_changed(self.eps_update)            
+        self.slider2.set_val(1)
          
+        # Bottom row
+        axnext = self.fig.add_axes([0.12,0.02,0.2,0.05])            
+        self.button3= Button(axnext, '')
+        self.button3.on_clicked(self.annotate)        
+
+        axnext = self.fig.add_axes([0.33,0.02,0.2,0.05])            
+        self.button4= Button(axnext, 'Save figure')
+        self.button4.on_clicked(self.save_fig) 
+        
+        axbox = self.fig.add_axes([0.55,0.02,0.38,0.05])            
+        self.text_box2 = TextBox(axbox, '', initial='')   
+        self.text_box2.on_submit(self.clip_text_settings)
+        
         self.markers = None
+        
+        self.CLUSTER = 0
+        
+        self.ANN_TEXTS=[]
+        self.ANN_RECTS=[]
+        self.rax = self.fig.add_axes([0.80, 0.26, 0.19, 0.62], facecolor='lightgray')
+        self.rax.set_xticks([])
+        self.rax.set_yticks([])        
+        
+    def clip_text_settings(self,event):
+        self.text_box2.text_disp.set_clip_on(True)
+        self.fig.canvas.draw_idle()
+                   
+    def save_fig(self,event):
+        def full_extent(axs, pad=0.0):
+            items=[]
+            for ax in axs:
+                ax.figure.canvas.draw()
+                items += ax.get_xticklabels() + ax.get_yticklabels() 
+                items += [ax, ax.title]
+                items += [ax, ax.title, ax.xaxis.label, ax.yaxis.label]
+                
+            bbox = Bbox.union([item.get_window_extent() for item in items])
+            return bbox.expanded(1.0 + pad, 1.0 + pad)
+        
+        path = self.text_box2.text
+        if path != '':
+            axs=[]
+            for i in self.ax.figure.axes:
+                if type(i) is self.AXSUBPLOT:
+                    axs.append(i)
+            extent = full_extent(axs).transformed(self.fig.dpi_scale_trans.inverted())
+            if len(path.split('/'))>1:
+                ut.create_folder('/'.join(path.split('/')[:-1]))
+            self.fig.savefig(path, bbox_inches=extent)
+    
+    def on_pick(self,event):
+        
+        if self.sam_subcluster is None:
+            s = self.sam
+        else:
+            s = self.sam_subcluster
+        
+        a = event.artist
+        
+        for i,rec in enumerate(self.ANN_RECTS):
+            if a is rec:
+                if self.active_rects[i]:
+                    rec.set_facecolor('lightgray')
+                else:
+                    rec.set_facecolor(self.rect_colors[i,:])
+                self.active_rects[i] = not self.active_rects[i]
+                break;
+                
+        cl = s.adata.obs[self.button3.ax.get_children()[0].get_text()].get_values()
+        clu = np.unique(cl)
+        idx = np.where(cl == clu[i])[0]
+
+        lw = self.ax.collections[0].get_linewidths().copy()
+        ss = self.ax.collections[0].get_sizes().copy()
+        fc = self.ax.collections[0].get_facecolors().copy()
+
+        if len(lw) == 1:
+            lw = np.ones(cl.size)*lw[0]          
+        if len(ss) == 1:
+            ss = np.ones(cl.size)*ss[0]                          
+        if fc.shape[0] == 1:
+            fc = np.tile(fc,(cl.size,1))
+        lw=np.array(lw);
+        
+        if self.active_rects[i]:
+            self.selected[idx] = True
+            ss[idx] = self.scatter_dict['s']
+            lw[idx] = 0.0
+            fc[idx,:] = self.rect_colors[clu[i],:]
+        else:
+            self.selected[idx] = False            
+            lw[idx] = 0.0
+            ss[idx] = self.scatter_dict['s']/1.5
+            fc[idx,:] = np.array([0.7,0.7,0.7,0.45])
+            
+        self.selected_cells = np.array(list(s.adata.obs_names))[self.selected]            
+        self.ax.collections[0].set_facecolors(fc)
+        self.ax.collections[0].set_linewidths(lw)
+        self.ax.collections[0].set_sizes(ss)            
+        self.fig.canvas.draw_idle()
+    
+    def annotate(self,event):
+        if self.button3.ax.get_children()[0].get_text() != '':
+            if self.sam_subcluster is None:
+                s=self.sam
+            else:
+                s=self.sam_subcluster
+                
+                
+            for i in self.ax.figure.axes:
+                if type(i) is self.AXSUBPLOT:
+                    i.remove()
+            
+            sc = self.scatter_dict.copy() 
+            sc['c'] =self.button3.ax.get_children()[0].get_text()
+            self.fig.add_subplot(111)
+            self.ax = self.fig.axes[-1]
+            s.scatter(axes = self.ax, **sc)
+            self.selected[:] = True
+            self.selected_cells = np.array(list(s.adata.obs_names))
+            
+            clu = np.unique(s.adata.obs[sc['c']].get_values())
+            
+            s = 0;
+            
+            x=0.22;
+            y=0.95
+            
+            self.rax.cla()
+            self.rax.set_xticks([])
+            self.rax.set_yticks([])
+            self.ANN_TEXTS = []
+            self.ANN_RECTS = []
+            
+            matplotlib.cm.get_cmap(sc['cmap'])
+            
+            self.rect_colors = matplotlib.cm.get_cmap('rainbow')(np.linspace(0,1,clu.size))
+            for i,c in enumerate(clu):
+                t = self.rax.text(x,y,str(c), clip_on=True, color = 'k', fontweight='bold')
+                p = self.rax.add_patch(Rectangle((0.05,y), 0.14, 0.025, picker = True,
+                                                alpha=1,edgecolor='k', facecolor = self.rect_colors[i,:]))  
+                self.ANN_TEXTS.append(t)
+                self.ANN_RECTS.append(p)
+                y-=0.05
+            
+            self.active_rects = np.zeros(len(self.ANN_RECTS),dtype='bool')
+            self.active_rects[:]=True
+            
+            self.fig.canvas.draw_idle()
+        
     def eps_update(self,val):
         self.eps=val
     
@@ -1539,16 +1709,20 @@ class point_selector:
         self.fig.canvas.draw_idle()    
         
     def subcluster(self,event):
-        if self.selected_points.size > 0:
+        if not np.all(self.selected) and self.selected.sum() > 0:
             # add saved filtering parameters to SAM object so you can pass them here
             if self.sam_subcluster is None:
-                self.sam_subcluster = SAM(counts = self.sam.adata[
-                            self.sam.adata.obs_names[self.selected_points],:].copy())
+                self.sam_subcluster = SAM(counts = self.sam.adata_raw[
+                            self.selected_cells,:].copy())
             else:
-                self.sam_subcluster = SAM(counts = self.sam_subcluster.adata[
-                            self.sam_subcluster.adata.obs_names[self.selected_points],:].copy())
+                self.sam_subcluster = SAM(counts = self.sam_subcluster.adata_raw[
+                            self.selected_cells,:].copy())
             
-            #self.sam_subcluster.preprocess_data()
+            self.sam_subcluster.adata_raw.obs = self.sam.adata[
+                            self.selected_cells,:].obs
+                    
+            self.sam_subcluster.preprocess_data(**self.sam.preprocess_args)
+            
             self.sam_subcluster.run(**self.sam.run_args);
             
 
@@ -1559,9 +1733,23 @@ class point_selector:
             self.fig.add_subplot(111)
             self.ax = self.fig.axes[-1]
             self.sam_subcluster.scatter(axes = self.ax, **self.scatter_dict)
-            self.selected_points=np.array([])
-            self.selected_cells=np.array([])
-      
+            self.selected=np.zeros(self.sam_subcluster.adata.shape[0],dtype='bool')
+            self.selected[:]=True
+            self.selected_cells = np.array(list(self.sam_subcluster.adata.obs_names))
+            self.rax.cla()
+            self.rax.set_xticks([])
+            self.rax.set_yticks([])
+            self.ANN_TEXTS = []
+            self.ANN_RECTS = []
+    
+    def kmeans_cluster(self,event):
+        if self.sam_subcluster is None:
+            s=self.sam
+        else:
+            s=self.sam_subcluster
+            
+        s.kmeans_clustering(int(self.eps))
+
     def density_cluster(self,event):
         if self.sam_subcluster is None:
             s=self.sam
@@ -1570,20 +1758,30 @@ class point_selector:
             
         s.density_clustering(eps = self.eps)
         
+    def hdbscan_cluster(self,event):
+        if self.sam_subcluster is None:
+            s=self.sam
+        else:
+            s=self.sam_subcluster
+            
+        s.hdbknn_clustering(k = int(self.eps))
         
-        for i in self.ax.figure.axes:
-            if type(i) is self.AXSUBPLOT:
-                i.remove()
+    def leiden_cluster(self,event):
+        if self.sam_subcluster is None:
+            s=self.sam
+        else:
+            s=self.sam_subcluster
+            
+        s.leiden_clustering(res = self.eps)
         
-        sc = self.scatter_dict.copy() 
-        sc['c'] ='density_clusters'
-        self.fig.add_subplot(111)
-        self.ax = self.fig.axes[-1]
-        s.scatter(axes = self.ax, **sc)
-        self.selected_points=np.array([])        
-        self.selected_cells=np.array([])     
-        
-        
+    def louvain_cluster(self,event):
+        if self.sam_subcluster is None:
+            s=self.sam
+        else:
+            s=self.sam_subcluster
+            
+        s.louvain_clustering(res = self.eps)
+                
     def show_expression(self,gene):
         
         if self.sam_subcluster is None:
@@ -1606,22 +1804,56 @@ class point_selector:
         except IndexError:
             0; # do nothing
                 
-        self.selected_points=np.array([])
-        self.selected_cells=np.array([])
+        self.selected[:] = True
+        self.selected_cells = np.array(list(s.adata.obs_names))
+        self.rax.cla()
+        self.rax.set_xticks([])
+        self.rax.set_yticks([])
+        self.ANN_TEXTS = []
+        self.ANN_RECTS = []        
         
         self.fig.canvas.draw_idle()
 
-        
+    def on_add_text(self,event, cid):
+        let = list(string.printable)
+        let.append(' ')
+        if event.key == 'enter':
+            self.fig.canvas.mpl_disconnect(cid)
+            self.cid4 = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
+        elif event.key == 'escape':
+            self.txt.remove()
+            self.fig.canvas.mpl_disconnect(cid)
+            self.cid4 = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)            
+        else:
+            if event.key in let:
+                self.txt.set_text(self.txt.get_text()+event.key)
+            elif event.key == 'backspace':
+                s = self.txt.get_text()
+                if len(s)>0:
+                    s = s[:-1]
+                self.txt.set_text(s)
+
+        self.fig.canvas.draw_idle()
+            
     def on_press(self, event):    
         if event.button == 1:            
             x = event.xdata
             y = event.ydata
-            if x is not None and y is not None:
-                self.lastX = x
-                self.lastY = y
-                self.cid_motion = self.fig.canvas.mpl_connect('motion_notify_event', lambda event: self.on_motion(event, x, y))
-            else:
-                self.cid_motion = None
+            
+            if event.dblclick:
+                self.fig.canvas.mpl_disconnect(self.cid4)
+                cid = self.fig.canvas.mpl_connect('key_press_event', lambda event: self.on_add_text(event, cid))                
+                self.txt = self.ax.text(x, y, '', fontsize=12, clip_on=True)
+                
+            else:   
+                if x is not None and y is not None:
+                    self.lastX = x
+                    self.lastY = y
+                    self.cid_motion = self.fig.canvas.mpl_connect('motion_notify_event', lambda event: self.on_motion(event, x, y))
+                else:
+                    self.cid_motion = None
+            
+            
         elif event.button == 2:
             x = event.xdata
             y = event.ydata
@@ -1649,13 +1881,19 @@ class point_selector:
             s.scatter(axes = self.ax, **self.scatter_dict)
                     
             self.markers = None
-            self.selected_points=np.array([])
-            self.selected_cells = np.array([])
-                            
+            self.selected[:] = True
+            self.selected_cells = np.array(list(s.adata.obs_names))
+
+            self.rax.cla()
+            self.rax.set_xticks([])
+            self.rax.set_yticks([])
+            self.ANN_TEXTS = []
+            self.ANN_RECTS = []
+            
             self.fig.canvas.draw_idle()
 
     def on_key_press(self, event):
-        if not self.text_box.capturekeystrokes:
+        if not self.text_box.capturekeystrokes and not self.text_box2.capturekeystrokes:
             if self.sam_subcluster is not None:
                 s=self.sam_subcluster
             else:
@@ -1670,12 +1908,26 @@ class point_selector:
                     x=0
                 self.slider1.set_val(x)
             
-            elif event.key == 'enter' and self.selected_points.size > 0:
+            elif event.key == 'enter' and not np.all(self.selected) and self.selected.sum() > 0:
                 print('Identifying marker genes')
                 a = np.zeros(s.adata.shape[0])
-                a[self.selected_points]=1
+                a[self.selected]=1
                 self.markers = s.identify_marker_genes_rf(labels = a,clusters = 1)[1]
+            
+            elif event.key == 'shift' and not np.all(self.selected) and self.selected.sum() > 0:
+                print('Identifying highly weighted genes in target area')
+                l = s.adata.layers['X_knn_avg']
+                m = l.mean(0).A.flatten()
+                ms = l[self.selected,:].mean(0).A.flatten()
+                lsub = l[self.selected,:]
+                lsub.data[:] = lsub.data**2
+                ms2 = lsub.mean(0).A.flatten()
+                v = ms2 - 2*ms*m + m**2
+                wmu = np.zeros(v.size)
+                wmu[m>0] = v[m>0] / m[m>0]
                 
+                self.markers = np.array(list(s.adata.var_names[np.argsort(-wmu)]))
+            
             elif event.key == 'escape':
     
                 
@@ -1690,10 +1942,17 @@ class point_selector:
                 self.ax = self.fig.axes[-1]
                 self.sam.scatter(axes = self.ax, **self.scatter_dict)
                 
-                
-                self.selected_points=np.array([])
-                self.selected_cells=np.array([])
+                self.selected=np.zeros(self.sam.adata.shape[0],dtype='bool')
+                self.selected[:]=True
+                self.selected_cells=np.array(list(self.sam.adata.obs_names))
                 self.markers = None
+                
+                self.rax.cla()
+                self.rax.set_xticks([])
+                self.rax.set_yticks([])
+                self.ANN_TEXTS = []
+                self.ANN_RECTS = []
+                
                 self.fig.canvas.draw_idle()            
         
     def on_release(self, event):
@@ -1704,13 +1963,20 @@ class point_selector:
                         
             if self.cid_motion is not None:
                 self.fig.canvas.mpl_disconnect(self.cid_motion)
+                
+            if not np.any(self.selected):
+                if self.sam_subcluster is None:
+                    s=self.sam
+                else:
+                    s=self.sam_subcluster                
+                self.selected[:] = True
+                self.selected_cells = np.array(list(s.adata.obs_names))
         elif event.button == 2:
             if self.cid_panning is not None:
                 self.fig.canvas.mpl_disconnect(self.cid_panning)            
 
         
         self.fig.canvas.draw_idle()
-
 
     def on_motion_pan(self, event):
 
@@ -1768,16 +2034,19 @@ class point_selector:
         sp = np.where(np.logical_and(np.logical_and(offsets[:,0]>x1,offsets[:,0]<x2),
                        np.logical_and(offsets[:,1]>y1,offsets[:,1]<y2)))[0]
         
-        
+        if sp.size > 0 and np.all(self.selected):
+            self.selected[:]=False
+            self.selected_cells = np.array([])
+            
         if sp.size>0:
-            self.selected_points = np.unique(np.append(self.selected_points,sp)).astype('int')
+            self.selected[sp] = True
             
             if self.sam_subcluster is None:
                 s=self.sam
             else:
                 s=self.sam_subcluster
             
-            self.selected_cells = np.array(list(s.adata.obs_names[self.selected_points]))
+            self.selected_cells = np.array(list(s.adata.obs_names))[self.selected]
             
             lw = self.ax.collections[0].get_linewidths().copy()
             ec = self.ax.collections[0].get_edgecolors().copy()
@@ -1791,9 +2060,9 @@ class point_selector:
             if len(lw) == 1:
                 lw = np.ones(offsets.shape[0])*lw[0]
             lw = np.array(lw)
-            lw[self.selected_points] = 1
-            ec[self.selected_points,:] = np.array([0,0,0,1])
-            ss[self.selected_points] = self.scatter_dict['s']*1.5
+            lw[self.selected] = 1
+            ec[self.selected,:] = np.array([0,0,0,1])
+            ss[self.selected] = self.scatter_dict['s']*1.5
 
             self.ax.collections[0].set_linewidths(lw)
             self.ax.collections[0].set_edgecolors(ec)
@@ -1804,32 +2073,152 @@ class point_selector:
         self.fig.canvas.draw_idle()
     
     def on_scroll(self, event):
-        y0,y1 = self.ax.get_ylim()
-        x0,x1 = self.ax.get_xlim()
-        zoom_point_x = event.xdata
-        zoom_point_y = event.ydata
-        
-        if zoom_point_x is not None and zoom_point_y is not None:
-           
-            if event.button == 'up':
-                scale_change = -0.1
-        
-            elif event.button == 'down':
-                scale_change = 0.1
-            
-        
-            new_width = (x1-x0)*(1+scale_change)
-            new_height= (y1-y0)*(1+scale_change)
-        
-            relx = (x1-zoom_point_x)/(x1-x0)
-            rely = (y1-zoom_point_y)/(y1-y0)
-            curr_xlim = [zoom_point_x-new_width*(1-relx),
-                        zoom_point_x+new_width*(relx)]
-            curr_ylim = [zoom_point_y-new_height*(1-rely),
-                                zoom_point_y+new_height*(rely)]
-            self.ax.set_xlim(curr_xlim)
-            self.ax.set_ylim(curr_ylim)
-        
-            self.fig.canvas.draw_idle()    
-        
 
+        if event.inaxes is self.ax:
+            y0,y1 = self.ax.get_ylim()
+            x0,x1 = self.ax.get_xlim()
+            zoom_point_x = event.xdata
+            zoom_point_y = event.ydata
+            
+            if zoom_point_x is not None and zoom_point_y is not None:
+               
+                if event.button == 'up':
+                    scale_change = -0.1
+            
+                elif event.button == 'down':
+                    scale_change = 0.1
+                
+            
+                new_width = (x1-x0)*(1+scale_change)
+                new_height= (y1-y0)*(1+scale_change)
+            
+                relx = (x1-zoom_point_x)/(x1-x0)
+                rely = (y1-zoom_point_y)/(y1-y0)
+                curr_xlim = [zoom_point_x-new_width*(1-relx),
+                            zoom_point_x+new_width*(relx)]
+                curr_ylim = [zoom_point_y-new_height*(1-rely),
+                                    zoom_point_y+new_height*(rely)]
+                self.ax.set_xlim(curr_xlim)
+                self.ax.set_ylim(curr_ylim)
+            
+                self.fig.canvas.draw_idle()
+        elif event.inaxes is self.button2.ax:
+            if event.button == 'up':
+                self.CLUSTER+=1
+            elif event.button == 'down':
+                self.CLUSTER-=1
+            
+            if self.CLUSTER < 0: self.CLUSTER=0;
+            if self.CLUSTER > 4: self.CLUSTER=4;
+            
+            if self.CLUSTER == 0:
+                self.button2.disconnect(0)
+                self.button2.cnt=0
+                self.button2.ax.get_children()[0].set_text('Louvain cluster')
+                self.button2.on_clicked(self.louvain_cluster)
+                self.slider2.valmin = 0.1
+                self.slider2.valmax = 10
+                self.slider2.valstep = 0.1
+                self.slider2.set_val(1)
+                self.slider2.valinit=1
+                self.slider2.ax.set_xlim(self.slider2.valmin,self.slider2.valmax)
+            elif self.CLUSTER == 1:
+                self.button2.disconnect(0)
+                self.button2.cnt=0
+                self.button2.ax.get_children()[0].set_text('Density cluster')
+                self.button2.on_clicked(self.density_cluster)
+                self.slider2.valmin = 0.1
+                self.slider2.valmax = 2
+                self.slider2.valstep = 0.01
+                self.slider2.set_val(0.5)
+                self.slider2.valinit=0.5
+                self.slider2.ax.set_xlim(self.slider2.valmin,self.slider2.valmax)                
+            elif self.CLUSTER == 2:
+                self.button2.disconnect(0)
+                self.button2.cnt=0
+                self.button2.ax.get_children()[0].set_text('Hdbscan cluster')
+                self.button2.on_clicked(self.hdbscan_cluster)
+                self.slider2.valmin = 5
+                self.slider2.valmax = 50
+                self.slider2.valstep = 1
+                self.slider2.set_val(10)
+                self.slider2.valinit=10
+                self.slider2.ax.set_xlim(self.slider2.valmin,self.slider2.valmax)                
+            elif self.CLUSTER == 3:
+                self.button2.disconnect(0)
+                self.button2.cnt=0
+                self.button2.ax.get_children()[0].set_text('Kmeans cluster')
+                self.button2.on_clicked(self.kmeans_cluster)
+                self.slider2.valmin = 2
+                self.slider2.valmax = 50
+                self.slider2.valstep = 1
+                self.slider2.set_val(6)
+                self.slider2.valinit=6
+                self.slider2.ax.set_xlim(self.slider2.valmin,self.slider2.valmax)                
+            elif self.CLUSTER == 4:
+                self.button2.disconnect(0)
+                self.button2.cnt=0
+                self.button2.ax.get_children()[0].set_text('Leiden cluster')
+                self.button2.on_clicked(self.leiden_cluster)
+                self.slider2.valmin = 0.1
+                self.slider2.valmax = 10
+                self.slider2.valstep = 0.1
+                self.slider2.set_val(1)
+                self.slider2.valinit=1
+                self.slider2.ax.set_xlim(self.slider2.valmin,self.slider2.valmax)
+      
+            self.fig.canvas.draw_idle()
+        elif event.inaxes is self.button3.ax:
+            if self.sam_subcluster is None:
+                s=self.sam
+            else:
+                s=self.sam_subcluster
+                
+            keys = list(s.adata.obs.keys())
+            curr_str = self.button3.ax.get_children()[0].get_text()
+            if len(keys) > 0:
+                if curr_str == '':
+                    idx = 0;
+                else:
+                    idx = np.where(np.in1d(np.array(keys).flatten(),curr_str))[0][0]
+    
+                    if event.button == 'up':
+                        idx -= 1
+                    elif event.button == 'down':
+                        idx +=1
+                
+                if idx < 0: idx = 0;
+                if idx >= len(keys): idx = len(keys)-1;
+                curr_str = keys[idx]
+                self.button3.ax.get_children()[0].set_text(curr_str)
+            self.fig.canvas.draw_idle()
+        elif event.inaxes is self.rax:
+            if len(self.ANN_TEXTS)>0:
+                y1, y2 = self.rax.get_ylim()
+                if event.button == 'down':
+                    y1 -= 0.2;
+                    y2 -= 0.2;
+                elif event.button == 'up':
+                    y1 += 0.2;
+                    y2 += 0.2;
+                
+                _,ymin = self.ANN_TEXTS[-1].get_unitless_position()
+                ymax = 1.0
+                ymin = min(0,ymin)
+                
+                if ymin < 0:
+                    ymin -= 0.2;
+                    
+                if y2 > ymax:
+                    y2 -= 0.2
+                    y1 -= 0.2
+                
+                if y1 < ymin:
+                    y2 += 0.2;
+                    y1 += 0.2;
+                
+                self.rax.set_ylim([y1,y2])
+                self.fig.canvas.draw_idle()
+            
+
+            

@@ -3,6 +3,21 @@
 # self-assembling-manifold
 The Self-Assembling-Manifold (SAM) algorithm.
 
+# Update (6/2/2019) -- SAM version 0.5.0
+
+Added a bunch of new features to the scatter plots -- a more detailed changelog will come soon. Also on my To-Do list is to make a more detailed tutorial for those who are interested in this GUI-esque interface.
+
+Side note: to enable the interactivity in Jupyter notebooks please run `%matplotlib qt` at the beginning of your notebook.
+
+In brief, 
+
+You can now scroll hovering over the clustering button to change the clustering algorithm. The clustering parameter slider also changes depending on the clustering algorithm.
+
+Added a new button to display any existing annotations in the AnnData.obs slot. Hovering over the button and scrolling will scroll through any existing annotations. Click on the button to display the desired annotation.
+
+When annotations (i.e. cluster assignments or annotations loaded from a file) are displayed, a legend appears on the righthand side in the light-gray axes. Clicking on the box next to the annotation label will unselect/select those corresponding cells. Unselected cells appear gray in the plot. The remaining cells can then be subclustered using the "Subcluster" button.
+
+
 # Update (6/1/2019) -- SAM version 0.5.0
 
 Made use of matplotlib widgets to add interactivity to the scatter plots. The interactive plot can be accessed via the `scatter` function.
