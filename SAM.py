@@ -1488,6 +1488,7 @@ class point_selector:
         self.fig=ax.figure
         
         self.scatter_dict = kwargs
+        self.scatter_dict['colorbar']=False
         
         self.projection = kwargs.get('projection',None)
         
