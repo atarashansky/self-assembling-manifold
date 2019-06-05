@@ -1758,7 +1758,7 @@ class point_selector:
                     a = np.zeros(self.sam_subcluster.adata.shape[0],dtype='<U100')
                     a[:]=""                
                     a[np.in1d(self.sam_subcluster.adata.obs_names,self.selected_cells)] = self.text_annotate.text
-                    self.sam.sam_subcluster.obs[self.text_annotate_name.text] = pd.Categorical(a)  
+                    self.sam_subcluster.obs[self.text_annotate_name.text] = pd.Categorical(a)  
 
     
     def annotate(self,event):      
@@ -1966,7 +1966,8 @@ class point_selector:
             0; # do nothing
 
     def on_add_text(self,event, cid, cid1):
-        if not self.text_box.capturekeystrokes and not self.text_box2.capturekeystrokes:            
+        if (not self.text_box.capturekeystrokes and not self.text_box2.capturekeystrokes
+                and not self.text_annotate_name.capturekeystrokes and not self.text_annotate.capturekeystrokes):
             let = list(string.printable)
             let.append(' ')
             if event.key == 'enter':
@@ -2068,7 +2069,8 @@ class point_selector:
             self.fig.canvas.draw_idle()
 
     def on_key_press(self, event):
-        if not self.text_box.capturekeystrokes and not self.text_box2.capturekeystrokes:
+        if (not self.text_box.capturekeystrokes and not self.text_box2.capturekeystrokes
+                and not self.text_annotate_name.capturekeystrokes and not self.text_annotate.capturekeystrokes):
             if self.sam_subcluster is not None:
                 s=self.sam_subcluster
             else:
