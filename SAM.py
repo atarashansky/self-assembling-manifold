@@ -1758,7 +1758,7 @@ class point_selector:
                     a = np.zeros(self.sam_subcluster.adata.shape[0],dtype='<U100')
                     a[:]=""                
                     a[np.in1d(self.sam_subcluster.adata.obs_names,self.selected_cells)] = self.text_annotate.text
-                    self.sam_subcluster.obs[self.text_annotate_name.text] = pd.Categorical(a)  
+                    self.sam_subcluster.adata.obs[self.text_annotate_name.text] = pd.Categorical(a)  
 
     
     def annotate(self,event):      
