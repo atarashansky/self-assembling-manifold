@@ -182,11 +182,15 @@ def transform_wPCA(mat, pca):
     return reduced_weighted
 
 
-def search_string(vec, s):
+def search_string(vec, s, case_sensitive=False):
     m = []
-    s = s.lower()
+    if not case_sensitive:
+        s = s.lower()
     for i in range(len(vec)):
-        st = vec[i].lower()
+        if case_sensitive:
+            st = vec[i]
+        else:
+            st = vec[i].lower()
         b = st.find(s)
         if(b != -1):
             m.append(i)

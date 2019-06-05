@@ -1088,7 +1088,7 @@ class SAM(object):
         ax = self.scatter(c=a, do_GUI = False, **kwargs)        
         ax.set_title(name)
         
-        return ax
+        return ax, a
 
     def density_clustering(self, X=None, eps=1, metric='euclidean', **kwargs):
         from sklearn.cluster import DBSCAN
@@ -1486,6 +1486,9 @@ class SAM(object):
 class point_selector:
     def __init__(self,ax,sam, **kwargs):
         self.fig=ax.figure
+        params_to_disable = [key for key in plt.rcParams if 'keymap' in key]
+        for key in params_to_disable:
+            plt.rcParams[key] = ''
         
         self.scatter_dict = kwargs
         self.scatter_dict['colorbar']=False
@@ -1516,9 +1519,11 @@ class point_selector:
         self.eps = 0.25
         
         # Top row
-        axbox = self.fig.add_axes([0.45,0.165,0.48,0.05])            
+        axbox = self.fig.add_axes([0.45,0.165,0.42,0.05])            
         self.text_box = TextBox(axbox, '', initial='')            
         self.text_box.on_submit(self.show_expression)
+        
+        self.avg_on = axbox.text(1.01, 0.25, 'Avg ON', fontsize=10, clip_on=False)
         
         axnext = self.fig.add_axes([0.12,0.165,0.3,0.05])            
         self.button= Button(axnext, 'Subcluster')
@@ -1652,10 +1657,10 @@ class point_selector:
             items=[]
             for ax in axs:
                 ax.figure.canvas.draw()
-                items=[ax]
-                #items += ax.get_xticklabels() + ax.get_yticklabels() 
-                #items += [ax, ax.title]
-                #items += [ax, ax.title, ax.xaxis.label, ax.yaxis.label]
+                items+=[ax]
+                items += ax.get_xticklabels() + ax.get_yticklabels() 
+                items += [ax, ax.title]
+                items += [ax, ax.title, ax.xaxis.label, ax.yaxis.label]
                 
             bbox = Bbox.union([item.get_window_extent() for item in items])
             return bbox.expanded(1.0 + pad, 1.0 + pad)
@@ -1768,6 +1773,8 @@ class point_selector:
             
             self.active_rects = np.zeros(len(self.ANN_RECTS),dtype='bool')
             self.active_rects[:]=True
+            self.ax.set_xlim(self.curr_lim[0])
+            self.ax.set_ylim(self.curr_lim[1])
             
             self.fig.canvas.draw_idle()
         
@@ -1878,7 +1885,13 @@ class point_selector:
             s = self.sam_subcluster
             
         try:
-            s.adata[:,gene];
+            genes = ut.search_string(np.array(list(s.adata.var_names)),gene, case_sensitive=True)[0]
+            #print(genes)
+            if genes is not -1:
+                gene=genes[0]
+                s.adata[:,gene];
+            else:
+                s.adata[:,gene];
 
             for i in self.ax.figure.axes:
                 if type(i) is self.AXSUBPLOT:
@@ -1886,7 +1899,8 @@ class point_selector:
             
             self.fig.add_subplot(111)
             self.ax = self.fig.axes[-1]
-            _,c = s.show_gene_expression(gene,axes = self.ax, projection = self.projection)
+            avg = True if self.avg_on.get_text()=='Avg ON' else False;
+            _,c = s.show_gene_expression(gene,axes = self.ax, projection = self.projection, avg = avg)
                                  
             self.selected[:] = True
             self.selected_cells = np.array(list(s.adata.obs_names))
@@ -2038,10 +2052,26 @@ class point_selector:
                 self.slider1.set_val(x)
             
             elif event.key == 'enter' and not np.all(self.selected) and self.selected.sum() > 0:
+                """
                 print('Identifying marker genes')
                 a = np.zeros(s.adata.shape[0])
                 a[self.selected]=1
                 self.markers = s.identify_marker_genes_rf(labels = a,clusters = 1)[1]
+                self.slider1.set_val(0)
+                """
+                print('Identifying highly weighted genes in target area')
+                l = s.adata.layers['X_knn_avg']
+                m = l.mean(0).A.flatten()
+                ms = l[self.selected,:].mean(0).A.flatten()
+                lsub = l[self.selected,:]
+                lsub.data[:] = lsub.data**2
+                ms2 = lsub.mean(0).A.flatten()
+                v = ms2 - 2*ms*m + m**2
+                wmu = np.zeros(v.size)
+                wmu[m>0] = v[m>0] / m[m>0]
+                
+                self.markers = np.array(list(s.adata.var_names[np.argsort(-wmu)]))
+                self.slider1.set_val(0)                
             
             elif event.key == 'shift' and not np.all(self.selected) and self.selected.sum() > 0:
                 print('Identifying highly weighted genes in target area')
@@ -2056,7 +2086,15 @@ class point_selector:
                 wmu[m>0] = v[m>0] / m[m>0]
                 
                 self.markers = np.array(list(s.adata.var_names[np.argsort(-wmu)]))
-            
+                self.slider1.set_val(0)
+            elif event.key == 'x':
+                self.unselect_all(None);
+            elif event.key == 'a':
+                if self.avg_on.get_text() == 'Avg ON':
+                    self.avg_on.set_text('Avg OFF')
+                else:
+                    self.avg_on.set_text('Avg ON')
+                self.fig.canvas.draw_idle()
             elif event.key == 'escape':
                 for i in self.ax.figure.axes:
                     if type(i) is self.AXSUBPLOT:
@@ -2337,4 +2375,4 @@ class point_selector:
                 self.fig.canvas.draw_idle()
             
 
-      
+            
