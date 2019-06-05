@@ -1519,42 +1519,53 @@ class point_selector:
         self.eps = 0.25
         
         # Top row
-        axbox = self.fig.add_axes([0.45,0.165,0.42,0.05])            
+        axbox = self.fig.add_axes([0.47,0.165,0.4,0.05])            
         self.text_box = TextBox(axbox, '', initial='')            
         self.text_box.on_submit(self.show_expression)
         
         self.avg_on = axbox.text(1.01, 0.25, 'Avg ON', fontsize=10, clip_on=False)
         
-        axnext = self.fig.add_axes([0.12,0.165,0.3,0.05])            
+        axnext = self.fig.add_axes([0.12,0.045,0.165,0.05])            
         self.button= Button(axnext, 'Subcluster')
         self.button.on_clicked(self.subcluster)
+
+        axnext = self.fig.add_axes([0.07,0.015,0.04,0.2])
+        self.button_annotate= Button(axnext, 'ANNOTATE')
+        self.button_annotate.ax.get_children()[0].set_rotation(90)
+        self.button_annotate.on_clicked(self.annotate_pop)
         
         # Middle row
-        axnext = self.fig.add_axes([0.12,0.105,0.3,0.05])            
+        axnext = self.fig.add_axes([0.12,0.105,0.165,0.05])            
+        self.text_annotate_name= TextBox(axnext, '', initial='')
+        axnext = self.fig.add_axes([0.295,0.105,0.165,0.05])            
+        self.text_annotate= TextBox(axnext, '', initial='')        
+        #self.text_annotate.on_clicked(self.louvain_cluster)
+        
+        axnext = self.fig.add_axes([0.295,0.165,0.165,0.05])            
         self.button2= Button(axnext, 'Louvain cluster')
         self.button2.on_clicked(self.louvain_cluster)
                     
-        axslider = self.fig.add_axes([0.45,0.105,0.48,0.022],facecolor='lightgoldenrodyellow')
+        axslider = self.fig.add_axes([0.47,0.105,0.46,0.022],facecolor='lightgoldenrodyellow')
         
         self.slider1 = Slider(axslider, '', 0, 50, valinit=0, valstep=1)
         self.slider1.on_changed(self.gene_update)
         
-        axslider = self.fig.add_axes([0.45,0.135,0.48,0.022],facecolor='lightgoldenrodyellow')
+        axslider = self.fig.add_axes([0.47,0.135,0.46,0.022],facecolor='lightgoldenrodyellow')
         
         self.slider2 = Slider(axslider, '', 0.1, 10, valinit=0, valstep=0.1)
         self.slider2.on_changed(self.eps_update)            
         self.slider2.set_val(1)
          
         # Bottom row
-        axnext = self.fig.add_axes([0.12,0.045,0.2,0.05])            
+        axnext = self.fig.add_axes([0.12,0.165,0.165,0.05])            
         self.button3= Button(axnext, '')
         self.button3.on_clicked(self.annotate)        
 
-        axnext = self.fig.add_axes([0.33,0.045,0.2,0.05])            
+        axnext = self.fig.add_axes([0.295,0.045,0.165,0.05])            
         self.button4= Button(axnext, 'Save figure')
         self.button4.on_clicked(self.save_fig) 
         
-        axbox = self.fig.add_axes([0.55,0.045,0.38,0.05])            
+        axbox = self.fig.add_axes([0.47,0.045,0.46,0.05])            
         self.text_box2 = TextBox(axbox, '', initial='')   
         self.text_box2.on_submit(self.clip_text_settings)
         
@@ -1727,14 +1738,35 @@ class point_selector:
             self.ax.collections[0].set_sizes(ss)            
             self.fig.canvas.draw_idle()
     
-    def annotate(self,event):
-        if self.button3.ax.get_children()[0].get_text() != '':
+    def annotate_pop(self,event):
+        if self.text_annotate.text!='' and self.text_annotate_name.text != '':
+            if self.text_annotate_name.text in list(self.sam.adata.obs.keys()):
+                a = self.sam.adata.obs[self.text_annotate_name.text].get_values().copy().astype('<U100')
+                a[np.in1d(self.sam.adata.obs_names,self.selected_cells)] = self.text_annotate.text
+                self.sam.adata.obs[self.text_annotate_name.text] = pd.Categorical(a)
+                        
+                if self.sam_subcluster is not None:
+                    a = self.sam_subcluster.adata.obs[self.text_annotate_name.text].get_values().copy().astype('<U100')
+                    a[np.in1d(self.sam_subcluster.adata.obs_names,self.selected_cells)] = self.text_annotate.text
+                    self.sam_subcluster.adata.obs[self.text_annotate_name.text] = pd.Categorical(a)
+            else:
+                a = np.zeros(self.sam.adata.shape[0],dtype='<U100')
+                a[:]=""                
+                a[np.in1d(self.sam.adata.obs_names,self.selected_cells)] = self.text_annotate.text
+                self.sam.adata.obs[self.text_annotate_name.text] = pd.Categorical(a)
+                if self.sam_subcluster is not None:
+                    a = np.zeros(self.sam_subcluster.adata.shape[0],dtype='<U100')
+                    a[:]=""                
+                    a[np.in1d(self.sam_subcluster.adata.obs_names,self.selected_cells)] = self.text_annotate.text
+                    self.sam.sam_subcluster.obs[self.text_annotate_name.text] = pd.Categorical(a)  
+
+    
+    def annotate(self,event):      
+        if self.button3.ax.get_children()[0].get_text() != '':               
             if self.sam_subcluster is None:
                 s=self.sam
             else:
-                s=self.sam_subcluster
-                
-                
+                s=self.sam_subcluster              
             for i in self.ax.figure.axes:
                 if type(i) is self.AXSUBPLOT:
                     i.remove()
@@ -2329,23 +2361,23 @@ class point_selector:
                 s=self.sam_subcluster
                 
             keys = list(s.adata.obs.keys())
+            keys = [''] + keys
             curr_str = self.button3.ax.get_children()[0].get_text()
-            if len(keys) > 0:
-                if curr_str == '':
-                    idx = 0;
-                else:
-                    idx = np.where(np.in1d(np.array(keys).flatten(),curr_str))[0][0]
-    
-                    if event.button == 'up':
-                        idx -= 1
-                    elif event.button == 'down':
-                        idx +=1
-                
-                if idx < 0: idx = 0;
-                if idx >= len(keys): idx = len(keys)-1;
-                curr_str = keys[idx]
-                self.button3.ax.get_children()[0].set_text(curr_str)
+            
+
+            idx = np.where(np.in1d(np.array(keys).flatten(),curr_str))[0][0]
+
+            if event.button == 'up':
+                idx -= 1
+            elif event.button == 'down':
+                idx +=1
+            
+            if idx < 0: idx = 0;
+            if idx >= len(keys): idx = len(keys)-1;
+            curr_str = keys[idx]
+            self.button3.ax.get_children()[0].set_text(curr_str)
             self.fig.canvas.draw_idle()
+            
         elif event.inaxes is self.rax:
             if len(self.ANN_TEXTS)>0:
                 y1, y2 = self.rax.get_ylim()
