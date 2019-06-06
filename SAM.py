@@ -1074,14 +1074,10 @@ class SAM(object):
         if(avg):
             a = self.adata.layers['X_knn_avg'][:, idx].toarray().flatten()
             if a.sum() == 0:
-                a = np.log2(self.adata_raw.X[np.in1d(
-                    all_cell_names, cell_names), :][:,
-                                                idx].toarray().flatten() + 1)
+                a = self.adata.X[:,idx].toarray().flatten()
 
         else:
-            a = np.log2(self.adata_raw.X[np.in1d(
-                all_cell_names, cell_names), :][:,
-                                                idx].toarray().flatten() + 1)
+            a = self.adata.X[:,idx].toarray().flatten()
 
        
         
@@ -1528,18 +1524,19 @@ class point_selector:
         axnext = self.fig.add_axes([0.12,0.045,0.165,0.05])            
         self.button= Button(axnext, 'Subcluster')
         self.button.on_clicked(self.subcluster)
-
+        """
         axnext = self.fig.add_axes([0.07,0.015,0.04,0.2])
         self.button_annotate= Button(axnext, 'ANNOTATE')
         self.button_annotate.ax.get_children()[0].set_rotation(90)
         self.button_annotate.on_clicked(self.annotate_pop)
-        
+        """
         # Middle row
         axnext = self.fig.add_axes([0.12,0.105,0.165,0.05])            
         self.text_annotate_name= TextBox(axnext, '', initial='')
         axnext = self.fig.add_axes([0.295,0.105,0.165,0.05])            
         self.text_annotate= TextBox(axnext, '', initial='')        
-        #self.text_annotate.on_clicked(self.louvain_cluster)
+        self.text_annotate.on_submit(self.annotate_pop)
+
         
         axnext = self.fig.add_axes([0.295,0.165,0.165,0.05])            
         self.button2= Button(axnext, 'Louvain cluster')
@@ -1738,26 +1735,26 @@ class point_selector:
             self.ax.collections[0].set_sizes(ss)            
             self.fig.canvas.draw_idle()
     
-    def annotate_pop(self,event):
-        if self.text_annotate.text!='' and self.text_annotate_name.text != '':
+    def annotate_pop(self,text):
+        if text!='' and self.text_annotate_name.text != '':
             if self.text_annotate_name.text in list(self.sam.adata.obs.keys()):
                 a = self.sam.adata.obs[self.text_annotate_name.text].get_values().copy().astype('<U100')
-                a[np.in1d(self.sam.adata.obs_names,self.selected_cells)] = self.text_annotate.text
+                a[np.in1d(self.sam.adata.obs_names,self.selected_cells)] = text
                 self.sam.adata.obs[self.text_annotate_name.text] = pd.Categorical(a)
                         
                 if self.sam_subcluster is not None:
                     a = self.sam_subcluster.adata.obs[self.text_annotate_name.text].get_values().copy().astype('<U100')
-                    a[np.in1d(self.sam_subcluster.adata.obs_names,self.selected_cells)] = self.text_annotate.text
+                    a[np.in1d(self.sam_subcluster.adata.obs_names,self.selected_cells)] = text
                     self.sam_subcluster.adata.obs[self.text_annotate_name.text] = pd.Categorical(a)
             else:
                 a = np.zeros(self.sam.adata.shape[0],dtype='<U100')
                 a[:]=""                
-                a[np.in1d(self.sam.adata.obs_names,self.selected_cells)] = self.text_annotate.text
+                a[np.in1d(self.sam.adata.obs_names,self.selected_cells)] = text
                 self.sam.adata.obs[self.text_annotate_name.text] = pd.Categorical(a)
                 if self.sam_subcluster is not None:
                     a = np.zeros(self.sam_subcluster.adata.shape[0],dtype='<U100')
                     a[:]=""                
-                    a[np.in1d(self.sam_subcluster.adata.obs_names,self.selected_cells)] = self.text_annotate.text
+                    a[np.in1d(self.sam_subcluster.adata.obs_names,self.selected_cells)] = text
                     self.sam_subcluster.adata.obs[self.text_annotate_name.text] = pd.Categorical(a)  
 
     
