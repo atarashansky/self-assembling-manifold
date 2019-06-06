@@ -1,9 +1,34 @@
 [![Build Status](https://travis-ci.com/atarashansky/self-assembling-manifold.svg?branch=master)](https://travis-ci.com/atarashansky/self-assembling-manifold)
 
-# self-assembling-manifold
+# self-assembling-manifold -- SAM version 0.5.0
 The Self-Assembling-Manifold (SAM) algorithm.
 
-# Update (6/2/2019) -- SAM version 0.5.0
+# Update (6/6/2019)
+
+Added a slider bar at the very bottom: When showing the expression of a particular gene, slide the bottom slider to select cells with expression in that gene greater than the current value of the slider.
+
+Added a hotkey: pressing `a` toggles gene expression averaging
+
+Added a hotkey: pressing `x` unselects all cells.
+
+Added two new text boxes. Enter a key in the text box on the very left to select which annotation in `sam.adata.obs` you will modify with the text box next to it. If the annotation does not exist, a new one will be created. Typing a label and pressing 'enter' in the text box next to it labels the currently selected cells with that label.Any annotations made to cells while subclustering are also saved to the original SAM object.
+
+Use case: Let's say you wanted to create a new annotation vector in `sam.adata.obs` with the key `anno`
+ - Unselect all cells
+ - Highlight population of interest with mouse (call it `pop1`)
+ - Type `anno` in left text box
+ - Type `pop1` in the right text box. Press Enter.
+ - If you hover over the button above the left text box and scroll the wheel, you'll find a new annotation called `anno`. 
+ - Click on it to show the current annotations. Cells not yet annotated are labeled by default with an empty string.
+ - Unselect all cells
+ - Highlight another population.
+ - Type `pop2` in the right text box. Press Enter.
+ - Click on the `anno` button to show the annotations. You should see the second population now.
+
+Currently this GUI is mainly for my own usage, so I apologize for the total lack of clarity in terms of all the hotkeys and all the buttons...Improvements to the general usability and adding a help page will be coming soon...
+
+
+# Update (6/2/2019)
 
 Added a bunch of new features to the scatter plots -- a more detailed changelog will come soon. Also on my To-Do list is to make a more detailed tutorial for those who are interested in this GUI-esque interface.
 
@@ -19,7 +44,7 @@ When annotations (i.e. cluster assignments or annotations loaded from a file) ar
 
 You can interactively annotate the plot by double clicking and typing out a label. Pressing enter will place the label. Pressing escape will remove the label.
 
-# Update (6/1/2019) -- SAM version 0.5.0
+# Update (6/1/2019)
 
 Made use of matplotlib widgets to add interactivity to the scatter plots. The interactive plot can be accessed via the `scatter` function.
 
