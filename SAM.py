@@ -132,7 +132,7 @@ class SAM(object):
         
         self.run_args = {}
         self.preprocess_args = {}        
-
+        self.ps = None
     def preprocess_data(self, div=1, downsample=0, sum_norm=None,
                         include_genes=None, exclude_genes=None,
                         include_cells=None, exclude_cells=None,
@@ -1028,6 +1028,8 @@ class SAM(object):
             
             if do_GUI:
                 axes.figure.subplots_adjust(bottom=0.26,right=0.8)                
+                if self.ps is not None:
+                    del self.ps
                 self.ps = point_selector(axes,self, linewidth=linewidth,
                                          projection=projection, c=cstr, cmap=cmap,
                                          colorbar=colorbar, s=s, **kwargs)
@@ -1480,6 +1482,7 @@ class SAM(object):
 
 
 class point_selector:
+
     def __init__(self,ax,sam, **kwargs):
         self.fig=ax.figure
         params_to_disable = [key for key in plt.rcParams if 'keymap' in key]
@@ -1516,9 +1519,8 @@ class point_selector:
         
         # Top row
         axbox = self.fig.add_axes([0.47,0.165,0.4,0.05])            
-        self.text_box = TextBox(axbox, '', initial='')            
-        self.text_box.ax.figure.canvas.mpl_disconnect(self.text_box.cids[0])
-        self.text_box.ax.figure.canvas.mpl_connect('button_press_event', lambda event: self._click(event, self.text_box))        
+        self.text_box = TextBox(axbox, '', initial='')
+        self.rewire_textbox(self.text_box)
         self.text_box.on_submit(self.show_expression)
         
         
@@ -1532,12 +1534,10 @@ class point_selector:
         # Middle row
         axnext = self.fig.add_axes([0.12,0.105,0.165,0.05])            
         self.text_annotate_name= TextBox(axnext, '', initial='')
-        self.text_annotate_name.ax.figure.canvas.mpl_disconnect(self.text_annotate_name.cids[0])
-        self.text_annotate_name.ax.figure.canvas.mpl_connect('button_press_event', lambda event: self._click(event, self.text_annotate_name))        
+        self.rewire_textbox(self.text_annotate_name)
         axnext = self.fig.add_axes([0.295,0.105,0.165,0.05])            
         self.text_annotate= TextBox(axnext, '', initial='')   
-        self.text_annotate.ax.figure.canvas.mpl_disconnect(self.text_annotate.cids[0])
-        self.text_annotate.ax.figure.canvas.mpl_connect('button_press_event', lambda event: self._click(event, self.text_annotate))        
+        self.rewire_textbox(self.text_annotate)
         self.text_annotate.on_submit(self.annotate_pop)
 
         
@@ -1567,8 +1567,7 @@ class point_selector:
         
         axbox = self.fig.add_axes([0.47,0.045,0.46,0.05])            
         self.text_box2 = TextBox(axbox, '', initial='')   
-        self.text_box2.ax.figure.canvas.mpl_disconnect(self.text_box2.cids[0])
-        self.text_box2.ax.figure.canvas.mpl_connect('button_press_event', lambda event: self._click(event, self.text_box2))        
+        self.rewire_textbox(self.text_box2)
         self.text_box2.on_submit(self.clip_text_settings)
         
         #very bottom
@@ -1600,7 +1599,13 @@ class point_selector:
         self.writing_text=False
         
         self.curr_lim = self.ax.get_xlim(),self.ax.get_ylim()
-
+    
+    def rewire_textbox(self,tb):
+       tb.ax.figure.canvas.mpl_disconnect(tb.cids[0])
+       tb.ax.figure.canvas.mpl_disconnect(tb.cids[-2])
+       tb.ax.figure.canvas.mpl_connect('button_press_event', lambda event: self._click(event, tb))
+       tb.ax.figure.canvas.mpl_connect('key_press_event', lambda event: self._keypress(event, tb))
+       
     def stop_typing(self, tb, clicked):        
         notifysubmit = False
         if tb.capturekeystrokes:
@@ -1626,6 +1631,7 @@ class point_selector:
         if event.canvas.mouse_grabber != tb.ax:
             event.canvas.grab_mouse(tb.ax)
         if not tb.capturekeystrokes:
+            #tb.set_val('')
             tb.begin_typing(event.x)
         tb.position_cursor(event.x)
 
@@ -1688,7 +1694,7 @@ class point_selector:
         self.ax.collections[0].set_linewidths(lw)
         self.ax.collections[0].set_sizes(ss)
         self.fig.canvas.draw_idle()
-                  
+    
     def clip_text_settings(self,event):
         self.text_box2.text_disp.set_clip_on(True)
         self.fig.canvas.draw_idle()
@@ -1768,8 +1774,48 @@ class point_selector:
             self.ax.collections[0].set_sizes(ss)            
             self.fig.canvas.draw_idle()
     
+
+    def _keypress(self, event, tb):
+        if tb.ignore(event):
+            return
+        if tb.capturekeystrokes:
+            key = event.key
+
+            if(len(key) == 1):
+                tb.text = (tb.text[:tb.cursor_index] + key +
+                             tb.text[tb.cursor_index:])
+                tb.cursor_index += 1
+            elif key == "right":
+                if tb.cursor_index != len(tb.text):
+                    tb.cursor_index += 1
+            elif key == "left":
+                if tb.cursor_index != 0:
+                    tb.cursor_index -= 1
+            elif key == "home":
+                tb.cursor_index = 0
+            elif key == "end":
+                tb.cursor_index = len(tb.text)
+            elif(key == "backspace"):
+                if tb.cursor_index != 0:
+                    tb.text = (tb.text[:tb.cursor_index - 1] +
+                                 tb.text[tb.cursor_index:])
+                    tb.cursor_index -= 1
+            elif(key == "delete"):
+                if tb.cursor_index != len(tb.text):
+                    tb.text = (tb.text[:tb.cursor_index] +
+                                 tb.text[tb.cursor_index + 1:])
+
+            tb.text_disp.remove()
+            tb.text_disp = tb._make_text_disp(tb.text)
+            tb._rendercursor()
+            tb._notify_change_observers()
+            if key == "enter":
+                print('hi')
+                tb._notify_submit_observers()
+                self.stop_typing(tb, False)
+                
     def annotate_pop(self,text):
-        if text!='' and self.text_annotate_name.text != '':
+        if text!='' and self.text_annotate_name.text != '' and self.selected.sum()!=self.selected.size:
             if self.text_annotate_name.text in list(self.sam.adata.obs.keys()):
                 a = self.sam.adata.obs[self.text_annotate_name.text].get_values().copy().astype('<U100')
                 a[np.in1d(self.sam.adata.obs_names,self.selected_cells)] = text
@@ -1789,7 +1835,7 @@ class point_selector:
                     a[:]=""                
                     a[np.in1d(self.sam_subcluster.adata.obs_names,self.selected_cells)] = text
                     self.sam_subcluster.adata.obs[self.text_annotate_name.text] = pd.Categorical(a)  
-        self.text_annotate.capturekeystrokes=False
+        self.fig.canvas.draw_idle()    
     
     def annotate(self,event):      
         if self.button3.ax.get_children()[0].get_text() != '':               
@@ -1941,61 +1987,60 @@ class point_selector:
                 
     def show_expression(self,gene):
         
-        if self.sam_subcluster is None:
-            s = self.sam
-        else:
-            s = self.sam_subcluster
-            
-        try:
-            genes = ut.search_string(np.array(list(s.adata.var_names)),gene, case_sensitive=True)[0]
-            #print(genes)
-            if genes is not -1:
-                gene=genes[0]
-                s.adata[:,gene];
+        if gene != '':
+            if self.sam_subcluster is None:
+                s = self.sam
             else:
-                s.adata[:,gene];
-
-            for i in self.ax.figure.axes:
-                if type(i) is self.AXSUBPLOT:
-                    i.remove()
-            
-            self.fig.add_subplot(111)
-            self.ax = self.fig.axes[-1]
-            avg = True if self.avg_on.get_text()=='Avg ON' else False;
-            _,c = s.show_gene_expression(gene,axes = self.ax, projection = self.projection, avg = avg)
-                                 
-            self.selected[:] = True
-            self.selected_cells = np.array(list(s.adata.obs_names))
-            self.rax.cla()
-            self.rax.set_xticks([])
-            self.rax.set_yticks([])
-            self.ANN_TEXTS = []
-            self.ANN_RECTS = []        
-                        
-            fc = self.ax.collections[0].get_facecolors().copy()
-            if fc.shape[0] == 1:
-                fc = np.tile(fc,(s.adata.shape[0],1))
-            self.fcolors = fc
-
-            self.gene_expression = c
-            
-            self.slider3.set_active(True)
-            self.slider3.valmin = 0
-            self.slider3.valmax = c.max()+(c.max()-c.min())/100
-            self.slider3.valstep = (c.max()-c.min())/100
-            self.slider3.set_val(0)
-            self.slider3.valinit=0
-            self.slider3.ax.set_xlim(self.slider3.valmin,self.slider3.valmax)                
-            self.slider3.ax.set_facecolor('lightgoldenrodyellow')
-            
-            self.ax.set_xlim(self.curr_lim[0])
-            self.ax.set_ylim(self.curr_lim[1])
-            
-            self.text_box.capturekeystrokes=False
-            
-            self.fig.canvas.draw_idle()
-        except IndexError:
-            0; # do nothing
+                s = self.sam_subcluster
+                
+            try:
+                genes = ut.search_string(np.array(list(s.adata.var_names)),gene, case_sensitive=True)[0]
+                #print(genes)
+                if genes is not -1:
+                    gene=genes[0]
+                    s.adata[:,gene];
+                else:
+                    s.adata[:,gene];
+    
+                for i in self.ax.figure.axes:
+                    if type(i) is self.AXSUBPLOT:
+                        i.remove()
+                
+                self.fig.add_subplot(111)
+                self.ax = self.fig.axes[-1]
+                avg = True if self.avg_on.get_text()=='Avg ON' else False;
+                _,c = s.show_gene_expression(gene,axes = self.ax, projection = self.projection, avg = avg)
+                                     
+                self.selected[:] = True
+                self.selected_cells = np.array(list(s.adata.obs_names))
+                self.rax.cla()
+                self.rax.set_xticks([])
+                self.rax.set_yticks([])
+                self.ANN_TEXTS = []
+                self.ANN_RECTS = []        
+                            
+                fc = self.ax.collections[0].get_facecolors().copy()
+                if fc.shape[0] == 1:
+                    fc = np.tile(fc,(s.adata.shape[0],1))
+                self.fcolors = fc
+    
+                self.gene_expression = c
+                
+                self.slider3.set_active(True)
+                self.slider3.valmin = 0
+                self.slider3.valmax = c.max()+(c.max()-c.min())/100
+                self.slider3.valstep = (c.max()-c.min())/100
+                self.slider3.set_val(0)
+                self.slider3.valinit=0
+                self.slider3.ax.set_xlim(self.slider3.valmin,self.slider3.valmax)                
+                self.slider3.ax.set_facecolor('lightgoldenrodyellow')
+                
+                self.ax.set_xlim(self.curr_lim[0])
+                self.ax.set_ylim(self.curr_lim[1])
+                
+                self.fig.canvas.draw_idle()
+            except IndexError:
+                0; # do nothing
 
     def on_add_text(self,event, cid, cid1):
         if (not self.text_box.capturekeystrokes and not self.text_box2.capturekeystrokes
@@ -2117,29 +2162,16 @@ class point_selector:
                     x=0
                 self.slider1.set_val(x)
             
-            elif event.key == 'enter' and not np.all(self.selected) and self.selected.sum() > 0:
-                """
+            elif event.key == 'shift' and not np.all(self.selected) and self.selected.sum() > 0:
+                #"""
                 print('Identifying marker genes')
                 a = np.zeros(s.adata.shape[0])
                 a[self.selected]=1
                 self.markers = s.identify_marker_genes_rf(labels = a,clusters = 1)[1]
                 self.slider1.set_val(0)
-                """
-                print('Identifying highly weighted genes in target area')
-                l = s.adata.layers['X_knn_avg']
-                m = l.mean(0).A.flatten()
-                ms = l[self.selected,:].mean(0).A.flatten()
-                lsub = l[self.selected,:]
-                lsub.data[:] = lsub.data**2
-                ms2 = lsub.mean(0).A.flatten()
-                v = ms2 - 2*ms*m + m**2
-                wmu = np.zeros(v.size)
-                wmu[m>0] = v[m>0] / m[m>0]
-                
-                self.markers = np.array(list(s.adata.var_names[np.argsort(-wmu)]))
-                self.slider1.set_val(0)                
+                #"""
             
-            elif event.key == 'shift' and not np.all(self.selected) and self.selected.sum() > 0:
+            elif event.key == 'enter' and not np.all(self.selected) and self.selected.sum() > 0:
                 print('Identifying highly weighted genes in target area')
                 l = s.adata.layers['X_knn_avg']
                 m = l.mean(0).A.flatten()
