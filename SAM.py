@@ -1810,7 +1810,6 @@ class point_selector:
             tb._rendercursor()
             tb._notify_change_observers()
             if key == "enter":
-                print('hi')
                 tb._notify_submit_observers()
                 self.stop_typing(tb, False)
                 
