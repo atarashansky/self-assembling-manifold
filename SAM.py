@@ -1517,24 +1517,27 @@ class point_selector:
         # Top row
         axbox = self.fig.add_axes([0.47,0.165,0.4,0.05])            
         self.text_box = TextBox(axbox, '', initial='')            
+        self.text_box.ax.figure.canvas.mpl_disconnect(self.text_box.cids[0])
+        self.text_box.ax.figure.canvas.mpl_connect('button_press_event', lambda event: self._click(event, self.text_box))        
         self.text_box.on_submit(self.show_expression)
+        
+        
         
         self.avg_on = axbox.text(1.01, 0.25, 'Avg ON', fontsize=10, clip_on=False)
         
         axnext = self.fig.add_axes([0.12,0.045,0.165,0.05])            
         self.button= Button(axnext, 'Subcluster')
         self.button.on_clicked(self.subcluster)
-        """
-        axnext = self.fig.add_axes([0.07,0.015,0.04,0.2])
-        self.button_annotate= Button(axnext, 'ANNOTATE')
-        self.button_annotate.ax.get_children()[0].set_rotation(90)
-        self.button_annotate.on_clicked(self.annotate_pop)
-        """
+
         # Middle row
         axnext = self.fig.add_axes([0.12,0.105,0.165,0.05])            
         self.text_annotate_name= TextBox(axnext, '', initial='')
+        self.text_annotate_name.ax.figure.canvas.mpl_disconnect(self.text_annotate_name.cids[0])
+        self.text_annotate_name.ax.figure.canvas.mpl_connect('button_press_event', lambda event: self._click(event, self.text_annotate_name))        
         axnext = self.fig.add_axes([0.295,0.105,0.165,0.05])            
-        self.text_annotate= TextBox(axnext, '', initial='')        
+        self.text_annotate= TextBox(axnext, '', initial='')   
+        self.text_annotate.ax.figure.canvas.mpl_disconnect(self.text_annotate.cids[0])
+        self.text_annotate.ax.figure.canvas.mpl_connect('button_press_event', lambda event: self._click(event, self.text_annotate))        
         self.text_annotate.on_submit(self.annotate_pop)
 
         
@@ -1564,6 +1567,8 @@ class point_selector:
         
         axbox = self.fig.add_axes([0.47,0.045,0.46,0.05])            
         self.text_box2 = TextBox(axbox, '', initial='')   
+        self.text_box2.ax.figure.canvas.mpl_disconnect(self.text_box2.cids[0])
+        self.text_box2.ax.figure.canvas.mpl_connect('button_press_event', lambda event: self._click(event, self.text_box2))        
         self.text_box2.on_submit(self.clip_text_settings)
         
         #very bottom
@@ -1595,6 +1600,34 @@ class point_selector:
         self.writing_text=False
         
         self.curr_lim = self.ax.get_xlim(),self.ax.get_ylim()
+
+    def stop_typing(self, tb, clicked):        
+        notifysubmit = False
+        if tb.capturekeystrokes:
+            for key in tb.params_to_disable:
+                plt.rcParams[key] = tb.reset_params[key]
+            if not clicked:
+                notifysubmit = True
+        tb.capturekeystrokes = False
+        tb.cursor.set_visible(False)
+        tb.ax.figure.canvas.draw()
+        if notifysubmit:
+            tb._notify_submit_observers()
+            
+    def _click(self, event, tb):          
+        
+        if tb.ignore(event):
+            return
+        if event.inaxes != tb.ax:
+            self.stop_typing(tb,True)
+            return
+        if not tb.eventson:
+            return
+        if event.canvas.mouse_grabber != tb.ax:
+            event.canvas.grab_mouse(tb.ax)
+        if not tb.capturekeystrokes:
+            tb.begin_typing(event.x)
+        tb.position_cursor(event.x)
 
     def threshold_selection(self, val):
         if self.sam_subcluster is None:
@@ -1756,7 +1789,7 @@ class point_selector:
                     a[:]=""                
                     a[np.in1d(self.sam_subcluster.adata.obs_names,self.selected_cells)] = text
                     self.sam_subcluster.adata.obs[self.text_annotate_name.text] = pd.Categorical(a)  
-
+        self.text_annotate.capturekeystrokes=False
     
     def annotate(self,event):      
         if self.button3.ax.get_children()[0].get_text() != '':               
@@ -1957,6 +1990,8 @@ class point_selector:
             
             self.ax.set_xlim(self.curr_lim[0])
             self.ax.set_ylim(self.curr_lim[1])
+            
+            self.text_box.capturekeystrokes=False
             
             self.fig.canvas.draw_idle()
         except IndexError:
