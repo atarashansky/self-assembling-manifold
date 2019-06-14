@@ -1337,6 +1337,9 @@ class point_selector:
         for key in params_to_disable:
             plt.rcParams[key] = ''
         
+        self.fig.canvas.toolbar.setVisible(False)
+        self.fig_buttons.canvas.toolbar.setVisible(False)
+        
         self.scatter_dict = kwargs
         
         self.projection = kwargs.get('projection',None)        
@@ -1714,6 +1717,8 @@ class point_selector:
             self.rax.cla()
             self.rax.set_xticks([])
             self.rax.set_yticks([])
+            self.rax.text(0.2,1.02,'Annotation Labels',fontsize=12,clip_on=False)        
+            
             self.ANN_TEXTS = []
             self.ANN_RECTS = []
             
@@ -1760,8 +1765,9 @@ class point_selector:
         self.history_fig = plt.figure();
         x,y,x2,y2 = self.fig_buttons.canvas.manager.window.geometry().getCoords()
         width=x2-x
-        height=y2-y
+        height=y2-y        
         self.history_fig.canvas.manager.window.setGeometry(x+width+2,y,0.65*width,0.65*height)        
+        self.history_fig.canvas.toolbar.setVisible(False)
         self.history_fig.add_subplot(111)
         self.history_ax = self.history_fig.axes[-1]
         self.history_ax.set_xticks([])
@@ -1809,6 +1815,7 @@ class point_selector:
             self.selected[:]=True
             self.selected_cells = np.array(list(self.sam_subcluster.adata.obs_names))
             self.rax.cla()
+            self.rax.text(0.2,1.02,'Annotation Labels',fontsize=12,clip_on=False)                    
             self.rax.set_xticks([])
             self.rax.set_yticks([])
             self.ANN_TEXTS = []
@@ -1894,6 +1901,7 @@ class point_selector:
                 self.selected[:] = True
                 self.selected_cells = np.array(list(s.adata.obs_names))
                 self.rax.cla()
+                self.rax.text(0.2,1.02,'Annotation Labels',fontsize=12,clip_on=False)        
                 self.rax.set_xticks([])
                 self.rax.set_yticks([])
                 self.ANN_TEXTS = []
@@ -1968,7 +1976,7 @@ class point_selector:
             x = event.xdata
             y = event.ydata
             
-            if event.dblclick and not self.writing_text:
+            if event.dblclick and not self.writing_text and event.inaxes is self.ax:
                 self.fig.canvas.mpl_disconnect(self.cid4)
                 cid = self.fig.canvas.mpl_connect('key_press_event', lambda event: self.on_add_text(event, cid, cid1))
                 self.txt = self.ax.text(x, y, '', fontsize=12, clip_on=True)
@@ -2017,6 +2025,7 @@ class point_selector:
             self.slider3.set_active(False)
             self.slider3.ax.set_facecolor('lightgray')
             self.rax.cla()
+            self.rax.text(0.2,1.02,'Annotation Labels',fontsize=12,clip_on=False)        
             self.rax.set_xticks([])
             self.rax.set_yticks([])
             self.ANN_TEXTS = []
@@ -2113,6 +2122,7 @@ class point_selector:
             self.slider3.ax.set_facecolor('lightgray')
             
             self.rax.cla()
+            self.rax.text(0.2,1.02,'Annotation Labels',fontsize=12,clip_on=False)        
             self.rax.set_xticks([])
             self.rax.set_yticks([])
             self.ANN_TEXTS = []
