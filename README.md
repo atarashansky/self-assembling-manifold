@@ -9,6 +9,12 @@ Created a new control panel figure. All widgets are now in this window.
 
 Added a "Show plot history" button. Clicking this button opens a new window with an image of a previous plot shown. You can scroll hovering over this image to scroll through all previously generated plots.
 
+## Important Note
+`scatter` and `show_gene_expression` are now outside the SAM class but still in the SAM module. To use these functions, they must be imported:
+`from SAM import scatter, show_gene_expression`
+Both functions now take as the first required argument a SAM object:
+`scatter(sam_object)`
+
 # Update (6/6/2019)
 
 Added a slider bar at the very bottom: When showing the expression of a particular gene, slide the bottom slider to select cells with expression in that gene greater than the current value of the slider.
