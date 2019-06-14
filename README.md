@@ -1,7 +1,13 @@
 [![Build Status](https://travis-ci.com/atarashansky/self-assembling-manifold.svg?branch=master)](https://travis-ci.com/atarashansky/self-assembling-manifold)
 
-# self-assembling-manifold -- SAM version 0.5.0
+# self-assembling-manifold -- SAM version 0.5.1
 The Self-Assembling-Manifold (SAM) algorithm.
+
+# Update (6/13/2019)
+
+Created a new control panel figure. All widgets are now in this window.
+
+Added a "Show plot history" button. Clicking this button opens a new window with an image of a previous plot shown. You can scroll hovering over this image to scroll through all previously generated plots.
 
 # Update (6/6/2019)
 
