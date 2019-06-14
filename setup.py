@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='sam-algorithm',
-    version='0.5.0',
+    version='0.5.1',
     description='The Self-Assembling-Manifold algorithm',
     long_description="The Self-Assembling-Manifold algorithm for analyzing single-cell RNA sequencing data.",
     long_description_content_type='text/markdown',
@@ -16,7 +16,7 @@ setup(
         'scipy==1.2.0',
         'pandas',
         'scikit-learn',
-	'numba<0.43.0',
+	'numba',
 	'umap-learn', 'anndata<=0.6.19'],
     extras_require={
         'louvain': [
@@ -24,7 +24,7 @@ setup(
         'hdbscan': [
             'hdbscan'],
         'plot': [
-            'matplotlib'],
+            'matplotlib', 'pyperclip'],
         'scanpy': [
             'scanpy'],	    
         },

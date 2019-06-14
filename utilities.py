@@ -5,7 +5,6 @@ import errno
 from sklearn.decomposition import PCA, TruncatedSVD
 import umap.distances as dist
 
-import umap.sparse as sparse
 from umap.rp_tree import rptree_leaf_array, make_forest
 from umap.nndescent import (
     make_nn_descent,
@@ -14,7 +13,7 @@ from umap.nndescent import (
 INT32_MIN = np.iinfo(np.int32).min + 1
 INT32_MAX = np.iinfo(np.int32).max - 1
 
-__version__ = '0.5.0'
+__version__ = '0.5.1'
 
 
 def nearest_neighbors(X, n_neighbors=15, seed=0, metric='correlation'):
@@ -289,6 +288,8 @@ def calc_nnm(g_weighted,k,distance):
                     (1, nnm.shape[1])).flatten(), nnm.flatten()] = 1
         EDM = EDM.tocsr()
     else:
+        if sp.sparse.issparse(g_weighted):
+            g_weighted=g_weighted.A
         dist = compute_distances(g_weighted, distance)
         nnm = dist_to_nn(dist, k)
         EDM = sp.sparse.csr_matrix(nnm)
@@ -309,11 +310,11 @@ def compute_distances(A, dm):
     return dist
 
 
-def dist_to_nn(d, K):
+def dist_to_nn(d, K):#, offset = 0):
     E = d.copy()
     np.fill_diagonal(E, -1)
     M = np.max(E) * 2
-    x = np.argsort(E, axis=1)[:, :K]
+    x = np.argsort(E, axis=1)[:, :K]#offset:K+offset]
     E[np.tile(np.arange(E.shape[0]).reshape(E.shape[0], -1),
               (1, x.shape[1])).flatten(), x.flatten()] = M
 
@@ -358,3 +359,13 @@ def gen_sparse_knn(knni, knnd, shape = None):
        knni.flatten()] = knnd.flatten()
     D1=D1.tocsr()
     return D1
+
+def get_knn_ind_dist(nnm,dist):
+    x,y = nnm.nonzero();
+    k = int(nnm[0,:].sum())
+    knnd = dist[x,y].reshape((nnm.shape[0],k))
+    knni = y.reshape((nnm.shape[0],k))
+    i = np.argsort(knnd,axis=1)
+    knni = knni[x,i.flatten()].reshape(knni.shape)
+    knnd = knnd[x,i.flatten()].reshape(knnd.shape)
+    return knni,knnd

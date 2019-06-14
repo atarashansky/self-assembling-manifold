@@ -1,4 +1,3 @@
-import string
 import numpy as np
 from anndata import AnnData
 import anndata
@@ -11,25 +10,25 @@ import utilities as ut
 import sklearn.manifold as man
 import sklearn.utils.sparsefuncs as sf
 import warnings
-#from ipywidgets import widgets, interactive
 
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 
+import string
 try:
-    from matplotlib.transforms import Bbox
+    import pyperclip
     import matplotlib.pyplot as plt
-    from matplotlib.widgets import TextBox, Button, Slider, CheckButtons
+    from matplotlib.widgets import TextBox, Button, Slider
     import matplotlib
-    from matplotlib.patches import Rectangle
+    from matplotlib.patches import Rectangle, Polygon
     
     PLOTTING = True
 except ImportError:
     print('matplotlib not installed. Plotting functions disabled')
     PLOTTING = False
+    
 
-
-__version__ = '0.5.0'
+__version__ = '0.5.1'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -132,7 +131,7 @@ class SAM(object):
         
         self.run_args = {}
         self.preprocess_args = {}        
-        self.ps = None
+
     def preprocess_data(self, div=1, downsample=0, sum_norm=None,
                         include_genes=None, exclude_genes=None,
                         include_cells=None, exclude_cells=None,
@@ -552,7 +551,7 @@ class SAM(object):
         
         return weights
 
-    def calculate_regression_PCs(self, genes=None, npcs=None, plot=False):
+    def calculate_regression_PCs(self, genes=None, npcs=None):
         """Computes the contribution of the gene IDs in 'genes' to each
         principal component (PC) of the filtered expression data as the mean of
         the absolute value of the corresponding gene loadings. High values
@@ -597,11 +596,6 @@ class SAM(object):
             idx = np.where(np.in1d(gene_names, genes))[0]
             sx = pca.components_[:, idx]
             x = np.abs(sx).mean(1)
-
-            if plot:
-                plt.figure()
-                plt.plot(x)
-
             return x
         else:
             return
@@ -640,6 +634,7 @@ class SAM(object):
             distance='correlation',
             preprocessing='Normalizer',
             npcs=None,
+            n_genes=None,
             proj_kwargs={}):
         """Runs the Self-Assembling Manifold algorithm.
 
@@ -699,6 +694,7 @@ class SAM(object):
                 'distance':distance,
                 'preprocessing':preprocessing,
                 'npcs':npcs,
+                'n_genes':n_genes,
                 'proj_kwargs':proj_kwargs,
                 }
         
@@ -715,15 +711,17 @@ class SAM(object):
 
         numcells = D.shape[0]
 
-        n_genes = 8000
-        if numcells > 3000 and n_genes > 3000:
-            n_genes = 3000
-        elif numcells > 2000 and n_genes > 4500:
-            n_genes = 4500
-        elif numcells > 1000 and n_genes > 6000:
-            n_genes = 6000
-        elif n_genes > 8000:
+        if n_genes == None:
             n_genes = 8000
+            if numcells > 3000 and n_genes > 3000:
+                n_genes = 3000
+            elif numcells > 2000 and n_genes > 4500:
+                n_genes = 4500
+            elif numcells > 1000 and n_genes > 6000:
+                n_genes = 6000
+            elif n_genes > 8000:
+                n_genes = 8000   
+        print(n_genes)
         
         #npcs = None
         if npcs is None and numcells > 3000:
@@ -784,8 +782,8 @@ class SAM(object):
 
         self.adata.uns['ranked_genes'] = ranked_genes
 
+        
         self.adata.obsm['X_pca'] = wPCA_data
-
         self.adata.uns['neighbors'] = {}
         self.adata.uns['neighbors']['connectivities'] = EDM
 
@@ -834,18 +832,18 @@ class SAM(object):
             Ds = D[:, gkeep].toarray()
 
         D_sub = Ds * (W[gkeep])
-
+                
         if numcells > 500:
             g_weighted, pca = ut.weighted_PCA(D_sub, npcs=min(
                 npcs, min(D.shape)), do_weight=True, solver='auto')
         else:
             g_weighted, pca = ut.weighted_PCA(D_sub, npcs=min(
                 npcs, min(D.shape)), do_weight=True, solver='full')
-
         if self.distance == 'euclidean':
             g_weighted = Normalizer().fit_transform(g_weighted)
-
+        
         self.adata.uns['pca_obj'] = pca
+            
         EDM = ut.calc_nnm(g_weighted,self.k,self.distance)
         
         W = self.dispersion_ranking_NN(
@@ -881,7 +879,7 @@ class SAM(object):
             tsne2d = dt
             self.adata.obsm['X_tsne'] = tsne2d
 
-    def run_umap(self, X=None, metric=None, **kwargs):
+    def run_umap(self, X='X_pca', metric=None, **kwargs):
         """Wrapper for umap-learn.
 
         See https://github.com/lmcinnes/umap sklearn for the documentation
@@ -892,16 +890,22 @@ class SAM(object):
 
         if metric is None:
             metric = self.distance
-
-        if(X is not None):
+        
+        
+        if type(X) is str:
+            if X == '':
+                X = self.adata.X
+            else:
+                X = self.adata.obsm[X]                
+            #print(X.shape)
+            umap_obj = umap.UMAP(metric=metric, **kwargs)
+            umap2d = umap_obj.fit_transform(X)
+            self.adata.obsm['X_umap'] = umap2d
+            
+        else:
             umap_obj = umap.UMAP(metric=metric, **kwargs)
             dt = umap_obj.fit_transform(X)
             return dt
-
-        else:
-            umap_obj = umap.UMAP(metric=metric, n_neighbors=self.k, **kwargs)
-            umap2d = umap_obj.fit_transform(self.adata.obsm['X_pca'])
-            self.adata.obsm['X_umap'] = umap2d
 
     def run_diff_umap(self,use_rep='X_pca', metric='euclidean', n_comps=15,
                       method='gauss', **kwargs):
@@ -923,170 +927,7 @@ class SAM(object):
         sc.tl.umap(self.adata,min_dist=0.1,copy=False)
         
         
-    def scatter(self, projection=None, c=None, cmap='rainbow', linewidth=0.0,
-                axes=None, colorbar=True, s=10, do_GUI = True, **kwargs):
-        """Display a scatter plot.
 
-        Displays a scatter plot using the SAM projection or another input
-        projection with or without annotations.
-
-        Parameters
-        ----------
-
-        projection - ndarray of floats, optional, default None
-            An N x 2 matrix, where N is the number of data points. If None,
-            use an existing SAM projection (default t-SNE). Can take on values
-            'umap' or 'tsne' to specify either the SAM UMAP embedding or
-            SAM t-SNE embedding.
-
-        c - ndarray or str, optional, default None
-            Colors for each cell in the scatter plot. Can be a vector of
-            floats or strings for cell annotations. Can also be a key
-            for sam.adata.obs (i.e. 'louvain_clusters').
-
-        axes - matplotlib axis, optional, default None
-            Plot output to the specified, existing axes. If None, create new
-            figure window.
-
-        cmap - string, optional, default 'rainbow'
-            The colormap to use for the input color values.
-
-        colorbar - bool, optional default True
-            If True, display a colorbar indicating which values / annotations
-            correspond to which color in the scatter plot.
-
-        Keyword arguments -
-            All other keyword arguments that can be passed into
-            matplotlib.pyplot.scatter can be used.
-        """
-
-        if (not PLOTTING):
-            print("matplotlib not installed!")
-        else:
-            if(isinstance(projection, str)):
-                try:
-                    dt = self.adata.obsm[projection]
-                except KeyError:
-                    print('Please create a projection first using run_umap or'
-                          'run_tsne')
-
-            elif(projection is None):
-                try:
-                    dt = self.adata.obsm['X_umap']
-                except KeyError:
-                    try:
-                        dt = self.adata.obsm['X_tsne']
-                    except KeyError:
-                        print("Please create either a t-SNE or UMAP projection"
-                              "first.")
-                        return
-            else:
-                dt = projection
-            
-            if(axes is None):
-                plt.figure(figsize=(7,6))
-                axes = plt.gca()
-            else:
-                do_GUI=False
-                
-            cstr = c
-            if(c is None):
-                plt.scatter(dt[:, 0], dt[:, 1], s=s,
-                            linewidth=linewidth, **kwargs)
-            else:
-
-                if isinstance(c, str):
-                    try:
-                        c = self.adata.obs[c].get_values()
-                    except KeyError:
-                        0  # do nothing
-
-                if((isinstance(c[0], str) or isinstance(c[0], np.str_)) and
-                   (isinstance(c, np.ndarray) or isinstance(c, list))):
-                    i = ut.convert_annotations(np.array(c))
-                    ui, ai = np.unique(i, return_index=True)
-                    cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
-                                       linewidth=linewidth,
-                                       **kwargs)
-
-                    if(colorbar):
-                        cbar = plt.colorbar(cax, ax=axes, ticks=ui)
-                        cbar.ax.set_yticklabels(c[ai])
-                else:
-                    if not (isinstance(c, np.ndarray) or isinstance(c, list)):
-                        colorbar = False
-                    i = c
-
-                    cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
-                                       linewidth=linewidth,
-                                       **kwargs)
-
-                    if(colorbar):
-                        plt.colorbar(cax, ax=axes)
-        
-            axes.figure.canvas.draw()
-            
-            if do_GUI:
-                axes.figure.subplots_adjust(bottom=0.26,right=0.8)                
-                if self.ps is not None:
-                    del self.ps
-                self.ps = point_selector(axes,self, linewidth=linewidth,
-                                         projection=projection, c=cstr, cmap=cmap,
-                                         colorbar=colorbar, s=s, **kwargs)
-        
-        return axes
-    
-    def show_gene_expression(self, gene, avg=True, **kwargs):
-        """Display a gene's expressions.
-
-        Displays a scatter plot using the SAM projection or another input
-        projection with a particular gene's expressions overlaid.
-
-        Parameters
-        ----------
-        gene - string
-            a case-sensitive string indicating the gene expression pattern
-            to display.
-
-        avg - bool, optional, default True
-            If True, the plots use the k-nearest-neighbor-averaged expression
-            values to smooth out noisy expression patterns and improves
-            visualization.
-
-        axes - matplotlib axis, optional, default None
-            Plot output to the specified, existing axes. If None, create new
-            figure window.
-
-        **kwargs - all keyword arguments in 'SAM.scatter' are eligible.
-
-        """
-
-        all_gene_names = np.array(list(self.adata.var_names))
-        cell_names = np.array(list(self.adata.obs_names))
-        all_cell_names = np.array(list(self.adata_raw.obs_names))
-
-        idx = np.where(all_gene_names == gene)[0]
-        name = gene
-        if(idx.size == 0):
-            print(
-                "Gene note found in the filtered dataset. Note that genes "
-                "are case sensitive.")
-            return
-
-        if(avg):
-            a = self.adata.layers['X_knn_avg'][:, idx].toarray().flatten()
-            if a.sum() == 0:
-                a = self.adata.X[:,idx].toarray().flatten()
-
-        else:
-            a = self.adata.X[:,idx].toarray().flatten()
-
-       
-        
-        ax = self.scatter(c=a, do_GUI = False, **kwargs)        
-        ax.set_title(name)
-        
-        return ax, a
 
     def density_clustering(self, X=None, eps=1, metric='euclidean', **kwargs):
         from sklearn.cluster import DBSCAN
@@ -1480,102 +1321,123 @@ class SAM(object):
                           ] = pick_dict[list(pick_dict.keys())[i]]
         f.close()
 
-
 class point_selector:
 
     def __init__(self,ax,sam, **kwargs):
+        import tkinter
+        root = tkinter.Tk()
+        root.withdraw()
+        _, height = root.winfo_screenwidth(), root.winfo_screenheight()
+        
         self.fig=ax.figure
+        self.fig_buttons = plt.figure()        
+        self.fig.canvas.manager.window.setGeometry(25,50,0.6*height,0.6*height)
+        self.fig_buttons.canvas.manager.window.setGeometry(0.6*height+27,50,0.6*height,0.6*height)
         params_to_disable = [key for key in plt.rcParams if 'keymap' in key]
         for key in params_to_disable:
             plt.rcParams[key] = ''
         
         self.scatter_dict = kwargs
-        self.scatter_dict['colorbar']=False
         
-        self.projection = kwargs.get('projection',None)
-        
-        self.sam=sam
+        self.projection = kwargs.get('projection',None)        
+        self.sam = sam        
         self.ax = ax
+        
+        self.selection_bounds = None
         
         self.cid1 = self.fig.canvas.mpl_connect('scroll_event', self.on_scroll)
         self.cid2 = self.fig.canvas.mpl_connect('button_press_event', self.on_press)
         self.cid3 = self.fig.canvas.mpl_connect('button_release_event', self.on_release)
-        self.cid4 = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
-        self.cid5 = self.fig.canvas.mpl_connect('pick_event', self.on_pick)
+        
+        self.cid4 = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press) 
+        self.cid5 = self.fig_buttons.canvas.mpl_connect('pick_event', self.on_pick)        
+        self.cid6 = self.fig_buttons.canvas.mpl_connect('scroll_event', self.on_scroll_ctrl)
         
         self.cid_motion = None
         self.cid_panning = None
         
         self.patch = None
   
-        self.AXSUBPLOT = type(self.ax)
         
-        self.selected = np.zeros(sam.adata.shape[0],dtype='bool')
+        self.selected = np.zeros(self.sam.adata.shape[0],dtype='bool')
         self.selected[:] = True
-        self.selected_cells = np.array(list(sam.adata.obs_names))
+        self.selected_cells = np.array(list(self.sam.adata.obs_names))
         
         self.sam_subcluster = None
         self.eps = 0.25
-        
-        # Top row
-        axbox = self.fig.add_axes([0.47,0.165,0.4,0.05])            
-        self.text_box = TextBox(axbox, '', initial='')
-        self.rewire_textbox(self.text_box)
-        self.text_box.on_submit(self.show_expression)
-        
-        
-        
-        self.avg_on = axbox.text(1.01, 0.25, 'Avg ON', fontsize=10, clip_on=False)
-        
-        axnext = self.fig.add_axes([0.12,0.045,0.165,0.05])            
+
+        axnext = self.fig_buttons.add_axes([0.15,0.455,0.215,0.04])            
         self.button= Button(axnext, 'Subcluster')
         self.button.on_clicked(self.subcluster)
-
-        # Middle row
-        axnext = self.fig.add_axes([0.12,0.105,0.165,0.05])            
-        self.text_annotate_name= TextBox(axnext, '', initial='')
-        self.rewire_textbox(self.text_annotate_name)
-        axnext = self.fig.add_axes([0.295,0.105,0.165,0.05])            
-        self.text_annotate= TextBox(axnext, '', initial='')   
-        self.rewire_textbox(self.text_annotate)
-        self.text_annotate.on_submit(self.annotate_pop)
-
-        
-        axnext = self.fig.add_axes([0.295,0.165,0.165,0.05])            
-        self.button2= Button(axnext, 'Louvain cluster')
-        self.button2.on_clicked(self.louvain_cluster)
-                    
-        axslider = self.fig.add_axes([0.47,0.105,0.46,0.022],facecolor='lightgoldenrodyellow')
-        
+        ax_labels = axnext; 
+        xc = -0.45; yc=-11;
+        axslider = self.fig_buttons.add_axes([0.15,0.015,0.78,0.04],facecolor='lightgray')   
+        self.slider3 = Slider(axslider, '', 0, 1, valinit=0, valstep=0)
+        self.slider3.set_active(False)
+        self.slider3.on_changed(self.threshold_selection)        
+        ax_labels.text(xc-0.17, yc+0., 'Threshold\nexpression', fontsize=8, clip_on=False);
+                           
+        axslider = self.fig_buttons.add_axes([0.15,0.07,0.78,0.04],facecolor='lightgoldenrodyellow')        
         self.slider1 = Slider(axslider, '', 0, 50, valinit=0, valstep=1)
         self.slider1.on_changed(self.gene_update)
+        self.gene_slider_text = ax_labels.text(xc-.17, yc+1.45, 'Ranked genes\n(SAM weights)', fontsize=8, clip_on=False);
         
-        axslider = self.fig.add_axes([0.47,0.135,0.46,0.022],facecolor='lightgoldenrodyellow')
-        
+        axslider = self.fig_buttons.add_axes([0.15,0.125,0.78,0.04],facecolor='lightgoldenrodyellow')        
         self.slider2 = Slider(axslider, '', 0.1, 10, valinit=0, valstep=0.1)
         self.slider2.on_changed(self.eps_update)            
         self.slider2.set_val(1)
-         
-        # Bottom row
-        axnext = self.fig.add_axes([0.12,0.165,0.165,0.05])            
-        self.button3= Button(axnext, '')
-        self.button3.on_clicked(self.annotate)        
-
-        axnext = self.fig.add_axes([0.295,0.045,0.165,0.05])            
-        self.button4= Button(axnext, 'Save figure')
-        self.button4.on_clicked(self.save_fig) 
+        self.cluster_param_text = ax_labels.text(xc-.17, yc+2.85, 'Cluster param\n(Louvain \'res\')', fontsize=8, clip_on=False);
         
-        axbox = self.fig.add_axes([0.47,0.045,0.46,0.05])            
+        axbox = self.fig_buttons.add_axes([0.15,0.18,0.78,0.04])            
         self.text_box2 = TextBox(axbox, '', initial='')   
         self.rewire_textbox(self.text_box2)
-        self.text_box2.on_submit(self.clip_text_settings)
+        self.text_box2.on_text_change(self.clip_text_settings)
+        self.text_box2.on_submit(self.save_fig)
+        ax_labels.text(xc-.17, yc+4.45, 'Save figure', fontsize=8, clip_on=False);
         
-        #very bottom
-        axslider = self.fig.add_axes([0.12,0.015,0.81,0.022],facecolor='lightgray')        
-        self.slider3 = Slider(axslider, '', 0, 1, valinit=0, valstep=0)
-        self.slider3.set_active(False)
-        self.slider3.on_changed(self.threshold_selection)
+        axbox = self.fig_buttons.add_axes([0.15,0.235,0.75,0.04])            
+        self.text_box = TextBox(axbox, '', initial='')
+        self.rewire_textbox(self.text_box)
+        self.text_box.on_submit(self.show_expression)
+        self.text_box.on_text_change(self.clip_text_settings)
+        self.avg_on = axbox.text(1.01, 0.25, 'Avg ON', fontsize=10, clip_on=False)
+        ax_labels.text(xc-.17, yc+5.5, 'Show gene\nexpression', fontsize=8, clip_on=False);
         
+        # Middle row      
+        axnext = self.fig_buttons.add_axes([0.15,0.29,0.44,0.04])            
+        self.text_annotate= TextBox(axnext, '', initial='')   
+        self.rewire_textbox(self.text_annotate)
+        self.text_annotate.on_submit(self.annotate_pop)        
+        ax_labels.text(xc-.17, yc+7.1, 'Annotation', fontsize=8, clip_on=False);
+ 
+        axnext = self.fig_buttons.add_axes([0.15,0.345,0.44,0.04])            
+        self.text_annotate_name= TextBox(axnext, '', initial='')
+        self.rewire_textbox(self.text_annotate_name)
+        ax_labels.text(xc-.17, yc+8.3, 'Annotation\nvector name', fontsize=8, clip_on=False);       
+        
+        axnext = self.fig_buttons.add_axes([0.15,0.4,0.44,0.04])            
+        self.button3= Button(axnext, '')
+        self.button3.on_clicked(self.annotate)        
+        ax_labels.text(xc-.17, yc+9.7, 'Display\nannotation', fontsize=8, clip_on=False);           
+        
+        XX = np.array([[0.02,0.6],[0.03,0.85],[0.04,0.6]])
+        self.button3.ax.add_patch(Polygon(XX, color='k'))
+        XX = np.array([[0.02,0.4],[0.03,0.15],[0.04,0.4]])
+        self.button3.ax.add_patch(Polygon(XX, color='k'))
+
+        axnext = self.fig_buttons.add_axes([0.375,0.455,0.215,0.04])            
+        self.button2= Button(axnext, 'Louvain cluster')
+        self.button2.on_clicked(self.louvain_cluster)
+        
+        XX = np.array([[0.04,0.6],[0.06,0.85],[0.08,0.6]])
+        self.button2.ax.add_patch(Polygon(XX, color='k'))
+        XX = np.array([[0.04,0.4],[0.06,0.15],[0.08,0.4]])
+        self.button2.ax.add_patch(Polygon(XX, color='k'))   
+
+        axnext = self.fig_buttons.add_axes([0.15,0.51,0.215,0.04])            
+        self.buttonh= Button(axnext, 'Show plot history')
+        self.buttonh.on_clicked(self.show_history_window)
+
         
         self.markers = None
         
@@ -1583,13 +1445,18 @@ class point_selector:
         
         self.ANN_TEXTS=[]
         self.ANN_RECTS=[]
-        self.rax = self.fig.add_axes([0.80, 0.31, 0.19, 0.57], facecolor='lightgray')
+        self.rax = self.fig_buttons.add_axes([0.62, 0.335, 0.37, 0.545], facecolor='lightgray')
         self.rax.set_xticks([])
-        self.rax.set_yticks([])   
-        
-        axnext = self.fig.add_axes([0.80,0.26,0.19,0.05])            
+        self.rax.set_yticks([])           
+        self.rax.text(0.2,1.02,'Annotation Labels',fontsize=12,clip_on=False)        
+        axnext = self.fig_buttons.add_axes([0.62,0.285,0.37,0.05])            
         self.button5= Button(axnext, 'Unselect all')
         self.button5.on_clicked(self.unselect_all)            
+        
+        
+        history_image = np.frombuffer(self.fig.canvas.tostring_rgb(), dtype=np.uint8)
+        history_image = history_image.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))                        
+        self.history_images = [history_image]
         
         fc = self.ax.collections[0].get_facecolors().copy()
         if fc.shape[0] == 1:
@@ -1599,13 +1466,7 @@ class point_selector:
         self.writing_text=False
         
         self.curr_lim = self.ax.get_xlim(),self.ax.get_ylim()
-    
-    def rewire_textbox(self,tb):
-       tb.ax.figure.canvas.mpl_disconnect(tb.cids[0])
-       tb.ax.figure.canvas.mpl_disconnect(tb.cids[-2])
-       tb.ax.figure.canvas.mpl_connect('button_press_event', lambda event: self._click(event, tb))
-       tb.ax.figure.canvas.mpl_connect('key_press_event', lambda event: self._keypress(event, tb))
-       
+         
     def stop_typing(self, tb, clicked):        
         notifysubmit = False
         if tb.capturekeystrokes:
@@ -1618,7 +1479,13 @@ class point_selector:
         tb.ax.figure.canvas.draw()
         if notifysubmit:
             tb._notify_submit_observers()
-            
+    
+    def rewire_textbox(self,tb):
+       tb.ax.figure.canvas.mpl_disconnect(tb.cids[0])
+       tb.ax.figure.canvas.mpl_disconnect(tb.cids[-2])
+       tb.ax.figure.canvas.mpl_connect('button_press_event', lambda event: self._click(event, tb))
+       tb.ax.figure.canvas.mpl_connect('key_press_event', lambda event: self._keypress(event, tb))            
+    
     def _click(self, event, tb):          
         
         if tb.ignore(event):
@@ -1655,7 +1522,8 @@ class point_selector:
             
         ss[np.invert(self.selected)] = self.scatter_dict['s']/1.5
         self.ax.collections[0].set_sizes(ss)
-        self.fig.canvas.draw_idle()        
+        self.fig.canvas.draw_idle()
+        self.fig_buttons.canvas.draw_idle()
                 
     def unselect_all(self, event):
         self.selected[:]=False
@@ -1673,55 +1541,25 @@ class point_selector:
             for i,rec in enumerate(self.ANN_RECTS):
                 rec.set_facecolor('lightgray')
 
-        lw = self.ax.collections[0].get_linewidths().copy()
-        ss = self.ax.collections[0].get_sizes().copy()
-        fc = self.ax.collections[0].get_facecolors().copy()
-
-        if len(lw) == 1:
-            lw = np.ones(self.selected.size)*lw[0]
-        if len(ss) == 1:
-            ss = np.ones(self.selected.size)*ss[0]
-        if fc.shape[0] == 1:
-            fc = np.tile(fc,(self.selected.size,1))
-        lw=np.array(lw);
-        
-
-        lw[:] = 0.0
-        ss[:] = self.scatter_dict['s']/1.5
-        fc[:,:] = np.array([0.7,0.7,0.7,0.45])
+        lw = [0.0]
+        ss = [self.scatter_dict['s']/1.5]
+        fc = np.array([0.7,0.7,0.7,0.45])
             
         self.ax.collections[0].set_facecolors(fc)
         self.ax.collections[0].set_linewidths(lw)
         self.ax.collections[0].set_sizes(ss)
         self.fig.canvas.draw_idle()
+        self.fig_buttons.canvas.draw_idle()
     
     def clip_text_settings(self,event):
         self.text_box2.text_disp.set_clip_on(True)
-        self.fig.canvas.draw_idle()
+        self.fig_buttons.canvas.draw_idle()
                    
-    def save_fig(self,event):
-        def full_extent(axs, pad=0.0):
-            items=[]
-            for ax in axs:
-                ax.figure.canvas.draw()
-                items+=[ax]
-                items += ax.get_xticklabels() + ax.get_yticklabels() 
-                items += [ax, ax.title]
-                items += [ax, ax.title, ax.xaxis.label, ax.yaxis.label]
-                
-            bbox = Bbox.union([item.get_window_extent() for item in items])
-            return bbox.expanded(1.0 + pad, 1.0 + pad)
-        
-        path = self.text_box2.text
+    def save_fig(self,path):
         if path != '':
-            axs=[]
-            for i in self.ax.figure.axes:
-                if type(i) is self.AXSUBPLOT:
-                    axs.append(i)
-            extent = full_extent(axs).transformed(self.fig.dpi_scale_trans.inverted())
             if len(path.split('/'))>1:
                 ut.create_folder('/'.join(path.split('/')[:-1]))
-            self.fig.savefig(path, bbox_inches=extent)
+            self.fig.savefig(path, bbox_inches='tight')
     
     def on_pick(self,event):
         if event.mouseevent.button == 1:
@@ -1741,7 +1579,7 @@ class point_selector:
                     self.active_rects[i] = not self.active_rects[i]
                     break;
                     
-            cl = s.adata.obs[self.button3.ax.get_children()[0].get_text()].get_values()
+            cl = s.adata.obs[self.button3.ax.texts[0].get_text()].get_values()
             clu = np.unique(cl)
             idx = np.where(cl == clu[i])[0]
     
@@ -1773,6 +1611,7 @@ class point_selector:
             self.ax.collections[0].set_linewidths(lw)
             self.ax.collections[0].set_sizes(ss)            
             self.fig.canvas.draw_idle()
+            self.fig_buttons.canvas.draw_idle()
     
 
     def _keypress(self, event, tb):
@@ -1804,53 +1643,64 @@ class point_selector:
                 if tb.cursor_index != len(tb.text):
                     tb.text = (tb.text[:tb.cursor_index] +
                                  tb.text[tb.cursor_index + 1:])
+            elif(key == 'escape'):
+                tb.text = ""
+                tb.cursor_index = 0
+                
+            elif(key == 'ctrl+v'):
+                s = pyperclip.paste()
+                tb.text = (tb.text[:tb.cursor_index] + s +
+                             tb.text[tb.cursor_index:])
+                tb.cursor_index += len(s)
 
             tb.text_disp.remove()
             tb.text_disp = tb._make_text_disp(tb.text)
             tb._rendercursor()
             tb._notify_change_observers()
             if key == "enter":
-                tb._notify_submit_observers()
+                #tb._notify_submit_observers()
                 self.stop_typing(tb, False)
                 
     def annotate_pop(self,text):
+        x1 = np.array(list(self.sam.adata.obs_names))
         if text!='' and self.text_annotate_name.text != '' and self.selected.sum()!=self.selected.size:
             if self.text_annotate_name.text in list(self.sam.adata.obs.keys()):
                 a = self.sam.adata.obs[self.text_annotate_name.text].get_values().copy().astype('<U100')
-                a[np.in1d(self.sam.adata.obs_names,self.selected_cells)] = text
+                a[np.in1d(x1,self.selected_cells)] = text
                 self.sam.adata.obs[self.text_annotate_name.text] = pd.Categorical(a)
                         
                 if self.sam_subcluster is not None:
                     a = self.sam_subcluster.adata.obs[self.text_annotate_name.text].get_values().copy().astype('<U100')
-                    a[np.in1d(self.sam_subcluster.adata.obs_names,self.selected_cells)] = text
+                    x2 = np.array(list(self.sam_subcluster.adata.obs_names))
+                    a[np.in1d(x2,self.selected_cells)] = text
                     self.sam_subcluster.adata.obs[self.text_annotate_name.text] = pd.Categorical(a)
             else:
                 a = np.zeros(self.sam.adata.shape[0],dtype='<U100')
                 a[:]=""                
-                a[np.in1d(self.sam.adata.obs_names,self.selected_cells)] = text
+                a[np.in1d(x1,self.selected_cells)] = text
                 self.sam.adata.obs[self.text_annotate_name.text] = pd.Categorical(a)
                 if self.sam_subcluster is not None:
                     a = np.zeros(self.sam_subcluster.adata.shape[0],dtype='<U100')
-                    a[:]=""                
-                    a[np.in1d(self.sam_subcluster.adata.obs_names,self.selected_cells)] = text
+                    a[:]=""   
+                    x2 = np.array(list(self.sam_subcluster.adata.obs_names))
+                    a[np.in1d(x2,self.selected_cells)] = text
                     self.sam_subcluster.adata.obs[self.text_annotate_name.text] = pd.Categorical(a)  
-        self.fig.canvas.draw_idle()    
+        self.fig_buttons.canvas.draw_idle()
     
     def annotate(self,event):      
-        if self.button3.ax.get_children()[0].get_text() != '':               
+        if self.button3.ax.texts[0].get_text() != '':               
             if self.sam_subcluster is None:
                 s=self.sam
             else:
                 s=self.sam_subcluster              
             for i in self.ax.figure.axes:
-                if type(i) is self.AXSUBPLOT:
-                    i.remove()
-            
+                i.remove()
+                       
             sc = self.scatter_dict.copy() 
-            sc['c'] =self.button3.ax.get_children()[0].get_text()
+            sc['c'] =self.button3.ax.texts[0].get_text()
             self.fig.add_subplot(111)
             self.ax = self.fig.axes[-1]
-            s.scatter(axes = self.ax, **sc)
+            scatter(s,axes = self.ax, do_GUI=False, **sc)
             self.selected[:] = True
             self.selected_cells = np.array(list(s.adata.obs_names))
             
@@ -1884,6 +1734,10 @@ class point_selector:
             self.ax.set_ylim(self.curr_lim[1])
             
             self.fig.canvas.draw_idle()
+
+            self.append_image_history()            
+            self.fig_buttons.canvas.draw_idle()
+
         
     def eps_update(self,val):
         self.eps=val
@@ -1901,8 +1755,29 @@ class point_selector:
             gene = self.markers[int(val)]
             
         self.text_box.set_val(gene)
+    
+    def show_history_window(self, event):
+        self.history_fig = plt.figure();
+        x,y,x2,y2 = self.fig_buttons.canvas.manager.window.geometry().getCoords()
+        width=x2-x
+        height=y2-y
+        self.history_fig.canvas.manager.window.setGeometry(x+width+2,y,0.65*width,0.65*height)        
+        self.history_fig.add_subplot(111)
+        self.history_ax = self.history_fig.axes[-1]
+        self.history_ax.set_xticks([])
+        self.history_ax.set_yticks([]) 
+        self.history_cid = self.history_fig.canvas.mpl_connect('scroll_event', self.on_scroll_history)
+        self.current_image = len(self.history_images)-1;
+        self.history_ax.imshow(self.history_images[-1])
+        self.history_fig.subplots_adjust(top=1,left=0,bottom=0,right=1,wspace=0,hspace=0)
+        self.history_ax.axis('tight')
         
-        self.fig.canvas.draw_idle()    
+
+    
+    def append_image_history(self):
+        history_image = np.frombuffer(self.fig.canvas.tostring_rgb(), dtype=np.uint8)
+        history_image = history_image.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))                                
+        self.history_images.append(history_image)
         
     def subcluster(self,event):
         if not np.all(self.selected) and self.selected.sum() > 0:
@@ -1916,19 +1791,20 @@ class point_selector:
             
             self.sam_subcluster.adata_raw.obs = self.sam.adata[
                             self.selected_cells,:].obs
-                    
-            self.sam_subcluster.preprocess_data(**self.sam.preprocess_args)
+                
+            if len(list(self.sam.preprocess_args.keys())) > 0:
+                self.sam_subcluster.preprocess_data(**self.sam.preprocess_args)
             
             self.sam_subcluster.run(**self.sam.run_args);
             
 
             for i in self.ax.figure.axes:
-                if type(i) is self.AXSUBPLOT:
-                    i.remove()
+                i.remove()
             
             self.fig.add_subplot(111)
             self.ax = self.fig.axes[-1]
-            self.sam_subcluster.scatter(axes = self.ax, **self.scatter_dict)
+            
+            scatter(self.sam_subcluster, axes = self.ax, do_GUI=False, **self.scatter_dict)
             self.selected=np.zeros(self.sam_subcluster.adata.shape[0],dtype='bool')
             self.selected[:]=True
             self.selected_cells = np.array(list(self.sam_subcluster.adata.obs_names))
@@ -1939,10 +1815,16 @@ class point_selector:
             self.ANN_RECTS = []
             self.curr_lim = self.ax.get_xlim(),self.ax.get_ylim()
             self.markers = None
+            self.gene_slider_text.set_text('Ranked genes\n(SAM weights)')
+            
             fc = self.ax.collections[0].get_facecolors().copy()
             if fc.shape[0] == 1:
                 fc = np.tile(fc,(self.sam_subcluster.adata.shape[0],1))
-            self.fcolors = fc    
+            self.fcolors = fc   
+
+            self.append_image_history()
+            self.fig_buttons.canvas.draw_idle()
+            
             
     def kmeans_cluster(self,event):
         if self.sam_subcluster is None:
@@ -1984,8 +1866,7 @@ class point_selector:
             
         s.louvain_clustering(res = self.eps)
                 
-    def show_expression(self,gene):
-        
+    def show_expression(self,gene):        
         if gene != '':
             if self.sam_subcluster is None:
                 s = self.sam
@@ -2002,13 +1883,13 @@ class point_selector:
                     s.adata[:,gene];
     
                 for i in self.ax.figure.axes:
-                    if type(i) is self.AXSUBPLOT:
-                        i.remove()
+                    i.remove()
                 
                 self.fig.add_subplot(111)
                 self.ax = self.fig.axes[-1]
                 avg = True if self.avg_on.get_text()=='Avg ON' else False;
-                _,c = s.show_gene_expression(gene,axes = self.ax, projection = self.projection, avg = avg)
+                
+                _,c = show_gene_expression(s, gene,axes = self.ax, projection = self.projection, avg = avg)
                                      
                 self.selected[:] = True
                 self.selected_cells = np.array(list(s.adata.obs_names))
@@ -2038,6 +1919,10 @@ class point_selector:
                 self.ax.set_ylim(self.curr_lim[1])
                 
                 self.fig.canvas.draw_idle()
+
+                self.append_image_history()
+                self.fig_buttons.canvas.draw_idle()                
+                
             except IndexError:
                 0; # do nothing
 
@@ -2058,7 +1943,7 @@ class point_selector:
                 self.fig.canvas.mpl_disconnect(cid1)
                 self.cid4 = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press) 
                 self.cid1 = self.fig.canvas.mpl_connect('scroll_event', self.on_scroll) 
-                self.writing_text=False
+                self.writing_text=False        
             else:
                 if event.key in let:
                     self.txt.set_text(self.txt.get_text()+event.key)
@@ -2096,6 +1981,7 @@ class point_selector:
                 if x is not None and y is not None:
                     self.lastX = x
                     self.lastY = y
+                    self.background = self.fig.canvas.copy_from_bbox(self.fig.bbox)
                     self.cid_motion = self.fig.canvas.mpl_connect('motion_notify_event', lambda event: self.on_motion(event, x, y))
                 else:
                     self.cid_motion = None
@@ -2112,10 +1998,8 @@ class point_selector:
                 self.cid_panning = None
        
         elif event.button == 3:
-
             for i in self.ax.figure.axes:
-                if type(i) is self.AXSUBPLOT:
-                    i.remove()
+                i.remove()
        
         
             if self.sam_subcluster is not None:
@@ -2125,7 +2009,7 @@ class point_selector:
                                 
             self.fig.add_subplot(111)
             self.ax = self.fig.axes[-1]
-            s.scatter(axes = self.ax, **self.scatter_dict)
+            scatter(s, axes = self.ax, do_GUI=False, **self.scatter_dict)
                     
             self.markers = None
             self.selected[:] = True
@@ -2137,92 +2021,112 @@ class point_selector:
             self.rax.set_yticks([])
             self.ANN_TEXTS = []
             self.ANN_RECTS = []
+            self.gene_slider_text.set_text('Ranked genes\n(SAM weights)')
+            
             fc = self.ax.collections[0].get_facecolors().copy()
             if fc.shape[0] == 1:
                 fc = np.tile(fc,(s.adata.shape[0],1))
             self.fcolors = fc
             self.curr_lim = self.ax.get_xlim(),self.ax.get_ylim()
             self.fig.canvas.draw_idle()
+            self.fig_buttons.canvas.draw_idle()
+            
 
     def on_key_press(self, event):
-        if (not self.text_box.capturekeystrokes and not self.text_box2.capturekeystrokes
-                and not self.text_annotate_name.capturekeystrokes and not self.text_annotate.capturekeystrokes):
-            if self.sam_subcluster is not None:
-                s=self.sam_subcluster
+        if self.sam_subcluster is not None:
+            s=self.sam_subcluster
+        else:
+            s=self.sam            
+            
+            
+        if event.key == 'right':
+            self.slider1.set_val(self.slider1.val+1)
+        elif event.key == 'left':
+            x = self.slider1.val-1
+            if x < 0:
+                x=0
+            self.slider1.set_val(x)
+        
+        elif event.key == 'shift' and not np.all(self.selected) and self.selected.sum() > 0:
+            #"""
+            print('Identifying marker genes')
+            a = np.zeros(s.adata.shape[0])
+            a[self.selected]=1
+            self.markers = s.identify_marker_genes_rf(labels = a,clusters = 1)[1]
+            self.gene_slider_text.set_text('Ranked genes\n(RF markers)')
+            #self.slider1.set_val(1)
+            if self.slider1.val == 0:
+                self.slider1.set_val(1)
+                self.slider1.set_val(0)
             else:
-                s=self.sam            
-                
-                
-            if event.key == 'right':
-                self.slider1.set_val(self.slider1.val+1)
-            elif event.key == 'left':
-                x = self.slider1.val-1
-                if x < 0:
-                    x=0
-                self.slider1.set_val(x)
-            
-            elif event.key == 'shift' and not np.all(self.selected) and self.selected.sum() > 0:
-                #"""
-                print('Identifying marker genes')
-                a = np.zeros(s.adata.shape[0])
-                a[self.selected]=1
-                self.markers = s.identify_marker_genes_rf(labels = a,clusters = 1)[1]
                 self.slider1.set_val(0)
-                #"""
+            #"""
+        
+        elif event.key == 'enter' and not np.all(self.selected) and self.selected.sum() > 0:
+            print('Identifying highly weighted genes in target area')
+            l = s.adata.layers['X_knn_avg']
+            m = l.mean(0).A.flatten()
+            ms = l[self.selected,:].mean(0).A.flatten()
+            lsub = l[self.selected,:]
+            lsub.data[:] = lsub.data**2
+            ms2 = lsub.mean(0).A.flatten()
+            v = ms2 - 2*ms*m + m**2
+            wmu = np.zeros(v.size)
+            wmu[m>0] = v[m>0] / m[m>0]
             
-            elif event.key == 'enter' and not np.all(self.selected) and self.selected.sum() > 0:
-                print('Identifying highly weighted genes in target area')
-                l = s.adata.layers['X_knn_avg']
-                m = l.mean(0).A.flatten()
-                ms = l[self.selected,:].mean(0).A.flatten()
-                lsub = l[self.selected,:]
-                lsub.data[:] = lsub.data**2
-                ms2 = lsub.mean(0).A.flatten()
-                v = ms2 - 2*ms*m + m**2
-                wmu = np.zeros(v.size)
-                wmu[m>0] = v[m>0] / m[m>0]
-                
-                self.markers = np.array(list(s.adata.var_names[np.argsort(-wmu)]))
+            self.markers = np.array(list(s.adata.var_names[np.argsort(-wmu)]))
+            self.gene_slider_text.set_text('Ranked genes\n(SW markers)')
+            #self.slider1.set_val(1)
+            if self.slider1.val == 0:
+                self.slider1.set_val(1)
                 self.slider1.set_val(0)
-            elif event.key == 'x':
-                self.unselect_all(None);
-            elif event.key == 'a':
-                if self.avg_on.get_text() == 'Avg ON':
-                    self.avg_on.set_text('Avg OFF')
-                else:
-                    self.avg_on.set_text('Avg ON')
-                self.fig.canvas.draw_idle()
-            elif event.key == 'escape':
-                for i in self.ax.figure.axes:
-                    if type(i) is self.AXSUBPLOT:
-                        i.remove()
-                
-                if self.sam_subcluster is not None:
-                    self.sam_subcluster = None
-                          
-                self.fig.add_subplot(111)
-                self.ax = self.fig.axes[-1]
-                self.sam.scatter(axes = self.ax, **self.scatter_dict)
-                
-                self.selected=np.zeros(self.sam.adata.shape[0],dtype='bool')
-                self.selected[:]=True
-                self.selected_cells=np.array(list(self.sam.adata.obs_names))
-                self.markers = None
-                
-                self.slider3.set_active(False)
-                self.slider3.ax.set_facecolor('lightgray')
-                
-                self.rax.cla()
-                self.rax.set_xticks([])
-                self.rax.set_yticks([])
-                self.ANN_TEXTS = []
-                self.ANN_RECTS = []
-                fc = self.ax.collections[0].get_facecolors().copy()
-                if fc.shape[0] == 1:
-                    fc = np.tile(fc,(self.sam.adata.shape[0],1))
-                self.fcolors = fc
-                self.curr_lim = self.ax.get_xlim(),self.ax.get_ylim()
-                self.fig.canvas.draw_idle()            
+            else:
+                self.slider1.set_val(0)
+                                     
+        elif event.key == 'x':
+            self.unselect_all(None);
+        elif event.key == 'a':
+            if self.avg_on.get_text() == 'Avg ON':
+                self.avg_on.set_text('Avg OFF')
+            else:
+                self.avg_on.set_text('Avg ON')
+            self.fig_buttons.canvas.draw_idle()
+        elif event.key == 'escape':                
+            for i in self.ax.figure.axes:
+                i.remove()
+            
+            
+            self.sam_subcluster = None
+            
+            self.fig.add_subplot(111)
+            self.ax = self.fig.axes[0]
+            
+            scatter(self.sam, axes = self.ax, do_GUI=False, **self.scatter_dict)
+            
+            self.selected=np.zeros(self.sam.adata.shape[0],dtype='bool')
+            self.selected[:]=True
+            self.selected_cells=np.array(list(self.sam.adata.obs_names))
+            self.markers = None
+            self.gene_slider_text.set_text('Ranked genes\n(SAM weights)')
+            
+            self.slider3.set_active(False)
+            self.slider3.ax.set_facecolor('lightgray')
+            
+            self.rax.cla()
+            self.rax.set_xticks([])
+            self.rax.set_yticks([])
+            self.ANN_TEXTS = []
+            self.ANN_RECTS = []
+            
+            fc = self.ax.collections[0].get_facecolors().copy()
+            if fc.shape[0] == 1:
+                fc = np.tile(fc,(self.sam.adata.shape[0],1))
+            self.fcolors = fc
+            self.curr_lim = self.ax.get_xlim(),self.ax.get_ylim()
+            self.button3.ax.texts[0].set_text('') 
+             
+            self.fig.canvas.draw_idle()   
+            self.fig_buttons.canvas.draw_idle()
         
     def on_release(self, event):
         if event.button == 1:
@@ -2233,12 +2137,40 @@ class point_selector:
             if self.cid_motion is not None:
                 self.fig.canvas.mpl_disconnect(self.cid_motion)
                 
+                if self.selection_bounds is not None:
+                    x1,x2,y1,y2 = self.selection_bounds
+                    offsets=self.ax.collections[0].get_offsets()
+                    sp = np.where(np.logical_and(np.logical_and(offsets[:,0]>x1,offsets[:,0]<x2),
+                           np.logical_and(offsets[:,1]>y1,offsets[:,1]<y2)))[0]
+                    if sp.size>0 and self.selected.sum() != self.selected.size:
+                        self.selected[sp] = True
+                        
+                        if self.sam_subcluster is None:
+                            s=self.sam
+                        else:
+                            s=self.sam_subcluster
+                        
+                        self.selected_cells = np.array(list(s.adata.obs_names))[self.selected]
+                        
+                        fc = self.fcolors.copy()
+                        fc[np.invert(self.selected),:] = np.array([0.7,0.7,0.7,0.45])
+                        self.ax.collections[0].set_facecolors(fc)
+                        
+                        ss = self.ax.collections[0].get_sizes().copy()
+                        if len(ss) == 1:
+                            ss = np.ones(offsets.shape[0])*self.scatter_dict['s']
+                            
+                        ss[np.invert(self.selected)] = self.scatter_dict['s']/1.5
+                        self.ax.collections[0].set_sizes(ss)
+                
+                
         elif event.button == 2:
             if self.cid_panning is not None:
                 self.fig.canvas.mpl_disconnect(self.cid_panning)            
 
         
         self.fig.canvas.draw_idle()
+        self.fig_buttons.canvas.draw_idle()
 
     def on_motion_pan(self, event):
 
@@ -2270,6 +2202,7 @@ class point_selector:
             self.ax.set_xlim([x0p,x1p])
             self.curr_lim = [x0p,x1p],[y0p,y1p]
             self.fig.canvas.draw_idle()
+            self.fig_buttons.canvas.draw_idle()
         
     def on_motion(self, event, xo, yo):
         
@@ -2283,9 +2216,12 @@ class point_selector:
         width = xn-xo
         height = yn-yo
         if self.patch is not None:
-            self.patch.remove()    
-        
-        self.patch = self.ax.add_patch(Rectangle((xo,yo), width, height,
+            self.patch.set_x(xo)
+            self.patch.set_y(yo)
+            self.patch.set_width(width)
+            self.patch.set_height(height)
+        else:
+            self.patch = self.ax.add_patch(Rectangle((xo,yo), width, height,
                                                 alpha=1,edgecolor='k',fill=False))   
         
         x1 = min((xn,xo))
@@ -2294,35 +2230,155 @@ class point_selector:
         y2 = max((yn,yo))
         
         offsets = self.ax.collections[0].get_offsets()
-        sp = np.where(np.logical_and(np.logical_and(offsets[:,0]>x1,offsets[:,0]<x2),
-                       np.logical_and(offsets[:,1]>y1,offsets[:,1]<y2)))[0]
-        
+        self.selection_bounds = (x1,x2,y1,y2)
+        self.lastX = xn
+        self.lastY = yn
+        self.fig.canvas.restore_region(self.background)
+        self.ax.draw_artist(self.patch)
+        self.fig.canvas.update()
+    
+    def on_scroll_history(self, event):
+        if event.inaxes is self.history_ax:
+            if event.button == 'down':
+                self.current_image += 1;
+            elif event.button == 'up':
+                self.current_image -= 1;
+                
+            if self.current_image < 0:
+                self.current_image = 0
+            elif self.current_image >= len(self.history_images):
+                self.current_image = len(self.history_images)-1
             
-        if sp.size>0:
-            self.selected[sp] = True
+            self.history_ax.imshow(self.history_images[self.current_image])
+            self.history_ax.axis('tight')
+            self.history_fig.canvas.draw_idle()        
+    
+    def on_scroll_ctrl(self, event):
+        if event.inaxes is self.button2.ax:
+            if event.button == 'up':
+                self.CLUSTER+=1
+            elif event.button == 'down':
+                self.CLUSTER-=1
             
+            if self.CLUSTER < 0: self.CLUSTER=0;
+            if self.CLUSTER > 4: self.CLUSTER=4;
+            
+            if self.CLUSTER == 0:
+                self.button2.disconnect(0)
+                self.button2.cnt=0
+                self.button2.ax.texts[0].set_text('Louvain cluster')
+                self.button2.on_clicked(self.louvain_cluster)
+                self.slider2.valmin = 0.1
+                self.slider2.valmax = 10
+                self.slider2.valstep = 0.1
+                self.slider2.set_val(1)
+                self.slider2.valinit=1
+                self.slider2.ax.set_xlim(self.slider2.valmin,self.slider2.valmax)
+                self.cluster_param_text.set_text('Cluster param\n(Louvain \'res\')')
+            
+            elif self.CLUSTER == 1:
+                self.button2.disconnect(0)
+                self.button2.cnt=0
+                self.button2.ax.texts[0].set_text('Density cluster')
+                self.button2.on_clicked(self.density_cluster)
+                self.slider2.valmin = 0.1
+                self.slider2.valmax = 2
+                self.slider2.valstep = 0.01
+                self.slider2.set_val(0.5)
+                self.slider2.valinit=0.5
+                self.slider2.ax.set_xlim(self.slider2.valmin,self.slider2.valmax)                
+                self.cluster_param_text.set_text('Cluster param\n(Density \'eps\')')
+            elif self.CLUSTER == 2:
+                self.button2.disconnect(0)
+                self.button2.cnt=0
+                self.button2.ax.texts[0].set_text('Hdbscan cluster')
+                self.button2.on_clicked(self.hdbscan_cluster)
+                self.slider2.valmin = 5
+                self.slider2.valmax = 50
+                self.slider2.valstep = 1
+                self.slider2.set_val(10)
+                self.slider2.valinit=10
+                self.slider2.ax.set_xlim(self.slider2.valmin,self.slider2.valmax)  
+                self.cluster_param_text.set_text('Cluster param\n(Hdbscan N/A)')
+                
+            elif self.CLUSTER == 3:
+                self.button2.disconnect(0)
+                self.button2.cnt=0
+                self.button2.ax.texts[0].set_text('Kmeans cluster')
+                self.button2.on_clicked(self.kmeans_cluster)
+                self.slider2.valmin = 2
+                self.slider2.valmax = 50
+                self.slider2.valstep = 1
+                self.slider2.set_val(6)
+                self.slider2.valinit=6
+                self.slider2.ax.set_xlim(self.slider2.valmin,self.slider2.valmax)    
+                self.cluster_param_text.set_text('Cluster param\n(Kmeans \'k\')')
+            elif self.CLUSTER == 4:
+                self.button2.disconnect(0)
+                self.button2.cnt=0
+                self.button2.ax.texts[0].set_text('Leiden cluster')
+                self.button2.on_clicked(self.leiden_cluster)
+                self.slider2.valmin = 0.1
+                self.slider2.valmax = 10
+                self.slider2.valstep = 0.1
+                self.slider2.set_val(1)
+                self.slider2.valinit=1
+                self.slider2.ax.set_xlim(self.slider2.valmin,self.slider2.valmax)
+                self.cluster_param_text.set_text('Cluster param\n(Leiden \'res\')')
+      
+            self.fig_buttons.canvas.draw_idle()
+        elif event.inaxes is self.button3.ax:
             if self.sam_subcluster is None:
                 s=self.sam
             else:
                 s=self.sam_subcluster
-            
-            self.selected_cells = np.array(list(s.adata.obs_names))[self.selected]
-            
-            fc = self.fcolors.copy()
-            fc[np.invert(self.selected),:] = np.array([0.7,0.7,0.7,0.45])
-            self.ax.collections[0].set_facecolors(fc)
-            
-            ss = self.ax.collections[0].get_sizes().copy()
-            if len(ss) == 1:
-                ss = np.ones(offsets.shape[0])*self.scatter_dict['s']
                 
-            ss[np.invert(self.selected)] = self.scatter_dict['s']/1.5
-            self.ax.collections[0].set_sizes(ss)
+            keys = list(s.adata.obs.keys())
+            keys = [''] + keys
+            curr_str = self.button3.ax.texts[0].get_text()
             
-        self.lastX = xn
-        self.lastY = yn
-        self.fig.canvas.draw_idle()
-    
+
+            idx = np.where(np.in1d(np.array(keys).flatten(),curr_str))[0][0]
+
+            if event.button == 'up':
+                idx -= 1
+            elif event.button == 'down':
+                idx +=1
+            
+            if idx < 0: idx = 0;
+            if idx >= len(keys): idx = len(keys)-1;
+            curr_str = keys[idx]
+            self.button3.ax.texts[0].set_text(curr_str)
+            self.fig_buttons.canvas.draw_idle()
+            
+        elif event.inaxes is self.rax:
+            if len(self.ANN_TEXTS)>0:
+                y1, y2 = self.rax.get_ylim()
+                if event.button == 'down':
+                    y1 -= 0.2;
+                    y2 -= 0.2;
+                elif event.button == 'up':
+                    y1 += 0.2;
+                    y2 += 0.2;
+                
+                _,ymin = self.ANN_TEXTS[-1].get_unitless_position()
+                ymax = 1.0
+                ymin = min(0,ymin)
+                
+                if ymin < 0:
+                    ymin -= 0.2;
+                    
+                if y2 > ymax:
+                    y2 -= 0.2
+                    y1 -= 0.2
+                
+                if y1 < ymin:
+                    y2 += 0.2;
+                    y1 += 0.2;
+                
+                self.rax.set_ylim([y1,y2])
+                self.fig_buttons.canvas.draw_idle()
+                
     def on_scroll(self, event):
 
         if event.inaxes is self.ax:
@@ -2353,123 +2409,162 @@ class point_selector:
                 self.ax.set_ylim(curr_ylim)
                 self.curr_lim = curr_xlim,curr_ylim
                 self.fig.canvas.draw_idle()
-        elif event.inaxes is self.button2.ax:
-            if event.button == 'up':
-                self.CLUSTER+=1
-            elif event.button == 'down':
-                self.CLUSTER-=1
+
+def scatter(sam, projection=None, c=None, cmap='rainbow', linewidth=0.0,
+            axes=None, s=10, do_GUI = True, **kwargs):
+    """Display a scatter plot.
+
+    Displays a scatter plot using the SAM projection or another input
+    projection with or without annotations.
+
+    Parameters
+    ----------
+
+    projection - ndarray of floats, optional, default None
+        An N x 2 matrix, where N is the number of data points. If None,
+        use an existing SAM projection (default t-SNE). Can take on values
+        'umap' or 'tsne' to specify either the SAM UMAP embedding or
+        SAM t-SNE embedding.
+
+    c - ndarray or str, optional, default None
+        Colors for each cell in the scatter plot. Can be a vector of
+        floats or strings for cell annotations. Can also be a key
+        for sam.adata.obs (i.e. 'louvain_clusters').
+
+    axes - matplotlib axis, optional, default None
+        Plot output to the specified, existing axes. If None, create new
+        figure window.
+
+    cmap - string, optional, default 'rainbow'
+        The colormap to use for the input color values.
+
+    Keyword arguments -
+        All other keyword arguments that can be passed into
+        matplotlib.pyplot.scatter can be used.
+    """
+
+    if (not PLOTTING):
+        print("matplotlib not installed!")
+    else:
+        if isinstance(sam,AnnData):
+            sam=SAM(counts=sam)
             
-            if self.CLUSTER < 0: self.CLUSTER=0;
-            if self.CLUSTER > 4: self.CLUSTER=4;
+        if(isinstance(projection, str)):
+            try:
+                dt = sam.adata.obsm[projection]
+            except KeyError:
+                print('Please create a projection first using run_umap or'
+                      'run_tsne')
+
+        elif(projection is None):
+            try:
+                dt = sam.adata.obsm['X_umap']
+            except KeyError:
+                try:
+                    dt = sam.adata.obsm['X_tsne']
+                except KeyError:
+                    print("Please create either a t-SNE or UMAP projection"
+                          "first.")
+                    return
+        else:
+            dt = projection
+        
+        if(axes is None):
+            plt.figure(figsize=(6,6))
+            axes = plt.gca()
+        else:
+            do_GUI=False
             
-            if self.CLUSTER == 0:
-                self.button2.disconnect(0)
-                self.button2.cnt=0
-                self.button2.ax.get_children()[0].set_text('Louvain cluster')
-                self.button2.on_clicked(self.louvain_cluster)
-                self.slider2.valmin = 0.1
-                self.slider2.valmax = 10
-                self.slider2.valstep = 0.1
-                self.slider2.set_val(1)
-                self.slider2.valinit=1
-                self.slider2.ax.set_xlim(self.slider2.valmin,self.slider2.valmax)
-            elif self.CLUSTER == 1:
-                self.button2.disconnect(0)
-                self.button2.cnt=0
-                self.button2.ax.get_children()[0].set_text('Density cluster')
-                self.button2.on_clicked(self.density_cluster)
-                self.slider2.valmin = 0.1
-                self.slider2.valmax = 2
-                self.slider2.valstep = 0.01
-                self.slider2.set_val(0.5)
-                self.slider2.valinit=0.5
-                self.slider2.ax.set_xlim(self.slider2.valmin,self.slider2.valmax)                
-            elif self.CLUSTER == 2:
-                self.button2.disconnect(0)
-                self.button2.cnt=0
-                self.button2.ax.get_children()[0].set_text('Hdbscan cluster')
-                self.button2.on_clicked(self.hdbscan_cluster)
-                self.slider2.valmin = 5
-                self.slider2.valmax = 50
-                self.slider2.valstep = 1
-                self.slider2.set_val(10)
-                self.slider2.valinit=10
-                self.slider2.ax.set_xlim(self.slider2.valmin,self.slider2.valmax)                
-            elif self.CLUSTER == 3:
-                self.button2.disconnect(0)
-                self.button2.cnt=0
-                self.button2.ax.get_children()[0].set_text('Kmeans cluster')
-                self.button2.on_clicked(self.kmeans_cluster)
-                self.slider2.valmin = 2
-                self.slider2.valmax = 50
-                self.slider2.valstep = 1
-                self.slider2.set_val(6)
-                self.slider2.valinit=6
-                self.slider2.ax.set_xlim(self.slider2.valmin,self.slider2.valmax)                
-            elif self.CLUSTER == 4:
-                self.button2.disconnect(0)
-                self.button2.cnt=0
-                self.button2.ax.get_children()[0].set_text('Leiden cluster')
-                self.button2.on_clicked(self.leiden_cluster)
-                self.slider2.valmin = 0.1
-                self.slider2.valmax = 10
-                self.slider2.valstep = 0.1
-                self.slider2.set_val(1)
-                self.slider2.valinit=1
-                self.slider2.ax.set_xlim(self.slider2.valmin,self.slider2.valmax)
-      
-            self.fig.canvas.draw_idle()
-        elif event.inaxes is self.button3.ax:
-            if self.sam_subcluster is None:
-                s=self.sam
+        cstr = c
+        if(c is None):
+            axes.scatter(dt[:, 0], dt[:, 1], s=s,
+                        linewidth=linewidth, **kwargs)
+        else:
+
+            if isinstance(c, str):
+                try:
+                    c = sam.adata.obs[c].get_values()
+                except KeyError:
+                    0  # do nothing
+
+            if((isinstance(c[0], str) or isinstance(c[0], np.str_)) and
+               (isinstance(c, np.ndarray) or isinstance(c, list))):
+                i = ut.convert_annotations(np.array(c))
+                ui, ai = np.unique(i, return_index=True)
+
+                cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
+                                   linewidth=linewidth,
+                                   **kwargs)
             else:
-                s=self.sam_subcluster
-                
-            keys = list(s.adata.obs.keys())
-            keys = [''] + keys
-            curr_str = self.button3.ax.get_children()[0].get_text()
-            
+                i = c
 
-            idx = np.where(np.in1d(np.array(keys).flatten(),curr_str))[0][0]
+                cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
+                                   linewidth=linewidth,
+                                   **kwargs)
+                plt.colorbar(cax, ax=axes)
+    
+        axes.figure.canvas.draw()
+        
+        if do_GUI:
+            #axes.figure.subplots_adjust(bottom=0.26,right=0.8)                
+            ps = point_selector(axes,sam, linewidth=linewidth,
+                                     projection=projection, c=cstr, cmap=cmap,
+                                     s=s, **kwargs)
+        else:
+            ps=None
+    
+    return axes, ps
 
-            if event.button == 'up':
-                idx -= 1
-            elif event.button == 'down':
-                idx +=1
-            
-            if idx < 0: idx = 0;
-            if idx >= len(keys): idx = len(keys)-1;
-            curr_str = keys[idx]
-            self.button3.ax.get_children()[0].set_text(curr_str)
-            self.fig.canvas.draw_idle()
-            
-        elif event.inaxes is self.rax:
-            if len(self.ANN_TEXTS)>0:
-                y1, y2 = self.rax.get_ylim()
-                if event.button == 'down':
-                    y1 -= 0.2;
-                    y2 -= 0.2;
-                elif event.button == 'up':
-                    y1 += 0.2;
-                    y2 += 0.2;
-                
-                _,ymin = self.ANN_TEXTS[-1].get_unitless_position()
-                ymax = 1.0
-                ymin = min(0,ymin)
-                
-                if ymin < 0:
-                    ymin -= 0.2;
-                    
-                if y2 > ymax:
-                    y2 -= 0.2
-                    y1 -= 0.2
-                
-                if y1 < ymin:
-                    y2 += 0.2;
-                    y1 += 0.2;
-                
-                self.rax.set_ylim([y1,y2])
-                self.fig.canvas.draw_idle()
-            
+def show_gene_expression(sam, gene, avg=True, **kwargs):
+    """Display a gene's expressions.
 
-            
+    Displays a scatter plot using the SAM projection or another input
+    projection with a particular gene's expressions overlaid.
+
+    Parameters
+    ----------
+    gene - string
+        a case-sensitive string indicating the gene expression pattern
+        to display.
+
+    avg - bool, optional, default True
+        If True, the plots use the k-nearest-neighbor-averaged expression
+        values to smooth out noisy expression patterns and improves
+        visualization.
+
+    axes - matplotlib axis, optional, default None
+        Plot output to the specified, existing axes. If None, create new
+        figure window.
+
+    **kwargs - all keyword arguments in 'SAM.scatter' are eligible.
+
+    """
+    if isinstance(sam,AnnData):
+        sam=SAM(counts=sam)
+
+    all_gene_names = np.array(list(sam.adata.var_names))
+    #cell_names = np.array(list(self.adata.obs_names))
+    #all_cell_names = np.array(list(self.adata_raw.obs_names))
+
+    idx = np.where(all_gene_names == gene)[0]
+    name = gene
+    if(idx.size == 0):
+        print(
+            "Gene note found in the filtered dataset. Note that genes "
+            "are case sensitive.")
+        return
+
+    if(avg):
+        a = sam.adata.layers['X_knn_avg'][:, idx].toarray().flatten()
+        if a.sum() == 0:
+            a = sam.adata.X[:,idx].toarray().flatten()
+
+    else:
+        a = sam.adata.layers['X_disp'][:,idx].toarray().flatten()
+
+   
+    
+    ax,_ = scatter(sam, c=a, do_GUI = False, **kwargs)        
+    ax.set_title(name)
+    
+    return ax, a
