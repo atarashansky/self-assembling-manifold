@@ -17,9 +17,11 @@ warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 import string
 try:
     import pyperclip
+    import matplotlib
+    matplotlib.use('Qt5Agg')
     import matplotlib.pyplot as plt
     from matplotlib.widgets import TextBox, Button, Slider
-    import matplotlib
+
     from matplotlib.patches import Rectangle, Polygon
     
     PLOTTING = True
