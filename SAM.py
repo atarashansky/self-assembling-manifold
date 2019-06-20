@@ -1458,9 +1458,9 @@ class point_selector:
         self.button5= Button(axnext, 'Unselect all')
         self.button5.on_clicked(self.unselect_all)            
         
-        
-        history_image = np.frombuffer(self.fig.canvas.tostring_rgb(), dtype=np.uint8)
-        history_image = history_image.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))                        
+        buff,wh = self.fig.canvas.print_to_buffer()
+        history_image = np.frombuffer(buff, dtype=np.uint8)
+        history_image = history_image.reshape((wh[1],wh[0],4))
         self.history_images = [history_image]
         
         fc = self.ax.collections[0].get_facecolors().copy()
@@ -1783,8 +1783,9 @@ class point_selector:
 
     
     def append_image_history(self):
-        history_image = np.frombuffer(self.fig.canvas.tostring_rgb(), dtype=np.uint8)
-        history_image = history_image.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))                                
+        buff,wh = self.fig.canvas.print_to_buffer()
+        history_image = np.frombuffer(buff, dtype=np.uint8)
+        history_image = history_image.reshape((wh[1],wh[0],4))                              
         self.history_images.append(history_image)
         
     def subcluster(self,event):
@@ -2458,7 +2459,6 @@ def scatter(sam, projection=None, c=None, cmap='rainbow', linewidth=0.0,
     if (not PLOTTING):
         print("matplotlib not installed!")
     else:
-        plt.ion()
         if isinstance(sam,AnnData):
             sam=SAM(counts=sam)
             
@@ -2525,7 +2525,6 @@ def scatter(sam, projection=None, c=None, cmap='rainbow', linewidth=0.0,
                                      s=s, **kwargs)
         else:
             ps=None
-        plt.show()
     
     return axes, ps
 
@@ -2571,28 +2570,10 @@ def show_gene_expression(sam, gene, avg=True, **kwargs):
     if(avg):
         a = sam.adata.layers['X_knn_avg'][:, idx].toarray().flatten()
         if a.sum() == 0:
-            a = sam.adata_raw.X[:,idx].toarray().flatten()
-            norm = sam.preprocess_args['norm']
-            
-            if(norm.lower() == 'log'):
-                a = np.log2(a + 1)
-
-            elif(norm.lower() == 'ftt'):
-                a = np.sqrt(a) + np.sqrt(a+1)
-            elif(norm.lower() == 'asin'):
-                a = np.arcsinh(a)
+            a = sam.adata.X[:,idx].toarray().flatten()
 
     else:
-        a = sam.adata_raw.X[:,idx].toarray().flatten()
-        norm = sam.preprocess_args['norm']
-
-        if(norm.lower() == 'log'):
-            a = np.log2(a + 1)
-
-        elif(norm.lower() == 'ftt'):
-            a = np.sqrt(a) + np.sqrt(a+1)
-        elif(norm.lower() == 'asin'):
-            a = np.arcsinh(a)
+        a = sam.adata.layers['X_disp'][:,idx].toarray().flatten()
 
    
     
