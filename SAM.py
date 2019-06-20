@@ -2571,10 +2571,28 @@ def show_gene_expression(sam, gene, avg=True, **kwargs):
     if(avg):
         a = sam.adata.layers['X_knn_avg'][:, idx].toarray().flatten()
         if a.sum() == 0:
-            a = sam.adata.X[:,idx].toarray().flatten()
+            a = sam.adata_raw.X[:,idx].toarray().flatten()
+            norm = self.preprocess_args['norm']
+            
+            if(norm.lower() == 'log'):
+                a = np.log2(a + 1)
+
+            elif(norm.lower() == 'ftt'):
+                a = np.sqrt(a) + np.sqrt(a+1)
+            elif(norm.lower() == 'asin'):
+                a = np.arcsinh(a)
 
     else:
-        a = sam.adata.layers['X_disp'][:,idx].toarray().flatten()
+        a = sam.adata_raw.X[:,idx].toarray().flatten()
+        norm = self.preprocess_args['norm']
+
+        if(norm.lower() == 'log'):
+            a = np.log2(a + 1)
+
+        elif(norm.lower() == 'ftt'):
+            a = np.sqrt(a) + np.sqrt(a+1)
+        elif(norm.lower() == 'asin'):
+            a = np.arcsinh(a)
 
    
     
