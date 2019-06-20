@@ -44,8 +44,6 @@ Currently this GUI is mainly for my own usage, so I apologize for the total lack
 
 Added a bunch of new features to the scatter plots -- a more detailed changelog will come soon. Also on my To-Do list is to make a more detailed tutorial for those who are interested in this GUI-esque interface.
 
-Side note: to enable the interactivity in Jupyter notebooks please run `%matplotlib qt` at the beginning of your notebook. Note that you need to have `PyQt5` installed to use this magic function (`pip install PyQt5`).
-
 In brief, 
 
 You can now scroll while hovering over the clustering button to change the clustering algorithm. The clustering parameter slider also changes depending on the clustering algorithm.
