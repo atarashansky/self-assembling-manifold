@@ -2572,7 +2572,7 @@ def show_gene_expression(sam, gene, avg=True, **kwargs):
         a = sam.adata.layers['X_knn_avg'][:, idx].toarray().flatten()
         if a.sum() == 0:
             a = sam.adata_raw.X[:,idx].toarray().flatten()
-            norm = self.preprocess_args['norm']
+            norm = sam.preprocess_args['norm']
             
             if(norm.lower() == 'log'):
                 a = np.log2(a + 1)
@@ -2584,7 +2584,7 @@ def show_gene_expression(sam, gene, avg=True, **kwargs):
 
     else:
         a = sam.adata_raw.X[:,idx].toarray().flatten()
-        norm = self.preprocess_args['norm']
+        norm = sam.preprocess_args['norm']
 
         if(norm.lower() == 'log'):
             a = np.log2(a + 1)
