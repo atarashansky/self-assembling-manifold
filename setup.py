@@ -20,7 +20,7 @@ setup(
 	'umap-learn', 'anndata<=0.6.19'],
     extras_require={
         'louvain': [
-            'louvain'],
+            'louvain', 'cython'],
         'hdbscan': [
             'hdbscan'],
         'plot': [
