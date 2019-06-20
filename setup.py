@@ -24,7 +24,7 @@ setup(
         'hdbscan': [
             'hdbscan'],
         'plot': [
-            'matplotlib', 'pyperclip'],
+            'matplotlib', 'pyperclip', 'PyQt5'],
         'scanpy': [
             'scanpy'],	    
         },
