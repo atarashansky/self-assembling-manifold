@@ -1343,8 +1343,6 @@ class point_selector:
         self.fig_buttons.canvas.toolbar.setVisible(False)
         
         self.scatter_dict = kwargs
-        
-        self.projection = kwargs.get('projection',None)        
         self.sam = sam        
         self.ax = ax
         
@@ -1801,8 +1799,8 @@ class point_selector:
             self.sam_subcluster.adata_raw.obs = self.sam.adata[
                             self.selected_cells,:].obs.copy()
             self.sam_subcluster.adata.obs = self.sam.adata[
-                            self.selected_cells,:].obs.copy()   
-                
+                            self.selected_cells,:].obs.copy()           
+            
             if len(list(self.sam.preprocess_args.keys())) > 0:
                 self.sam_subcluster.preprocess_data(**self.sam.preprocess_args)
             
@@ -1900,8 +1898,10 @@ class point_selector:
                 self.fig.add_subplot(111)
                 self.ax = self.fig.axes[-1]
                 avg = True if self.avg_on.get_text()=='Avg ON' else False;
-                
-                _,c = show_gene_expression(s, gene,axes = self.ax, projection = self.projection, avg = avg)
+                sc = self.scatter_dict.copy()
+                sc['c']=0
+                del sc['c']
+                _,c = show_gene_expression(s, gene,axes = self.ax, avg = avg, **sc)
                                      
                 self.selected[:] = True
                 self.selected_cells = np.array(list(s.adata.obs_names))
@@ -2425,7 +2425,7 @@ class point_selector:
                 self.curr_lim = curr_xlim,curr_ylim
                 self.fig.canvas.draw_idle()
 
-def scatter(sam, projection=None, c=None, cmap='rainbow', linewidth=0.0,
+def scatter(sam, projection=None, c=None, cmap='seismic', linewidth=0.0,
             axes=None, s=10, do_GUI = True, **kwargs):
     """Display a scatter plot.
 
@@ -2577,8 +2577,6 @@ def show_gene_expression(sam, gene, avg=True, **kwargs):
     else:
         a = sam.adata.layers['X_disp'][:,idx].toarray().flatten()
 
-   
-    
     ax,_ = scatter(sam, c=a, do_GUI = False, **kwargs)        
     ax.set_title(name)
     
