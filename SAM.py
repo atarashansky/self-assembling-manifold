@@ -2517,7 +2517,7 @@ def scatter(sam, projection=None, c=None, cmap='rainbow', linewidth=0.0,
                                    linewidth=linewidth,
                                    **kwargs)
                 plt.colorbar(cax, ax=axes)
-    
+        axes.set_facecolor('lightgray')
         axes.figure.canvas.draw()
         
         if do_GUI:
