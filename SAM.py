@@ -1597,7 +1597,7 @@ class point_selector:
                     self.active_rects[i] = not self.active_rects[i]
                     break;
                     
-            cl = s.adata.obs[self.button3.ax.texts[0].get_text()].get_values()
+            cl = np.array(list(s.adata.obs[self.button3.ax.texts[0].get_text()].get_values()))
             clu = np.unique(cl)
             idx = np.where(cl == clu[i])[0]
     
@@ -1716,13 +1716,14 @@ class point_selector:
                        
             sc = self.scatter_dict.copy() 
             sc['c'] =self.button3.ax.texts[0].get_text()
+            sc['cmap']='rainbow'
             self.fig.add_subplot(111)
             self.ax = self.fig.axes[-1]
             scatter(s,axes = self.ax, do_GUI=False, **sc)
             self.selected[:] = True
             self.selected_cells = np.array(list(s.adata.obs_names))
-            
-            clu,inv = np.unique(s.adata.obs[sc['c']].get_values(),return_inverse=True)
+            ann=np.array(list(s.adata.obs[sc['c']].get_values()))
+            clu,inv = np.unique(ann,return_inverse=True)
             
             s = 0;
             
@@ -2256,7 +2257,6 @@ class point_selector:
         y1 = min((yn,yo))
         y2 = max((yn,yo))
         
-        offsets = self.ax.collections[0].get_offsets()
         self.selection_bounds = (x1,x2,y1,y2)
         self.lastX = xn
         self.lastY = yn
@@ -2473,7 +2473,6 @@ def scatter(sam, projection=None, c=None, cmap='rainbow', linewidth=0.0,
     if (not PLOTTING):
         print("matplotlib not installed!")
     else:
-        plt.ion()
         if isinstance(sam,AnnData):
             sam=SAM(counts=sam)
             
@@ -2498,10 +2497,13 @@ def scatter(sam, projection=None, c=None, cmap='rainbow', linewidth=0.0,
             dt = projection
         
         if(axes is None):
+            plt.ion()
             plt.figure(figsize=(6,6))
             axes = plt.gca()
+            show_plot=True
         else:
             do_GUI=False
+            show_plot=False
             
         cstr = c
         if(c is None):
@@ -2511,13 +2513,13 @@ def scatter(sam, projection=None, c=None, cmap='rainbow', linewidth=0.0,
 
             if isinstance(c, str):
                 try:
-                    c = sam.adata.obs[c].get_values()
+                    c = np.array(list(sam.adata.obs[c].get_values()))
                 except KeyError:
                     0  # do nothing
 
             if((isinstance(c[0], str) or isinstance(c[0], np.str_)) and
                (isinstance(c, np.ndarray) or isinstance(c, list))):
-                i = ut.convert_annotations(np.array(c))
+                i = ut.convert_annotations(np.array(list(c)))
                 ui, ai = np.unique(i, return_index=True)
 
                 cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
@@ -2540,9 +2542,9 @@ def scatter(sam, projection=None, c=None, cmap='rainbow', linewidth=0.0,
                                      s=s, **kwargs)
         else:
             ps=None
-        plt.show()
+        if show_plot:
+            plt.show()
     return axes, ps
-
 
 def show_gene_expression(sam, gene, avg=True, **kwargs):
     """Display a gene's expressions.
