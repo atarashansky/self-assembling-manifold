@@ -2461,6 +2461,7 @@ def scatter(sam, projection=None, c=None, cmap='rainbow', linewidth=0.0,
     if (not PLOTTING):
         print("matplotlib not installed!")
     else:
+        plt.ion()
         if isinstance(sam,AnnData):
             sam=SAM(counts=sam)
             
@@ -2527,7 +2528,7 @@ def scatter(sam, projection=None, c=None, cmap='rainbow', linewidth=0.0,
                                      s=s, **kwargs)
         else:
             ps=None
-    
+        plt.show()
     return axes, ps
 
 def show_gene_expression(sam, gene, avg=True, **kwargs):
