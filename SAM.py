@@ -2425,7 +2425,7 @@ class point_selector:
                 self.curr_lim = curr_xlim,curr_ylim
                 self.fig.canvas.draw_idle()
 
-def scatter(sam, projection=None, c=None, cmap='seismic', linewidth=0.0,
+def scatter(sam, projection=None, c=None, cmap='rainbow', linewidth=0.0,
             axes=None, s=10, do_GUI = True, **kwargs):
     """Display a scatter plot.
 
