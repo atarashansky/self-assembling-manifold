@@ -2543,6 +2543,7 @@ def scatter(sam, projection=None, c=None, cmap='rainbow', linewidth=0.0,
         plt.show()
     return axes, ps
 
+
 def show_gene_expression(sam, gene, avg=True, **kwargs):
     """Display a gene's expressions.
 
@@ -2586,8 +2587,11 @@ def show_gene_expression(sam, gene, avg=True, **kwargs):
         a = sam.adata.layers['X_knn_avg'][:, idx].toarray().flatten()
         if a.sum() == 0:
             a = sam.adata_raw.X[:,idx].toarray().flatten()
-            norm = sam.preprocess_args['norm']
-
+            try:
+                norm = sam.preprocess_args['norm']
+            except KeyError:
+                norm = 'log'
+                
             if(norm.lower() == 'log'):
                 a = np.log2(a + 1)
 
@@ -2597,7 +2601,10 @@ def show_gene_expression(sam, gene, avg=True, **kwargs):
                 a = np.arcsinh(a)
     else:
         a = sam.adata_raw.X[:,idx].toarray().flatten()
-        norm = sam.preprocess_args['norm']
+        try:
+            norm = sam.preprocess_args['norm']
+        except KeyError:
+            norm = 'log'
 
         if(norm.lower() == 'log'):
             a = np.log2(a + 1)
