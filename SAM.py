@@ -1403,8 +1403,16 @@ class point_selector:
         self.rewire_textbox(self.text_box)
         self.text_box.on_submit(self.show_expression)
         self.text_box.on_text_change(self.clip_text_settings)
-        self.avg_on = axbox.text(1.01, 0.25, 'Avg ON', fontsize=10, clip_on=False)
         ax_labels.text(xc-.17, yc+5.5, 'Show gene\nexpression', fontsize=8, clip_on=False);
+        
+        axnext = self.fig_buttons.add_axes([0.905,0.235,0.085,0.04])            
+        self.buttonavg= Button(axnext, 'Avg ON')
+        self.buttonavg.ax.texts[0].set_text('Avg ON')
+        self.buttonavg.ax.texts[0].set_fontsize(9)
+        self.buttonavg.on_clicked(self.avgonoff)
+        
+        #self.avg_on = axbox.text(1.01, 0.25, 'Avg ON', fontsize=10, clip_on=False)
+        
         
         # Middle row      
         axnext = self.fig_buttons.add_axes([0.15,0.29,0.44,0.04])            
@@ -1469,7 +1477,14 @@ class point_selector:
         self.writing_text=False
         
         self.curr_lim = self.ax.get_xlim(),self.ax.get_ylim()
-         
+        
+    def avgonoff(self,event):
+        if self.buttonavg.ax.texts[0].get_text() == 'Avg ON':
+            self.buttonavg.ax.texts[0].set_text('Avg OFF')
+        else:
+            self.buttonavg.ax.texts[0].set_text('Avg ON')
+        self.fig_buttons.canvas.draw_idle()
+                
     def stop_typing(self, tb, clicked):        
         notifysubmit = False
         if tb.capturekeystrokes:
@@ -1897,7 +1912,7 @@ class point_selector:
                 
                 self.fig.add_subplot(111)
                 self.ax = self.fig.axes[-1]
-                avg = True if self.avg_on.get_text()=='Avg ON' else False;
+                avg = True if self.buttonavg.ax.texts[0].get_text() =='Avg ON' else False;
                 sc = self.scatter_dict.copy()
                 sc['c']=0
                 del sc['c']
@@ -2100,10 +2115,7 @@ class point_selector:
         elif event.key == 'x':
             self.unselect_all(None);
         elif event.key == 'a':
-            if self.avg_on.get_text() == 'Avg ON':
-                self.avg_on.set_text('Avg OFF')
-            else:
-                self.avg_on.set_text('Avg ON')
+            self.avgonoff(None)
             self.fig_buttons.canvas.draw_idle()
         elif event.key == 'escape':                
             for i in self.ax.figure.axes:
