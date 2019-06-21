@@ -1799,7 +1799,9 @@ class point_selector:
                             self.selected_cells,:].copy())
             
             self.sam_subcluster.adata_raw.obs = self.sam.adata[
-                            self.selected_cells,:].obs
+                            self.selected_cells,:].obs.copy()
+            self.sam_subcluster.adata.obs = self.sam.adata[
+                            self.selected_cells,:].obs.copy()   
                 
             if len(list(self.sam.preprocess_args.keys())) > 0:
                 self.sam_subcluster.preprocess_data(**self.sam.preprocess_args)
