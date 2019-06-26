@@ -16,6 +16,57 @@ INT32_MAX = np.iinfo(np.int32).max - 1
 __version__ = '0.5.1'
 
 
+def corr_bin_genes(sam, input_gene, number_of_features=None):
+    """A (hacky) method for binning groups of genes correlated along the
+    SAM manifold.
+    Parameters
+    ----------
+    number_of_features - int, optional, default None
+        The number of genes to bin. Capped at 5000 due to memory
+        considerations.
+    input_gene - str, optional, default None
+        If not None, use this gene as the first seed when growing the
+        correlation bins.
+    """
+
+    weights = sam.adata.var['spatial_dispersions'].values
+    all_gene_names = np.array(list(sam.adata.var_names))
+    D_avg = sam.adata.layers['X_knn_avg']
+
+    idx2 = np.argsort(-weights)[:weights[weights > 0].size]
+
+    if(number_of_features is None or number_of_features > idx2.size):
+        number_of_features = idx2.size
+
+    if number_of_features > 2000:
+        number_of_features = 2000
+
+    input_gene = np.where(all_gene_names == input_gene)[0]
+    if(input_gene.size == 0):
+        print(
+            "Gene note found in the filtered dataset. Note "
+            "that genes are case sensitive.")
+        return
+    seeds = [np.array([input_gene])]
+    pw_corr = np.corrcoef(
+        D_avg[:, idx2[:number_of_features]].T.toarray())
+    for i in range(1, number_of_features):
+        flag = False
+        maxd = np.mean(pw_corr[i, :][pw_corr[i, :] > 0])
+        maxi = 0
+        for j in range(len(seeds)):
+            if(pw_corr[np.where(idx2 == seeds[j][0])[0], i]
+               > maxd):
+                maxd = pw_corr[np.where(idx2 == seeds[j][0])[0], i]
+                maxi = j
+                flag = True
+        if(not flag):
+            seeds.append(np.array([idx2[i]]))
+        else:
+            seeds[maxi] = np.append(seeds[maxi], idx2[i])
+
+    return all_gene_names[seeds[0]]
+
 def nearest_neighbors(X, n_neighbors=15, seed=0, metric='correlation'):
 
     distance_func = dist.named_distances[metric]
@@ -70,19 +121,19 @@ def affinity_calc(data, d = 'correlation', k=20):
 def save_figures(filename, fig_IDs=None, **kwargs):
     """
     Save figures.
-    
+
     Parameters
     ----------
     filename - str
         Name of output file
-        
+
     fig_IDs - int, numpy.array, list, optional, default None
         A list of open figure IDs or a figure ID that will be saved to a
         pdf/png file respectively.
-    
-    **kwargs - 
+
+    **kwargs -
         Extra keyword arguments passed into 'matplotlib.pyplot.savefig'.
-        
+
     """
     import matplotlib.pyplot as plt
     if(fig_IDs is not None):
@@ -236,7 +287,7 @@ def extract_annotation(cn, x, c='_'):
 
 def isolate(dt, x1, x2, y1, y2):
     return np.where(np.logical_and(np.logical_and(
-        dt[:, 0] > x1, dt[:, 0] < x2), np.logical_and(dt[:, 1] > y1, 
+        dt[:, 0] > x1, dt[:, 0] < x2), np.logical_and(dt[:, 1] > y1,
                                                             dt[:, 1] < y2)))[0]
 
 
@@ -341,7 +392,7 @@ def to_sparse_knn(D1, k):
     return D1
 """
 def to_sparse_knn(D1,k):
-    for i in range(D1.shape[0]):      
+    for i in range(D1.shape[0]):
         x = D1.data[D1.indptr[i]:D1.indptr[i+1]]
         idx = np.argsort(x)
         if idx.size > k:
@@ -352,9 +403,9 @@ def to_sparse_knn(D1,k):
 def gen_sparse_knn(knni, knnd, shape = None):
     if shape is None:
         shape = (knni.shape[0],knni.shape[0])
-        
+
     D1 = sp.sparse.lil_matrix(shape)
-    
+
     D1[np.tile(np.arange(knni.shape[0])[:,None],(1,knni.shape[1])).flatten(),
        knni.flatten()] = knnd.flatten()
     D1=D1.tocsr()
