@@ -1413,8 +1413,8 @@ class point_selector:
 
         self.patch = None
 
-        self.run_args_default = self.sam.run_args.copy()
-        self.preprocess_args_default = self.sam.preprocess_args.copy()
+        self.run_args = self.sam.run_args.copy()
+        self.preprocess_args = self.sam.preprocess_args.copy()
 
         self.selected = np.zeros(self.sam.adata.shape[0],dtype='bool')
         self.selected[:] = True
@@ -1628,57 +1628,57 @@ class point_selector:
 
 
     def nna_update(self,val):
-        self.sam.run_args['num_norm_avg'] = int(val)
+        self.run_args['num_norm_avg'] = int(val)
     def pc_update(self,val):
-        self.sam.run_args['npcs'] = int(val)
+        self.run_args['npcs'] = int(val)
     def k_update(self,val):
-        self.sam.run_args['k'] = int(val)
+        self.run_args['k'] = int(val)
     def numgene_update(self,val):
-        self.sam.run_args['n_genes'] = int(val)
+        self.run_args['n_genes'] = int(val)
     def prep_submit(self,txt):
         if txt == '':
             txt = None
-        self.sam.run_args['preprocessing']=txt
+        self.run_args['preprocessing']=txt
 
     def dist_submit(self,txt):
-        self.sam.run_args['distance']=txt
+        self.run_args['distance']=txt
     def proj_submit(self,txt):
-        self.sam.run_args['projection']=txt
+        self.run_args['projection']=txt
     def weightpcs(self,event):
         if self.wpcs_button.ax.texts[0].get_text()=='True':
             self.wpcs_button.ax.texts[0].set_text('False')
-            self.sam.run_args['weight_PCs']=False
+            self.run_args['weight_PCs']=False
         else:
             self.wpcs_button.ax.texts[0].set_text('True')
-            self.sam.run_args['weight_PCs']=True
+            self.run_args['weight_PCs']=True
         self.samparam_fig.canvas.draw_idle()
 
     def set_default_params(self,txt):
-        self.sam.run_args = self.run_args_default.copy()
+        self.run_args = self.sam.run_args.copy()
 
-        init = self.sam.run_args.get('num_norm_avg',50)
+        init = self.run_args.get('num_norm_avg',50)
         self.sp_sl1.set_val(init)
-        init = self.sam.run_args.get('k',20)
+        init = self.run_args.get('k',20)
         self.sp_sl2.set_val(init)
-        init = self.sam.run_args.get('npcs',150)
+        init = self.run_args.get('npcs',150)
         if init is None:
             init = 150;
         self.sp_sl3.set_val(init)
-        init = self.sam.run_args.get('n_genes',3000)
+        init = self.run_args.get('n_genes',3000)
         if init is None:
             init = 3000;
         self.sp_sl4.set_val(init)
 
-        init = self.sam.run_args.get('preprocessing','Normalizer')
+        init = self.run_args.get('preprocessing','Normalizer')
         if init is None:
             init=''
         self.text1.set_val(init)
-        init = self.sam.run_args.get('distance','correlation')
+        init = self.run_args.get('distance','correlation')
         self.text2.set_val(init)
-        init = self.sam.run_args.get('projection','umap')
+        init = self.run_args.get('projection','umap')
         self.text3.set_val(init)
 
-        init = self.sam.run_args.get('weight_PCs',True)
+        init = self.run_args.get('weight_PCs',True)
         if init:
             self.wpcs_button.ax.texts[0].set_text('True')
         else:
@@ -1687,43 +1687,43 @@ class point_selector:
 
 
     def me_update(self,val):
-        self.sam.preprocess_args['min_expression']=val
+        self.preprocess_args['min_expression']=val
     def et_update(self,val):
-        self.sam.preprocess_args['thresh']=val
+        self.preprocess_args['thresh']=val
     def sumnorm_submit(self,txt):
         if txt == '':
             txt=None
-        self.sam.preprocess_args['sum_norm']=txt
+        self.preprocess_args['sum_norm']=txt
 
     def norm_submit(self,txt):
-        self.sam.preprocess_args['norm']=txt
+        self.preprocess_args['norm']=txt
     def pp_filtergenes(self,event):
         if self.pp_button.ax.texts[0].get_text()=='True':
             self.pp_button.ax.texts[0].set_text('False')
-            self.sam.preprocess_args['filter_genes']=False
+            self.preprocess_args['filter_genes']=False
         else:
             self.pp_button.ax.texts[0].set_text('True')
-            self.sam.preprocess_args['filter_genes']=True
+            self.preprocess_args['filter_genes']=True
         self.samparam_fig.canvas.draw_idle()
 
     def set_pp_defaults(self,event):
-        self.sam.preprocess_args = self.preprocess_args_default.copy()
+        self.preprocess_args = self.sam.preprocess_args.copy()
 
-        init = self.sam.preprocess_args.get('min_expression',1)
+        init = self.preprocess_args.get('min_expression',1)
         self.pp_sl1.set_val(init)
-        init = self.sam.preprocess_args.get('thresh',0.1)
+        init = self.preprocess_args.get('thresh',0.1)
         self.pp_sl2.set_val(init)
 
-        init = self.sam.preprocess_args.get('sum_norm','')
+        init = self.preprocess_args.get('sum_norm','')
         if init is None:
             self.pptext1.set_val('')
         else:
             self.pptext1.set_val(init)
 
-        init = self.sam.preprocess_args.get('norm','log')
+        init = self.preprocess_args.get('norm','log')
         self.pptext2.set_val(init)
 
-        init = self.sam.preprocess_args.get('filter_genes',True)
+        init = self.preprocess_args.get('filter_genes',True)
         if init:
             self.pp_button.ax.texts[0].set_text('True')
         else:
@@ -1734,7 +1734,7 @@ class point_selector:
             s=self.sam
         else:
             s=self.sam_subcluster
-        s.preprocess_data(**self.sam.preprocess_args)
+        s.preprocess_data(**self.preprocess_args)
 
     def show_samparam_window(self,event):
         if self.sam_subcluster is None:
@@ -1755,19 +1755,19 @@ class point_selector:
         w = 0.85 - x
         xwidg = 0.01
         axslider2 = self.samparam_fig.add_axes([x,xwidg+0.06*0,w,0.04],facecolor='lightgoldenrodyellow')
-        init = self.sam.run_args.get('num_norm_avg',50)
+        init = self.run_args.get('num_norm_avg',50)
         self.sp_sl1 = Slider(axslider2, '', 1, 200, valinit=init, valstep=1)
         self.sp_sl1.on_changed(self.nna_update)
         axslider2.text(xc, yc+0.25, '#avg', fontsize=8, clip_on=False);
 
         axslider = self.samparam_fig.add_axes([x,xwidg+0.06*1,w,0.04],facecolor='lightgoldenrodyellow')
-        init = self.sam.run_args.get('k',20)
+        init = self.run_args.get('k',20)
         self.sp_sl2 = Slider(axslider, '', 5, 200, valinit=init, valstep=1)
         self.sp_sl2.on_changed(self.k_update)
         axslider2.text(xc+10, yc+1.75, 'k', fontsize=8, clip_on=False);
 
         axslider = self.samparam_fig.add_axes([x,xwidg+0.06*2,w,0.04],facecolor='lightgoldenrodyellow')
-        init = self.sam.run_args.get('npcs',150)
+        init = self.run_args.get('npcs',150)
         if init is None:
             init = 150;
         self.sp_sl3 = Slider(axslider, '', 10, 500, valinit=init, valstep=1)
@@ -1775,7 +1775,7 @@ class point_selector:
         axslider2.text(xc-5, yc+3.25, '# PCs', fontsize=8, clip_on=False);
 
         axslider = self.samparam_fig.add_axes([x,xwidg+0.06*3,w,0.04],facecolor='lightgoldenrodyellow')
-        init = self.sam.run_args.get('n_genes',3000)
+        init = self.run_args.get('n_genes',3000)
         if init is None:
             init = 3000;
         self.sp_sl4 = Slider(axslider, '', 100, s.adata.shape[1], valinit=init, valstep=10)
@@ -1783,7 +1783,7 @@ class point_selector:
         axslider2.text(xc-15, yc+4.75, '# Genes', fontsize=8, clip_on=False);
 
         prep_ax = self.samparam_fig.add_axes([0.15,xwidg+0.06*4,0.215,0.04],facecolor='lightgray')
-        init = self.sam.run_args.get('preprocessing','Normalizer')
+        init = self.run_args.get('preprocessing','Normalizer')
         if init is None:
             init = ''
         self.text1= TextBox(prep_ax, '', initial=init)
@@ -1791,13 +1791,13 @@ class point_selector:
         self.text1.on_submit(self.prep_submit)
 
         dist_ax = self.samparam_fig.add_axes([0.375,xwidg+0.06*4,0.215,0.04],facecolor='lightgray')
-        init = self.sam.run_args.get('distance','correlation')
+        init = self.run_args.get('distance','correlation')
         self.text2= TextBox(dist_ax, '', initial=init)
         dist_ax.text(0, 1.3, 'Distance', fontsize=8, clip_on=False);
         self.text2.on_submit(self.dist_submit)
 
         proj_ax = self.samparam_fig.add_axes([0.6,xwidg+0.06*4,0.215,0.04],facecolor='lightgray')
-        init = self.sam.run_args.get('projection','umap')
+        init = self.run_args.get('projection','umap')
         self.text3= TextBox(proj_ax, '', initial=init)
         proj_ax.text(0, 1.3, 'Projection', fontsize=8, clip_on=False);
         self.text3.on_submit(self.proj_submit)
@@ -1808,7 +1808,7 @@ class point_selector:
         axbutton.text(0.,2.,'SAM parameters',fontsize=12,clip_on=False)
 
         axbutton = self.samparam_fig.add_axes([0.375,0.35,0.215,0.04],facecolor='lightgray')
-        init = self.sam.run_args.get('weight_PCs',True)
+        init = self.run_args.get('weight_PCs',True)
         if init:
             self.wpcs_button= Button(axbutton, 'True')
         else:
@@ -1823,19 +1823,19 @@ class point_selector:
         w = 0.85 - x
         xwidg = 0.52
         axslider2 = self.samparam_fig.add_axes([x,xwidg+0.06*0,w,0.04],facecolor='lightgoldenrodyellow')
-        init = self.sam.preprocess_args.get('min_expression',1)
+        init = self.preprocess_args.get('min_expression',1)
         self.pp_sl1 = Slider(axslider2, '', 0, 6, valinit=init, valstep=.02)
         self.pp_sl1.on_changed(self.me_update)
         axslider2.text(xc, yc+0.25, 'Min expr', fontsize=8, clip_on=False);
 
         axslider = self.samparam_fig.add_axes([x,xwidg+0.06*1,w,0.04],facecolor='lightgoldenrodyellow')
-        init = self.sam.preprocess_args.get('thresh',0.01)
+        init = self.preprocess_args.get('thresh',0.01)
         self.pp_sl2 = Slider(axslider, '', 0, 1, valinit=init, valstep=0.005)
         self.pp_sl2.on_changed(self.et_update)
         axslider2.text(xc+0.1, yc+1.75, 'Expr thr', fontsize=8, clip_on=False);
 
         prep_ax = self.samparam_fig.add_axes([0.15,xwidg+0.06*2,0.215,0.04],facecolor='lightgray')
-        init = self.sam.preprocess_args.get('sum_norm','')
+        init = self.preprocess_args.get('sum_norm','')
         if init is None:
             init = ''
         self.pptext1= TextBox(prep_ax, '', initial=init)
@@ -1843,13 +1843,13 @@ class point_selector:
         self.pptext1.on_submit(self.sumnorm_submit)
 
         dist_ax = self.samparam_fig.add_axes([0.375,xwidg+0.06*2,0.215,0.04],facecolor='lightgray')
-        init = self.sam.preprocess_args.get('norm','log')
+        init = self.preprocess_args.get('norm','log')
         self.pptext2= TextBox(dist_ax, '', initial=init)
         dist_ax.text(0, 1.3, 'norm', fontsize=8, clip_on=False);
         self.pptext2.on_submit(self.norm_submit)
 
         proj_ax = self.samparam_fig.add_axes([0.6,xwidg+0.06*2,0.215,0.04],facecolor='lightgray')
-        init = self.sam.preprocess_args.get('filter_genes',True)
+        init = self.preprocess_args.get('filter_genes',True)
         if init:
             self.pp_button= Button(proj_ax, 'True')
         else:
@@ -2218,18 +2218,18 @@ class point_selector:
             self.sam_subcluster.adata.obsm = self.sam.adata[
                             self.selected_cells,:].obsm.copy()
 
-            if len(list(self.sam.preprocess_args.keys())) > 0:
-                self.sam_subcluster.preprocess_data(**self.sam.preprocess_args)
+            if len(list(self.preprocess_args.keys())) > 0:
+                self.sam_subcluster.preprocess_data(**self.preprocess_args)
 
-            self.sam_subcluster.run(**self.sam.run_args);
+            self.sam_subcluster.run(**self.run_args);
             execute=True
             s=self.sam_subcluster
         elif np.all(self.selected) and self.selected.sum() > 0:
             if self.sam_subcluster is None:
-                self.sam.run(**self.sam.run_args);
+                self.sam.run(**self.run_args);
                 s=self.sam
             else:
-                self.sam_subcluster.run(**self.sam.run_args);
+                self.sam_subcluster.run(**self.run_args);
                 s=self.sam_subcluster
             execute=True
 
