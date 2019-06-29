@@ -482,7 +482,10 @@ class SAM(object):
             and second column should be the desired annotations.
 
         """
-        ann = pd.read_csv(aname,sep=sep,index_col=0)
+        if isinstance(aname,pd.DataFrame):
+            ann = aname;
+        else:
+            ann = pd.read_csv(aname,sep=sep,index_col=0)
 
         cell_names = np.array(list(self.adata.obs_names))
         all_cell_names = np.array(list(self.adata_raw.obs_names))
@@ -894,6 +897,8 @@ class SAM(object):
                           **kwargs).fit_transform(self.adata.obsm['X_pca'])
             tsne2d = dt
             self.adata.obsm['X_tsne'] = tsne2d
+
+    #def run_InPCA(self): #TODO
 
     def run_umap(self, X='X_pca', metric=None, **kwargs):
         """Wrapper for umap-learn.
@@ -1684,8 +1689,6 @@ class point_selector:
         else:
             self.wpcs_button.ax.texts[0].set_text('False')
 
-
-
     def me_update(self,val):
         self.preprocess_args['min_expression']=val
     def et_update(self,val):
@@ -2132,16 +2135,18 @@ class point_selector:
             self.fcolors = self.rect_colors[inv,:]
 
             if clu.size < 200:
-                for i,c in enumerate(clu):
-                    t = self.rax.text(x,y,str(c), clip_on=True, color = 'k', fontweight='bold')
-                    p = self.rax.add_patch(Rectangle((0.05,y), 0.14, 0.025, picker = True,
-                                                    alpha=1,edgecolor='k', facecolor = self.rect_colors[i,:]))
-                    self.ANN_TEXTS.append(t)
-                    self.ANN_RECTS.append(p)
-                    y-=0.05
+                clu = clu[:200]
 
-                self.active_rects = np.zeros(len(self.ANN_RECTS),dtype='bool')
-                self.active_rects[:]=True
+            for i,c in enumerate(clu):
+                t = self.rax.text(x,y,str(c), clip_on=True, color = 'k', fontweight='bold')
+                p = self.rax.add_patch(Rectangle((0.05,y), 0.14, 0.025, picker = True,
+                                                alpha=1,edgecolor='k', facecolor = self.rect_colors[i,:]))
+                self.ANN_TEXTS.append(t)
+                self.ANN_RECTS.append(p)
+                y-=0.05
+
+            self.active_rects = np.zeros(len(self.ANN_RECTS),dtype='bool')
+            self.active_rects[:]=True
 
             self.ax.set_xlim(self.curr_lim[0])
             self.ax.set_ylim(self.curr_lim[1])
@@ -2366,22 +2371,24 @@ class point_selector:
             except IndexError:
                 0; # do nothing
 
-    def on_add_text(self,event, cid, cid1):
+    def on_add_text(self,event):
         if (not self.text_box.capturekeystrokes and not self.text_box2.capturekeystrokes
                 and not self.text_annotate_name.capturekeystrokes and not self.text_annotate.capturekeystrokes):
             let = list(string.printable)
             let.append(' ')
             if event.key == 'enter':
-                self.fig.canvas.mpl_disconnect(cid)
-                self.fig.canvas.mpl_disconnect(cid1)
+                self.fig.canvas.mpl_disconnect(self.temp_cid)
+                self.fig.canvas.mpl_disconnect(self.temp_cid1)
                 self.cid4 = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
+                self.cid4_2 = self.fig_buttons.canvas.mpl_connect('key_press_event', self.on_key_press)
                 self.cid1 = self.fig.canvas.mpl_connect('scroll_event', self.on_scroll)
                 self.writing_text=False
             elif event.key == 'escape':
                 self.txt.remove()
-                self.fig.canvas.mpl_disconnect(cid)
-                self.fig.canvas.mpl_disconnect(cid1)
+                self.fig.canvas.mpl_disconnect(self.temp_cid)
+                self.fig.canvas.mpl_disconnect(self.temp_cid1)
                 self.cid4 = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
+                self.cid4_2 = self.fig_buttons.canvas.mpl_connect('key_press_event', self.on_key_press)
                 self.cid1 = self.fig.canvas.mpl_connect('scroll_event', self.on_scroll)
                 self.writing_text=False
             else:
@@ -2410,11 +2417,12 @@ class point_selector:
 
             if event.dblclick and not self.writing_text and event.inaxes is self.ax:
                 self.fig.canvas.mpl_disconnect(self.cid4)
-                cid = self.fig.canvas.mpl_connect('key_press_event', lambda event: self.on_add_text(event, cid, cid1))
+                self.fig_buttons.canvas.mpl_disconnect(self.cid4_2)
+                self.temp_cid = self.fig.canvas.mpl_connect('key_press_event', lambda event: self.on_add_text(event))
                 self.txt = self.ax.text(x, y, '', fontsize=12, clip_on=True)
 
                 self.fig.canvas.mpl_disconnect(self.cid1)
-                cid1 = self.fig.canvas.mpl_connect('scroll_event', self.on_txt_scroll)
+                self.temp_cid1 = self.fig.canvas.mpl_connect('scroll_event', self.on_txt_scroll)
                 self.writing_text=True
 
             else:
@@ -2571,15 +2579,16 @@ class point_selector:
             self.fig_buttons.canvas.draw_idle()
 
     def is_in_textboxes(self, event):
-        if (event.inaxes is self.text_box.ax or
-            event.inaxes is self.text_box2.ax or
-            event.inaxes is self.text_annotate.ax or
-            event.inaxes is self.text_annotate_name.ax or
-            event.inaxes is self.text_gep.ax):
+        if (self.text_box.capturekeystrokes or
+            self.text_box2.capturekeystrokes or
+            self.text_annotate.capturekeystrokes or
+            self.text_annotate_name.capturekeystrokes or
+            self.text_gep.capturekeystrokes):
             return True
         else:
             return False
     def on_key_press(self, event):
+
         if not self.is_in_textboxes(event):
             if event.canvas is self.fig.canvas:
                 self.execute_key_press(event)
@@ -2999,13 +3008,19 @@ def scatter(sam, projection=None, c=None, cmap='rainbow', linewidth=0.0,
                 cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
                                    linewidth=linewidth,
                                    **kwargs)
+                if show_plot:
+                    cbar=plt.colorbar(cax, ax=axes)
+                    cbar.set_ticks(ui)
+                    cbar.ax.set_yticklabels(np.unique(np.array(list(c))))
             else:
                 i = c
 
                 cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
                                    linewidth=linewidth,
                                    **kwargs)
+                #if show_plot:
                 plt.colorbar(cax, ax=axes)
+
         axes.set_facecolor('lightgray')
         axes.figure.canvas.draw()
 
@@ -3014,6 +3029,7 @@ def scatter(sam, projection=None, c=None, cmap='rainbow', linewidth=0.0,
             ps = point_selector(axes,sam, linewidth=linewidth,
                                      projection=projection, c=cstr, cmap=cmap,
                                      s=s, **kwargs)
+            sam.ps = ps
         else:
             ps=None
         if show_plot:
@@ -3048,9 +3064,9 @@ def show_gene_expression(sam, gene, avg=True, **kwargs):
     #    sam=SAM(counts=sam)
 
     all_gene_names = np.array(list(sam.adata.var_names))
-    #cell_names = np.array(list(self.adata.obs_names))
-    #all_cell_names = np.array(list(self.adata_raw.obs_names))
-
+    cell_names = np.array(list(sam.adata.obs_names))
+    all_cell_names = np.array(list(sam.adata_raw.obs_names))
+    idx2 = np.where(np.in1d(all_cell_names,cell_names))[0]
     idx = np.where(all_gene_names == gene)[0]
     name = gene
     if(idx.size == 0):
@@ -3062,7 +3078,7 @@ def show_gene_expression(sam, gene, avg=True, **kwargs):
     if(avg):
         a = sam.adata.layers['X_knn_avg'][:, idx].toarray().flatten()
         if a.sum() == 0:
-            a = sam.adata_raw.X[:,idx].toarray().flatten()
+            a = sam.adata_raw.X[:,idx].toarray().flatten()[idx2]
             try:
                 norm = sam.preprocess_args['norm']
             except KeyError:
@@ -3077,7 +3093,7 @@ def show_gene_expression(sam, gene, avg=True, **kwargs):
                 elif(norm.lower() == 'asin'):
                     a = np.arcsinh(a)
     else:
-        a = sam.adata_raw.X[:,idx].toarray().flatten()
+        a = sam.adata_raw.X[:,idx].toarray().flatten()[idx2]
         try:
             norm = sam.preprocess_args['norm']
         except KeyError:
