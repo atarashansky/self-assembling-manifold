@@ -1381,15 +1381,15 @@ class SAM(object):
 class point_selector:
 
     def __init__(self,ax,sam, **kwargs):
-        import tkinter
-        root = tkinter.Tk()
-        root.withdraw()
-        _, height = root.winfo_screenwidth(), root.winfo_screenheight()
+        #import tkinter
+        #root = tkinter.Tk()
+        #root.withdraw()
+        #_, height = root.winfo_screenwidth(), root.winfo_screenheight()
 
         self.fig=ax.figure
         self.fig_buttons = plt.figure()
-        self.fig.canvas.manager.window.setGeometry(25,50,0.6*height,0.6*height)
-        self.fig_buttons.canvas.manager.window.setGeometry(0.6*height+27,50,0.6*height,0.6*height)
+        #self.fig.canvas.manager.window.setGeometry(25,50,0.6*height,0.6*height)
+        #self.fig_buttons.canvas.manager.window.setGeometry(0.6*height+27,50,0.6*height,0.6*height)
         params_to_disable = [key for key in plt.rcParams if 'keymap' in key]
         for key in params_to_disable:
             plt.rcParams[key] = ''
@@ -1746,10 +1746,10 @@ class point_selector:
             s=self.sam_subcluster
 
         self.samparam_fig= plt.figure();
-        x,y,x2,y2 = self.fig_buttons.canvas.manager.window.geometry().getCoords()
-        width=x2-x
-        height=y2-y
-        self.samparam_fig.canvas.manager.window.setGeometry(x+width+2,y,0.65*width,0.65*height)
+        #x,y,x2,y2 = self.fig_buttons.canvas.manager.window.geometry().getCoords()
+        #width=x2-x
+        #height=y2-y
+        #self.samparam_fig.canvas.manager.window.setGeometry(x+width+2,y,0.65*width,0.65*height)
         self.samparam_fig.canvas.toolbar.setVisible(False)
 
         xc=-20
@@ -2179,10 +2179,10 @@ class point_selector:
 
     def show_history_window(self, event):
         self.history_fig = plt.figure();
-        x,y,x2,y2 = self.fig_buttons.canvas.manager.window.geometry().getCoords()
-        width=x2-x
-        height=y2-y
-        self.history_fig.canvas.manager.window.setGeometry(x+width+2,y,0.65*width,0.65*height)
+        #x,y,x2,y2 = self.fig_buttons.canvas.manager.window.geometry().getCoords()
+        #width=x2-x
+        #height=y2-y
+        #self.history_fig.canvas.manager.window.setGeometry(x+width+2,y,0.65*width,0.65*height)
         self.history_fig.canvas.toolbar.setVisible(False)
         self.history_fig.add_subplot(111)
         self.history_ax = self.history_fig.axes[-1]
