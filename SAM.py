@@ -1377,7 +1377,99 @@ class SAM(object):
             self.__dict__[list(pick_dict.keys())[i]
                           ] = pick_dict[list(pick_dict.keys())[i]]
         f.close()
+    
+    #LEGACY FUNCTION
+    def scatter(self, projection=None, c=None, cmap='rainbow', linewidth=0.0,
+                edgecolor='k', axes=None, colorbar=True, s=10, **kwargs):
+        """Display a scatter plot.
+        Displays a scatter plot using the SAM projection or another input
+        projection with or without annotations.
+        Parameters
+        ----------
+        projection - ndarray of floats, optional, default None
+            An N x 2 matrix, where N is the number of data points. If None,
+            use an existing SAM projection (default t-SNE). Can take on values
+            'umap' or 'tsne' to specify either the SAM UMAP embedding or
+            SAM t-SNE embedding.
+        c - ndarray or str, optional, default None
+            Colors for each cell in the scatter plot. Can be a vector of
+            floats or strings for cell annotations. Can also be a key
+            for sam.adata.obs (i.e. 'louvain_clusters').
+        axes - matplotlib axis, optional, default None
+            Plot output to the specified, existing axes. If None, create new
+            figure window.
+        cmap - string, optional, default 'rainbow'
+            The colormap to use for the input color values.
+        colorbar - bool, optional default True
+            If True, display a colorbar indicating which values / annotations
+            correspond to which color in the scatter plot.
+        Keyword arguments -
+            All other keyword arguments that can be passed into
+            matplotlib.pyplot.scatter can be used.
+        """
 
+        if (not PLOTTING):
+            print("matplotlib not installed!")
+        else:
+            if(isinstance(projection, str)):
+                try:
+                    dt = self.adata.obsm[projection]
+                except KeyError:
+                    print('Please create a projection first using run_umap or'
+                          'run_tsne')
+
+            elif(projection is None):
+                try:
+                    dt = self.adata.obsm['X_umap']
+                except KeyError:
+                    try:
+                        dt = self.adata.obsm['X_tsne']
+                    except KeyError:
+                        print("Please create either a t-SNE or UMAP projection"
+                              "first.")
+                        return
+            else:
+                dt = projection
+
+            if(axes is None):
+                plt.figure()
+                axes = plt.gca()
+
+            if(c is None):
+                plt.scatter(dt[:, 0], dt[:, 1], s=s,
+                            linewidth=linewidth, edgecolor=edgecolor, **kwargs)
+            else:
+
+                if isinstance(c, str):
+                    try:
+                        c = self.adata.obs[c].get_values()
+                    except KeyError:
+                        0  # do nothing
+
+                if((isinstance(c[0], str) or isinstance(c[0], np.str_)) and
+                   (isinstance(c, np.ndarray) or isinstance(c, list))):
+                    i = ut.convert_annotations(c)
+                    ui, ai = np.unique(i, return_index=True)
+                    cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
+                                       linewidth=linewidth,
+                                       edgecolor=edgecolor,
+                                       **kwargs)
+
+                    if(colorbar):
+                        cbar = plt.colorbar(cax, ax=axes, ticks=ui)
+                        cbar.ax.set_yticklabels(c[ai])
+                else:
+                    if not (isinstance(c, np.ndarray) or isinstance(c, list)):
+                        colorbar = False
+                    i = c
+
+                    cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
+                                       linewidth=linewidth,
+                                       edgecolor=edgecolor,
+                                       **kwargs)
+
+                    if(colorbar):
+                        plt.colorbar(cax, ax=axes)
 class point_selector:
 
     def __init__(self,ax,sam, **kwargs):
