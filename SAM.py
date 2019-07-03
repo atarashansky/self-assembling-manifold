@@ -1536,8 +1536,8 @@ class point_selector:
 
 
         axnext = self.fig_buttons.add_axes([0.375,0.565,0.215,0.04])
-        self.button_regress= Button(axnext, 'Regress genes')
-        self.button_regress.on_clicked(self.regress_out_genes)
+        self.button_regress= Button(axnext, 'Copy genes')
+        self.button_regress.on_clicked(self.copy_genes)
 
 
         XX = np.array([[0.04,0.6],[0.06,0.85],[0.08,0.6]])
@@ -1615,8 +1615,19 @@ class point_selector:
         elif self.PROJECTION == 3:
             s.run_diff_umap()
 
-    def regress_out_genes(self,event):
-        0;
+    def copy_genes(self,event):
+        if self.markers is not None:
+            x = self.markers[:100]
+            pyperclip.copy('\n'.join(list(x)))
+        else:
+            if self.sam_subcluster is None:
+                s=self.sam
+            else:
+                s=self.sam_subcluster
+
+            genes = np.argsort(-s.adata.var['weights'])
+            genes = s.adata.var_names[genes]
+            pyperclip.copy('\n'.join(list(genes)))
 
     def get_similar_genes(self,txt):
         if self.sam_subcluster is None:
