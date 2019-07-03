@@ -1505,6 +1505,10 @@ class point_selector:
         self.cid5 = self.fig_buttons.canvas.mpl_connect('pick_event', self.on_pick)
         self.cid6 = self.fig_buttons.canvas.mpl_connect('scroll_event', self.on_scroll_ctrl)
 
+        self.cid_close = self.fig.canvas.mpl_connect('close_event', self.handle_close)
+        self.cid_close2 = self.fig_buttons.canvas.mpl_connect('close_event', self.handle_close)
+
+
         self.cid_motion = None
         self.cid_panning = None
 
@@ -1672,6 +1676,20 @@ class point_selector:
 
         self.curr_lim = self.ax.get_xlim(),self.ax.get_ylim()
 
+    def handle_close(self,event):
+        if event.canvas.figure is self.fig_buttons:
+            plt.close(self.fig)
+        elif event.canvas.figure is self.fig:
+            plt.close(self.fig_buttons)
+            try:
+                plt.close(self.history_fig)
+            except:
+                0;
+            try:
+                plt.close(self.samparam_fig)
+            except:
+                0;
+
     def display_projection(self,event):
         if self.button_proj.ax.texts[0].get_text() != '':
             if self.sam_subcluster is None:
@@ -1683,8 +1701,7 @@ class point_selector:
             X = s.adata.obsm[self.scatter_dict['projection']][:,:2]
             self.ax.collections[0].set_offsets(X)
             x,y = X[:,0],X[:,1]
-            #self.ax.autoscale_view()#(tight=True)
-            #self.curr_lim = (self.ax.get_xlim(),self.ax.get_ylim())
+
             self.curr_lim = ((min(x),max(x)),
                              (min(y),max(y)))
             self.ax.set_xlim(self.curr_lim[0])
@@ -2130,7 +2147,15 @@ class point_selector:
     def _keypress(self, event, tb):
         if tb.ignore(event):
             return
+
         if tb.capturekeystrokes:
+
+            if self.writing_text:
+                self.reset_add_text()
+                self.txt.remove()
+                self.fig.canvas.draw_idle()
+
+
             key = event.key
 
             if(len(key) == 1):
@@ -2474,26 +2499,23 @@ class point_selector:
             except IndexError:
                 0; # do nothing
 
+    def reset_add_text(self):
+            self.fig.canvas.mpl_disconnect(self.temp_cid)
+            self.fig.canvas.mpl_disconnect(self.temp_cid1)
+            self.cid4 = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
+            self.cid4_2 = self.fig_buttons.canvas.mpl_connect('key_press_event', self.on_key_press)
+            self.cid1 = self.fig.canvas.mpl_connect('scroll_event', self.on_scroll)
+            self.writing_text=False
+
     def on_add_text(self,event):
-        if (not self.text_box.capturekeystrokes and not self.text_box2.capturekeystrokes
-                and not self.text_annotate_name.capturekeystrokes and not self.text_annotate.capturekeystrokes):
+        if not self.is_in_textboxes(None):
             let = list(string.printable)
             let.append(' ')
             if event.key == 'enter':
-                self.fig.canvas.mpl_disconnect(self.temp_cid)
-                self.fig.canvas.mpl_disconnect(self.temp_cid1)
-                self.cid4 = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
-                self.cid4_2 = self.fig_buttons.canvas.mpl_connect('key_press_event', self.on_key_press)
-                self.cid1 = self.fig.canvas.mpl_connect('scroll_event', self.on_scroll)
-                self.writing_text=False
+                self.reset_add_text()
             elif event.key == 'escape':
                 self.txt.remove()
-                self.fig.canvas.mpl_disconnect(self.temp_cid)
-                self.fig.canvas.mpl_disconnect(self.temp_cid1)
-                self.cid4 = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
-                self.cid4_2 = self.fig_buttons.canvas.mpl_connect('key_press_event', self.on_key_press)
-                self.cid1 = self.fig.canvas.mpl_connect('scroll_event', self.on_scroll)
-                self.writing_text=False
+                self.reset_add_text()
             else:
                 if event.key in let:
                     self.txt.set_text(self.txt.get_text()+event.key)
@@ -2561,6 +2583,9 @@ class point_selector:
             self.fig.add_subplot(111)
             self.ax = self.fig.axes[-1]
             scatter(s, axes = self.ax, do_GUI=False, **self.scatter_dict)
+
+            if self.writing_text:
+                self.reset_add_text()
 
             self.markers = None
             self.selected[:] = True
@@ -2655,6 +2680,9 @@ class point_selector:
             self.button_proj.ax.texts[0].set_text(init)
             scatter(self.sam, axes = self.ax, do_GUI=False, **self.scatter_dict)
 
+            if self.writing_text:
+                self.reset_add_text()
+
             self.selected=np.zeros(self.sam.adata.shape[0],dtype='bool')
             self.selected[:]=True
             self.selected_cells=np.array(list(self.sam.adata.obs_names))
@@ -2686,12 +2714,11 @@ class point_selector:
             self.text_box2.capturekeystrokes or
             self.text_annotate.capturekeystrokes or
             self.text_annotate_name.capturekeystrokes or
-            self.text_gep.capturekeystrokes):
+            self.text_gep.capturekeystrokes) and self.fig_buttons.canvas.isActiveWindow():
             return True
         else:
             return False
     def on_key_press(self, event):
-
         if not self.is_in_textboxes(event):
             if event.canvas is self.fig.canvas:
                 self.execute_key_press(event)
