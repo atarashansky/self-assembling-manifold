@@ -136,7 +136,7 @@ Scroll wheel:
  - Click and hold to pan
 
 Left click:
- - Click and drag to highlight cells. Highlighted indices and cell IDs are stored in `sam.ps.selected_points` and `sam.ps.selected_cells`, respectively.
+ - Click and drag to highlight cells. Highlighted cell IDs are stored in `sam.ps.selected_cells`.
 
 Right click:
  - Resets the plot and unselects all cells (if subclustering has been done, the plot is reset to the default view for the subclustering analysis), removes markers.
