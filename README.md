@@ -145,7 +145,7 @@ ESC (keyboard):
  - Resets the plot to the original SAM object (removes subclustering), unselects all cells, removes markers.
 
 Enter (keyboard):
- - If cells are selected, pressing Enter will identify marker genes for those cells. The bottom slider can be used to scroll through and display the ranked list of marker genes.
+ - If cells are selected, pressing Enter will identify marker genes for those cells. The ranked gene slider can be used to scroll through and display the ranked list of marker genes.
 
 Left/Right arrows (keyboard):
  - Can be used to scroll through the ranked gene slider.
