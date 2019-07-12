@@ -733,6 +733,8 @@ class SAM(object):
                 n_genes = 6000
             elif n_genes > 8000:
                 n_genes = 8000
+        
+        n_genes = min(n_genes, (D.sum(0)>0).sum())                
         print(n_genes)
 
         #npcs = None
