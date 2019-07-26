@@ -487,24 +487,10 @@ class SAM(object):
         else:
             ann = pd.read_csv(aname,sep=sep,index_col=0)
 
-        cell_names = np.array(list(self.adata.obs_names))
-        all_cell_names = np.array(list(self.adata_raw.obs_names))
+        for i in range(ann.shape[1]):
+            self.adata_raw.obs[ann.columns[i]] = ann[ann.columns[i]]
+            self.adata.obs[ann.columns[i]] = ann[ann.columns[i]]
 
-
-        ann.index = np.array(list(ann.index.astype('<U100')))
-        ann1 = ann.T[cell_names].T
-        ann2 = ann.T[all_cell_names].T
-
-        if ann.shape[1] > 1:
-            for i in range(ann.shape[1]):
-                x=np.array(list(ann2[ann2.columns[i]].values.flatten()))
-                y=np.array(list(ann1[ann1.columns[i]].values.flatten()))
-
-                self.adata_raw.obs[ann2.columns[i]] = pd.Categorical(x)
-                self.adata.obs[ann1.columns[i]] = pd.Categorical(y)
-        else:
-            self.adata_raw.obs[key_added] = pd.Categorical(ann2.values.flatten())
-            self.adata.obs[key_added] = pd.Categorical(ann1.values.flatten())
 
     def dispersion_ranking_NN(self, nnm = None, num_norm_avg=50):
         """Computes the spatial dispersion factors for each gene.
