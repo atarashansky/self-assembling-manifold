@@ -13,59 +13,28 @@ from umap.nndescent import (
 INT32_MIN = np.iinfo(np.int32).min + 1
 INT32_MAX = np.iinfo(np.int32).max - 1
 
-__version__ = '0.5.2'
+__version__ = '0.5.3'
 
 
-def corr_bin_genes(sam, input_gene, number_of_features=None):
-    """A (hacky) method for binning groups of genes correlated along the
-    SAM manifold.
-    Parameters
-    ----------
-    number_of_features - int, optional, default None
-        The number of genes to bin. Capped at 5000 due to memory
-        considerations.
-    input_gene - str, optional, default None
-        If not None, use this gene as the first seed when growing the
-        correlation bins.
-    """
+def find_corr_genes(sam, input_gene, number_of_features=4000):
 
     weights = sam.adata.var['spatial_dispersions'].values
+
+    idx = np.sort(np.argsort(-weights)[:number_of_features])
     all_gene_names = np.array(list(sam.adata.var_names))
+
     D_avg = sam.adata.layers['X_knn_avg']
 
-    idx2 = np.argsort(-weights)[:weights[weights > 0].size]
+    input_gene =np.where(all_gene_names==input_gene)[0]
 
-    if(number_of_features is None or number_of_features > idx2.size):
-        number_of_features = idx2.size
-
-    if number_of_features > 2000:
-        number_of_features = 2000
-
-    input_gene = np.where(all_gene_names == input_gene)[0]
     if(input_gene.size == 0):
         print(
             "Gene note found in the filtered dataset. Note "
             "that genes are case sensitive.")
         return
-    seeds = [np.array([input_gene])]
-    pw_corr = np.corrcoef(
-        D_avg[:, idx2[:number_of_features]].T.toarray())
-    for i in range(1, number_of_features):
-        flag = False
-        maxd = np.mean(pw_corr[i, :][pw_corr[i, :] > 0])
-        maxi = 0
-        for j in range(len(seeds)):
-            if(pw_corr[np.where(idx2 == seeds[j][0])[0], i]
-               > maxd):
-                maxd = pw_corr[np.where(idx2 == seeds[j][0])[0], i]
-                maxi = j
-                flag = True
-        if(not flag):
-            seeds.append(np.array([idx2[i]]))
-        else:
-            seeds[maxi] = np.append(seeds[maxi], idx2[i])
 
-    return all_gene_names[seeds[0]]
+    pw_corr = generate_correlation_map(D_avg[:,idx].T.A,D_avg[:,input_gene].T.A)
+    return all_gene_names[idx[np.argsort(-pw_corr.flatten())]]
 
 def nearest_neighbors(X, n_neighbors=15, seed=0, metric='correlation'):
 

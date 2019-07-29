@@ -30,7 +30,7 @@ except ImportError:
     PLOTTING = False
 
 
-__version__ = '0.5.2'
+__version__ = '0.5.3'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -289,7 +289,8 @@ class SAM(object):
             D.data[:] = np.log2(D.data / div + 1)
 
         elif(norm.lower() == 'ftt'):
-            D.data[:] = np.sqrt(D.data/div) + np.sqrt(D.data/div+1)
+            D.data[:] = np.sqrt(D.data/div) + np.sqrt(D.data/div+1) - 1
+
         elif(norm.lower() == 'asin'):
             D.data[:] = np.arcsinh(D.data/div)
         elif norm.lower() == 'multinomial':
@@ -356,7 +357,7 @@ class SAM(object):
             self.adata.layers['X_disp'].eliminate_zeros()
         else:
             self.adata.layers['X_disp'] = self.adata.X
-
+        self.adata.uns['preprocess_args'] = self.preprocess_args
 
     def load_data(self, filename, transpose=True,
                   save_sparse_file='h5ad', sep=',', **kwargs):
@@ -469,6 +470,38 @@ class SAM(object):
         """
         x = self.__dict__[data]
         x.write_h5ad(fname, **kwargs)
+
+    def load_var_annotations(self, aname, sep=',', key_added = 'annotations'):
+        """Loads gene annotations.
+
+        Loads the gene annoations specified by the 'aname' path.
+
+        Parameters
+        ----------
+        aname - string
+            The path to the annotations file. First column should be cell IDs
+            and second column should be the desired annotations.
+
+        """
+        if isinstance(aname,pd.DataFrame):
+            ann = aname;
+        else:
+            ann = pd.read_csv(aname,sep=sep,index_col=0)
+
+        gene_names = np.array(list(self.adata.var_names))
+
+        ann.index = np.array(list(ann.index.astype('<U200')))
+        ann = ann.T[gene_names].T
+
+        if ann.shape[1] > 1:
+            for i in range(ann.shape[1]):
+                x=np.array(list(ann[ann.columns[i]].values.flatten()))
+
+                self.adata_raw.var[ann.columns[i]] = pd.Categorical(x)
+                self.adata.var[ann.columns[i]] = pd.Categorical(x)
+        else:
+            self.adata_raw.var[key_added] = pd.Categorical(ann.values.flatten())
+            self.adata.var[key_added] = pd.Categorical(ann.values.flatten())
 
     def load_annotations(self, aname, sep=',', key_added = 'annotations'):
         """Loads cell annotations.
@@ -719,9 +752,10 @@ class SAM(object):
                 n_genes = 6000
             elif n_genes > 8000:
                 n_genes = 8000
-        
-        n_genes = min(n_genes, (D.sum(0)>0).sum())                
+
+        n_genes = min(n_genes, (D.sum(0)>0).sum())
         print(n_genes)
+
 
         #npcs = None
         if npcs is None and numcells > 3000:
@@ -797,6 +831,7 @@ class SAM(object):
             print('Computing the diffusion UMAP embedding...')
             self.run_diff_umap(**proj_kwargs)
 
+        self.adata.uns['run_args'] = self.run_args
         elapsed = time.time() - tinit
         if verbose:
             print('Elapsed time: ' + str(elapsed) + ' seconds')
@@ -861,13 +896,17 @@ class SAM(object):
         return W, g_weighted, EDM
 
     def _create_dict(self, exc):
-        self.pickle_dict = self.__dict__.copy()
-        if(exc):
+        pickle_dict = self.__dict__.copy()
+        if(exc is not None):
+            if 'ps' not in exc:
+                exc.append('ps')
+
             for i in range(len(exc)):
                 try:
-                    del self.pickle_dict[exc[i]]
+                    del pickle_dict[exc[i]]
                 except NameError:
                     0
+        return pickle_dict
 
     def run_tsne(self, X=None, metric='correlation', **kwargs):
         """Wrapper for sklearn's t-SNE implementation.
@@ -922,13 +961,14 @@ class SAM(object):
         Experimental -- running UMAP on the diffusion components
         """
         import scanpy.api as sc
-
-        sc.pp.neighbors(self.adata,use_rep=use_rep,n_neighbors=self.k,
-                                       metric=self.distance,method=method)
+        k = self.run_args.get('k',20)
+        distance = self.run_args.get('distance','correlation')
+        sc.pp.neighbors(self.adata,use_rep=use_rep,n_neighbors=k,
+                                       metric=distance,method=method)
         sc.tl.diffmap(self.adata, n_comps=n_comps)
 
-        sc.pp.neighbors(self.adata,use_rep='X_diffmap',n_neighbors=self.k,
-                                       metric='euclidean',method=method)
+        sc.pp.neighbors(self.adata,use_rep='X_diffmap',n_neighbors=k,
+                        metric='euclidean',method=method)
 
         if 'X_umap' in self.adata.obsm.keys():
                 temp = self.adata.obsm['X_umap'].copy()
@@ -944,9 +984,10 @@ class SAM(object):
         Experimental -- running UMAP on the diffusion components
         """
         import scanpy.api as sc
-
-        sc.pp.neighbors(self.adata,use_rep=use_rep,n_neighbors=self.k,
-                                       metric=self.distance,method=method)
+        k = self.run_args.get('k',20)
+        distance = self.run_args.get('distance','correlation')
+        sc.pp.neighbors(self.adata,use_rep=use_rep,n_neighbors=k,
+                                       metric=distance,method=method)
         sc.tl.diffmap(self.adata, n_comps=n_comps)
 
 
@@ -1181,6 +1222,7 @@ class SAM(object):
         from sklearn.ensemble import RandomForestClassifier
 
         markers = {}
+        markers_scores = {}
         if clusters == None:
             lblsu = np.unique(lbls)
         else:
@@ -1202,11 +1244,12 @@ class SAM(object):
             idx = np.argsort(-clf.feature_importances_)
 
             markers[lblsu[K]] = self.adata.uns['ranked_genes'][idx]
+            markers_scores[lblsu[K]] = clf.feature_importances_[idx]
 
         if clusters is None:
             self.adata.uns['marker_genes_rf'] = markers
 
-        return markers
+        return markers, markers_scores
 
     def identify_marker_genes_ratio(self, labels=None):
         """
@@ -1335,7 +1378,13 @@ class SAM(object):
             to exclude bulky objects that do not need to be saved.
 
         """
-        self._create_dict(exc)
+        pickle_dict = self.__dict__#self._create_dict(exc)
+
+        try:
+            del pickle_dict['ps']
+        except:
+            0;
+
         if savename[-2:] != '.p':
             savename = savename + '.p'
 
@@ -1345,7 +1394,7 @@ class SAM(object):
         else:
             f = open(savename, 'wb')
 
-        pickle.dump(self.pickle_dict, f)
+        pickle.dump(pickle_dict, f)
         f.close()
 
     def load(self, n):
@@ -1365,8 +1414,7 @@ class SAM(object):
             self.__dict__[list(pick_dict.keys())[i]
                           ] = pick_dict[list(pick_dict.keys())[i]]
         f.close()
-    
-    #LEGACY FUNCTION
+
     def scatter(self, projection=None, c=None, cmap='rainbow', linewidth=0.0,
                 edgecolor='k', axes=None, colorbar=True, s=10, **kwargs):
         """Display a scatter plot.
@@ -1604,6 +1652,10 @@ class point_selector:
         self.button_sp= Button(axnext, 'Set SAM params')
         self.button_sp.on_clicked(self.show_samparam_window)
 
+        axnext = self.fig_buttons.add_axes([0.375,0.675,0.215,0.04])
+        self.button_ga= Button(axnext, '')
+        self.button_ga.on_clicked(self.set_gene_ann)
+
         axnext = self.fig_buttons.add_axes([0.15,0.565,0.215,0.04])
         self.button_proj= Button(axnext, '')
         self.button_proj.on_clicked(self.display_projection)
@@ -1661,6 +1713,7 @@ class point_selector:
         self.fcolors = fc
 
         self.writing_text=False
+        self.GENE_KEY = ''
 
         self.curr_lim = self.ax.get_xlim(),self.ax.get_ylim()
 
@@ -1677,6 +1730,8 @@ class point_selector:
                 plt.close(self.samparam_fig)
             except:
                 0;
+    def set_gene_ann(self,event):
+        self.GENE_KEY=self.button_ga.ax.texts[0].get_text()
 
     def display_projection(self,event):
         if self.button_proj.ax.texts[0].get_text() != '':
@@ -1714,15 +1769,20 @@ class point_selector:
 
     def copy_genes(self,event):
         if self.markers is not None:
-            x = self.markers[:100]
+            y = self.markers_scores
+            y = (y-y.mean())/y.std()
+            n=min(y[y>3].size,100)
+            x = self.markers[:n]
             pyperclip.copy('\n'.join(list(x)))
         else:
             if self.sam_subcluster is None:
                 s=self.sam
             else:
                 s=self.sam_subcluster
-
-            genes = np.argsort(-s.adata.var['weights'])
+            y = s.adata.var['weights']
+            y = (y-y.mean())/y.std()
+            n = min(y[y>3].size,100)
+            genes = np.argsort(-y)[:n]
             genes = s.adata.var_names[genes]
             pyperclip.copy('\n'.join(list(genes)))
 
@@ -1732,7 +1792,7 @@ class point_selector:
         else:
             s=self.sam_subcluster
 
-        self.markers = ut.corr_bin_genes(s,txt).flatten()
+        self.markers = ut.find_corr_genes(s,txt).flatten()
         _,i = np.unique(self.markers,return_index=True)
         self.markers=self.markers[np.sort(i)]
         self.slider1.set_val(0)
@@ -2075,9 +2135,22 @@ class point_selector:
 
     def save_fig(self,path):
         if path != '':
-            if len(path.split('/'))>1:
-                ut.create_folder('/'.join(path.split('/')[:-1]))
-            self.fig.savefig(path, bbox_inches='tight')
+            if path.split('.')[-1] == 'h5ad':
+                if self.sam_subcluster is None:
+                    s=self.sam
+                else:
+                    s=self.sam_subcluster
+                s.save_anndata(path,data='adata')
+            elif path.split('.')[-1] == 'p':
+                if self.sam_subcluster is None:
+                    s=self.sam
+                else:
+                    s=self.sam_subcluster
+                s.save(path,exc=['ps'])
+            else:
+                if len(path.split('/'))>1:
+                    ut.create_folder('/'.join(path.split('/')[:-1]))
+                self.fig.savefig(path, bbox_inches='tight')
 
     def on_pick(self,event):
         if event.mouseevent.button == 1:
@@ -2117,7 +2190,7 @@ class point_selector:
                 self.selected[idx] = True
                 ss[idx] = self.scatter_dict['s']
                 lw[idx] = 0.0
-                fc[idx,:] = self.rect_colors[i,:]
+                fc[idx,:] = self.fcolors[idx,:]
             else:
                 self.selected[idx] = False
                 lw[idx] = 0.0
@@ -2250,7 +2323,8 @@ class point_selector:
             self.rect_colors = matplotlib.cm.get_cmap(sc['cmap'])(np.linspace(0,1,clu.size))
             self.fcolors = self.rect_colors[inv,:]
 
-            if clu.size < 200:
+
+            if clu.size > 200:
                 clu = clu[:200]
 
             for i,c in enumerate(clu):
@@ -2365,12 +2439,7 @@ class point_selector:
             self.selected=np.zeros(s.adata.shape[0],dtype='bool')
             self.selected[:]=True
             self.selected_cells = np.array(list(s.adata.obs_names))
-            self.rax.cla()
-            self.rax.text(0.2,1.02,'Annotation Labels',fontsize=12,clip_on=False)
-            self.rax.set_xticks([])
-            self.rax.set_yticks([])
-            self.ANN_TEXTS = []
-            self.ANN_RECTS = []
+
             self.curr_lim = self.ax.get_xlim(),self.ax.get_ylim()
             self.markers = None
             self.gene_slider_text.set_text('Ranked genes\n(SAM weights)')
@@ -2451,14 +2520,11 @@ class point_selector:
                 del sc['c']
                 _,c = show_gene_expression(s, gene,axes = self.ax, avg = avg, **sc)
 
+                if self.GENE_KEY!='':
+                    self.ax.set_title(gene+'; ' +str(s.adata.var[self.GENE_KEY].T[gene]))
+
                 self.selected[:] = True
                 self.selected_cells = np.array(list(s.adata.obs_names))
-                self.rax.cla()
-                self.rax.text(0.2,1.02,'Annotation Labels',fontsize=12,clip_on=False)
-                self.rax.set_xticks([])
-                self.rax.set_yticks([])
-                self.ANN_TEXTS = []
-                self.ANN_RECTS = []
 
                 fc = self.ax.collections[0].get_facecolors().copy()
                 if fc.shape[0] == 1:
@@ -2580,12 +2646,7 @@ class point_selector:
             self.selected_cells = np.array(list(s.adata.obs_names))
             self.slider3.set_active(False)
             self.slider3.ax.set_facecolor('lightgray')
-            self.rax.cla()
-            self.rax.text(0.2,1.02,'Annotation Labels',fontsize=12,clip_on=False)
-            self.rax.set_xticks([])
-            self.rax.set_yticks([])
-            self.ANN_TEXTS = []
-            self.ANN_RECTS = []
+
             self.gene_slider_text.set_text('Ranked genes\n(SAM weights)')
 
             fc = self.ax.collections[0].get_facecolors().copy()
@@ -2615,7 +2676,9 @@ class point_selector:
             print('Identifying marker genes')
             a = np.zeros(s.adata.shape[0])
             a[self.selected]=1
-            self.markers = s.identify_marker_genes_rf(labels = a,clusters = 1)[1]
+            self.markers,self.markers_scores = s.identify_marker_genes_rf(labels = a,clusters = 1)
+            self.markers=self.markers[1]
+            self.markers_scores=self.markers_scores[1]
             self.gene_slider_text.set_text('Ranked genes\n(RF markers)')
             #self.slider1.set_val(1)
             if self.slider1.val == 0:
@@ -2638,6 +2701,7 @@ class point_selector:
             wmu[m>0] = v[m>0] / m[m>0]
 
             self.markers = np.array(list(s.adata.var_names[np.argsort(-wmu)]))
+            self.markers_scores  = -np.sort(-wmu)
             self.gene_slider_text.set_text('Ranked genes\n(SW markers)')
             #self.slider1.set_val(1)
             if self.slider1.val == 0:
@@ -2954,7 +3018,29 @@ class point_selector:
             curr_str = keys[idx]
             self.button_proj.ax.texts[0].set_text(curr_str)
             self.fig_buttons.canvas.draw_idle()
+        elif event.inaxes is self.button_ga.ax:
+            if self.sam_subcluster is None:
+                s=self.sam
+            else:
+                s=self.sam_subcluster
 
+            keys = list(s.adata.var.keys())
+            keys = [''] + keys
+            curr_str = self.button_ga.ax.texts[0].get_text()
+
+
+            idx = np.where(np.in1d(np.array(keys).flatten(),curr_str))[0][0]
+
+            if event.button == 'up':
+                idx -= 1
+            elif event.button == 'down':
+                idx +=1
+
+            if idx < 0: idx = 0;
+            if idx >= len(keys): idx = len(keys)-1;
+            curr_str = keys[idx]
+            self.button_ga.ax.texts[0].set_text(curr_str)
+            self.fig_buttons.canvas.draw_idle()
         elif event.inaxes is self.button3.ax:
             if self.sam_subcluster is None:
                 s=self.sam
@@ -3201,30 +3287,33 @@ def show_gene_expression(sam, gene, avg=True, **kwargs):
                 norm = sam.preprocess_args['norm']
             except KeyError:
                 norm = 'log'
+            #if norm is None:
+            #norm = 'log'
 
-            if norm is not None:
-                if(norm.lower() == 'log'):
-                    a = np.log2(a + 1)
+            if(norm.lower() == 'log'):
+                a = np.log2(a + 1)
 
-                elif(norm.lower() == 'ftt'):
-                    a = np.sqrt(a) + np.sqrt(a+1)
-                elif(norm.lower() == 'asin'):
-                    a = np.arcsinh(a)
+            elif(norm.lower() == 'ftt'):
+                a = np.sqrt(a) + np.sqrt(a+1) - 1
+            elif(norm.lower() == 'asin'):
+                a = np.arcsinh(a)
     else:
         a = sam.adata_raw.X[:,idx].toarray().flatten()[idx2]
         try:
             norm = sam.preprocess_args['norm']
         except KeyError:
             norm = 'log'
+        #if norm is None:
+        #    norm='log'
 
-        if norm is not None:
-            if(norm.lower() == 'log'):
-                a = np.log2(a + 1)
 
-            elif(norm.lower() == 'ftt'):
-                a = np.sqrt(a) + np.sqrt(a+1)
-            elif(norm.lower() == 'asin'):
-                a = np.arcsinh(a)
+        if(norm.lower() == 'log'):
+            a = np.log2(a + 1)
+
+        elif(norm.lower() == 'ftt'):
+            a = np.sqrt(a) + np.sqrt(a+1) - 1
+        elif(norm.lower() == 'asin'):
+            a = np.arcsinh(a)
 
     ax,_ = scatter(sam, c=a, do_GUI = False, **kwargs)
     ax.set_title(name)
