@@ -272,7 +272,7 @@ class SAM(object):
             D = D.multiply(1 / s[:,None] * sum_norm).tocsr()
         elif (sum_norm == 'gene_median' and norm != 'multinomial'):
             s = D.sum(0).A.flatten()
-            sum_norm = np.median(s)
+            sum_norm = np.median(s[s>0])
             s[s==0]=1
             D = D.multiply(1 / s[None,:] * sum_norm).tocsr()
 
