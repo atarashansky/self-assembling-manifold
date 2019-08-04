@@ -18,6 +18,7 @@ The Self-Assembling-Manifold (SAM) algorithm.
    - `ipythonwidgets`
    - `jupyter`
    - `colorlover`
+   - `ipyevents`
 
  - Clustering
    - `louvain`
@@ -52,13 +53,10 @@ git clone https://github.com/atarashansky/self-assembling-manifold.git
 cd self-assembling-manifold
 python setup.py install
 
-For interactive data exploration (in the `SAMGUI.py` module), `jupyter`, `ipythonwidgets`, `colorlover`, and `plotly` are required. Install them in the previously made environment like so:
+For interactive data exploration (in the `SAMGUI.py` module), `jupyter`, `ipythonwidgets`, `colorlover`, `ipyevents`, and `plotly` are required. Install them in the previously made environment like so:
 
 ```
-conda install jupyter
-conda install -c conda-forge ipywidgets
-conda install -c plotly plotly=4.0.0
-pip install colorlover
+conda install -c conda-forge -c plotly jupyter ipywidgets plotly=4.0.0 colorlover ipyevents
 ```
 
 ```
