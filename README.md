@@ -28,7 +28,7 @@ The Self-Assembling-Manifold (SAM) algorithm.
 
  - `scanpy`
 
-## Version 0.6.0
+## Version 0.6.1
 
 I scrapped the matplotlib GUI I was using before in favor of using the magical `Plotly` and `ipythonwidgets` packages. To interactively explore the data, use the new module `SAMGUI.py`. Run the following in a jupyter notebook:
 ```

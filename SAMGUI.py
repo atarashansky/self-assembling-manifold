@@ -7,6 +7,7 @@ import plotly.graph_objs as go
 from ipyevents import Event
 from ipywidgets import Widget
 
+__version__ = '0.6.1'
 
 class SAMGUI(object):
 

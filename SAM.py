@@ -13,7 +13,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-__version__ = '0.6.0'
+__version__ = '0.6.1'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.

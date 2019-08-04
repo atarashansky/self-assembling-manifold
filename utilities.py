@@ -13,7 +13,7 @@ from umap.nndescent import (
 INT32_MIN = np.iinfo(np.int32).min + 1
 INT32_MAX = np.iinfo(np.int32).max - 1
 
-__version__ = '0.6.0'
+__version__ = '0.6.1'
 
 
 def find_corr_genes(sam, input_gene, number_of_features=4000):
