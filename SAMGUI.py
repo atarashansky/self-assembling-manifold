@@ -9,7 +9,7 @@ from SAM import SAM
 from ipyevents import Event
 from ipywidgets import Widget
 
-__version__ = '0.6.2'
+__version__ = '0.6.3'
 
 class SAMGUI(object):
 
@@ -102,11 +102,11 @@ class SAMGUI(object):
 
         if i >= len(self.stab.children):
             self.stab.children += (f1,)
-            self.stab.set_trait('selected_index',i)
+            #self.stab.set_trait('selected_index',i)
 
-        if type(self.ds[self.stab.selected_index]) is int:
+        if type(self.ds[i]) is int:
             d = Event(source = f1, watched_events = ['keydown'])
-            self.ds[self.stab.selected_index] = d
+            self.ds[i] = d
             d.on_dom_event(self.handle_events)
 
         self.stab.set_title(i,title)
@@ -140,8 +140,17 @@ class SAMGUI(object):
         I = self.stab.selected_index
         if I > 0:
             self.stab.set_trait('selected_index',I-1)
+
+            titles = []
+            for i in range(len(self.stab.children)):
+                titles.append(self.stab.get_title(i))
+            del titles[I]
+
             self.ds[I].close()
             self.stab.children[I].close()
+            t= list(self.stab.children)
+            del t[I]
+            self.stab.children=t
             del self.ds[I]
             del self.sams[I]
             del self.selected[I]
@@ -149,6 +158,9 @@ class SAMGUI(object):
             del self.active_labels[I]
             del self.marker_genes[I]
             del self.marker_genes_tt[I]
+
+            for i in range(1,len(self.stab.children)):
+                self.stab.set_title(i,titles[i])
 
     """ BEGIN PREPROCESS INIT"""
     def init_preprocess(self):
