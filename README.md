@@ -38,6 +38,8 @@ sam_gui.SamPlot
 ```
 This will launch an interactive widget that you can use to explore the data. I tried my best to add tooltips wherever possible. Please submit an issue if there are any outstanding bugs / feature requests.
 
+![SAM GUI example image](samgui.png)
+
 ## Installation
 SAM has been most extensively tested using python3.6 but presumably should work on python>=3.6. Python can be installed using Anaconda.
 
