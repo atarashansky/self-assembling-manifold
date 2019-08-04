@@ -1075,6 +1075,8 @@ class SAMGUI(object):
         markers.color = a
         markers.showscale = True
         markers.colorbar.ticks='outside'
+        markers.colorbar.tickmode='auto'
+        markers.colorbar.title = ''
 
         markers.opacity = 1
         self.stab.children[self.stab.selected_index].data[0].text = list(a)
@@ -1089,7 +1091,9 @@ class SAMGUI(object):
 
     def update_colors_anno(self,labels):
         nlabels = np.unique(labels).size
-        if nlabels <= 2:
+        if nlabels == 1:
+            x = 'spectral'
+        elif nlabels <= 2:
             x = cl.scales['3']['qual']['Paired'][:nlabels]
         elif nlabels <= 11:
             nlabels = str(nlabels)
