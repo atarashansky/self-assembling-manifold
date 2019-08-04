@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.com/atarashansky/self-assembling-manifold.svg?branch=master)](https://travis-ci.com/atarashansky/self-assembling-manifold)
 
-# self-assembling-manifold -- SAM version 0.6.3
+# self-assembling-manifold -- SAM version 0.6.4
 The Self-Assembling-Manifold (SAM) algorithm.
 
 ## Requirements
@@ -28,7 +28,7 @@ The Self-Assembling-Manifold (SAM) algorithm.
 
  - `scanpy`
 
-## Version 0.6.3
+## Version 0.6.4
 
 I scrapped the matplotlib GUI I was using before in favor of using the magical `Plotly` and `ipythonwidgets` packages. To interactively explore the data, use the new module `SAMGUI.py`. Run the following in a jupyter notebook:
 ```

@@ -5,11 +5,12 @@ import scipy.sparse as sp
 import ipywidgets as widgets
 import plotly.graph_objs as go
 from SAM import SAM
+import pandas as pd
 
 from ipyevents import Event
 from ipywidgets import Widget
 
-__version__ = '0.6.3'
+__version__ = '0.6.4'
 
 class SAMGUI(object):
 
@@ -114,7 +115,6 @@ class SAMGUI(object):
     def handle_events(self,event):
         if event['type'] == 'keydown':
             key = event['key']
-            s = self.sams[self.stab.selected_index]
             if key == 'ArrowRight':
                 self.cs_box.children[11].children[1].set_trait('value',self.cs_box.children[11].children[1].value+1)
             elif key == 'ArrowLeft':
@@ -953,7 +953,7 @@ class SAMGUI(object):
     def get_similar_genes(self,txt):
         gene = txt.value
 
-        s = self.sams[sedlf.stab.selected_index]
+        s = self.sams[self.stab.selected_index]
 
         genes = ut.search_string(np.array(list(s.adata.var_names)),gene, case_sensitive=True)[0]
         if genes is not -1:
@@ -1041,7 +1041,6 @@ class SAMGUI(object):
 
     def gene_update(self,val):
         val=val['new']
-        s = self.sams[self.stab.selected_index]
         markers = self.marker_genes[self.stab.selected_index]
 
         if int(val) < markers.size:
