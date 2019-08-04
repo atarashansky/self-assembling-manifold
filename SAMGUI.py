@@ -4,10 +4,12 @@ import numpy as np
 import scipy.sparse as sp
 import ipywidgets as widgets
 import plotly.graph_objs as go
+from SAM import SAM
+
 from ipyevents import Event
 from ipywidgets import Widget
 
-__version__ = '0.6.1'
+__version__ = '0.6.2'
 
 class SAMGUI(object):
 
