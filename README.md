@@ -1,11 +1,11 @@
 [![Build Status](https://travis-ci.com/atarashansky/self-assembling-manifold.svg?branch=master)](https://travis-ci.com/atarashansky/self-assembling-manifold)
 
-# self-assembling-manifold -- SAM version 0.5.2
+# self-assembling-manifold -- SAM version 0.6.0
 The Self-Assembling-Manifold (SAM) algorithm.
 
 ## Requirements
  - `numpy`
- - `scipy`
+ - `scipy<=1.2.0`
  - `pandas`
  - `scikit-learn`
  - `umap-learn`
@@ -14,13 +14,17 @@ The Self-Assembling-Manifold (SAM) algorithm.
 
 ### Optional dependencies
  - Plotting
-   - `matplotlib`
-   - `pyperclip`
-   - `PyQt5`
+   - `plotly==4.0.0`
+   - `ipythonwidgets`
+   - `jupyter`
+   - `colorlover`
+
  - Clustering
    - `louvain`
+   - `leidenalg`
    - `hdbscan`
    - `cython`
+
  - `scanpy`
 
 ## Installation
@@ -47,6 +51,16 @@ Development version install:
 git clone https://github.com/atarashansky/self-assembling-manifold.git
 cd self-assembling-manifold
 python setup.py install
+
+For interactive data exploration (in the `SAMGUI.py` module), `jupyter`, `ipythonwidgets`, `colorlover`, and `plotly` are required. Install them in the previously made environment like so:
+
+```
+conda install jupyter
+conda install -c conda-forge ipywidgets
+conda install -c plotly plotly=4.0.0
+pip install colorlover
+```
+
 ```
 
 ## Tutorial

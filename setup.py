@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='sam-algorithm',
-    version='0.5.3',
+    version='0.6.0',
     description='The Self-Assembling-Manifold algorithm',
     long_description="The Self-Assembling-Manifold algorithm for analyzing single-cell RNA sequencing data.",
     long_description_content_type='text/markdown',
@@ -10,10 +10,10 @@ setup(
     author='Alexander J. Tarashansky',
     author_email='tarashan@stanford.edu',
     keywords='scrnaseq analysis manifold reconstruction',
-    py_modules=["SAM", "utilities"],
+    py_modules=["SAM", "utilities", "SAMGUI"],
     install_requires=[
         'numpy',
-        'scipy==1.2.0',
+        'scipy<=1.2.0',
         'pandas',
         'scikit-learn',
 	'numba',
@@ -21,10 +21,12 @@ setup(
     extras_require={
         'louvain': [
             'louvain', 'cython', 'python-igraph'],
+        'leiden': [
+            'leidenalg', 'cython', 'python-igraph'],
         'hdbscan': [
             'hdbscan'],
         'plot': [
-            'matplotlib', 'pyperclip', 'PyQt5'],
+            'ipythonwidgets', 'jupyter', 'plotly==4.0.0'],
         'scanpy': [
             'scanpy'],	    
         },
