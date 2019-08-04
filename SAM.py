@@ -638,7 +638,7 @@ class SAM(object):
 
     def run(self,
             max_iter=10,
-            verbose=True,
+            verbose=False,
             projection='umap',
             stopping_condition=5e-3,
             num_norm_avg=50,
@@ -737,9 +737,6 @@ class SAM(object):
                 n_genes = 8000
 
         n_genes = min(n_genes, (D.sum(0)>0).sum())
-        print(n_genes)
-
-
         #npcs = None
         if npcs is None and numcells > 3000:
             npcs = 150
@@ -763,7 +760,8 @@ class SAM(object):
                     (1, RINDS.shape[1])).flatten(), RINDS.flatten()] = 1
         edm = edm.tocsr()
 
-        print('RUNNING SAM')
+        if verbose:
+            print('RUNNING SAM')
 
         W = self.dispersion_ranking_NN(
             edm, num_norm_avg=1)
@@ -805,13 +803,22 @@ class SAM(object):
         self.adata.uns['neighbors']['connectivities'] = EDM
 
         if(projection == 'tsne'):
-            print('Computing the t-SNE embedding...')
+            if verbose:
+                print('Computing the t-SNE embedding...')
             self.run_tsne(**proj_kwargs)
         elif(projection == 'umap'):
-            print('Computing the UMAP embedding...')
-            self.run_umap(**proj_kwargs)
+            if D.shape[0] < 100000:
+                if verbose:
+                    print('Computing the UMAP embedding...')
+                self.run_umap(**proj_kwargs)
+            else:
+                import scanpy.api as sc
+                self.adata.uns['neighbors']['connectivities'].setdiag(0)
+                self.adata.uns['neighbors']['connectivities'].eliminate_zeros()
+                sc.tl.umap(self.adata,min_dist=0.1)
         elif(projection == 'diff_umap'):
-            print('Computing the diffusion UMAP embedding...')
+            if verbose:
+                print('Computing the diffusion UMAP embedding...')
             self.run_diff_umap(**proj_kwargs)
 
         self.adata.uns['run_args'] = self.run_args
