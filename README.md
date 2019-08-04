@@ -36,7 +36,9 @@ from SAMGUI import SAMGUI
 sam_gui = SAMGUI(sam) # sam is your SAM object
 sam_gui.SamPlot
 ```
-This will launch an interactive widget that you can use to explore the data. I tried my best to add tooltips wherever possible. Please submit an issue if there are any outstanding bugs / feature requests.
+This will launch an interactive widget that you can use to explore the data. I tried my best to add tooltips (hover mouse over labels) wherever possible. Please submit an issue if there are any outstanding bugs / feature requests.
+
+I still have to document this, but you can click on a cell to select / deselect all cells with matching labels.
 
 ![SAM GUI example image](samgui.png)
 
