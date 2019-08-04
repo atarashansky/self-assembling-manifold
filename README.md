@@ -40,6 +40,8 @@ This will launch an interactive widget that you can use to explore the data. I t
 
 I still have to document this, but you can click on a cell to select / deselect all cells with matching labels.
 
+I would recommend installing from the development version for now (not pip) as I currently do not have a stable release of this GUI.
+
 ![SAM GUI example image](samgui.png)
 
 ## Installation
