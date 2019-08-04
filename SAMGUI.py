@@ -518,7 +518,7 @@ class SAMGUI(object):
     def nna_update(self,val):
         self.run_args['num_norm_avg']=val['new']
     def knn_update(self,val):
-        self.run_args['k']=val['new']
+        self.run_args['k']=int(val['new'])
     def ngenes_update(self,val):
         self.run_args['n_genes']=val['new']
 
