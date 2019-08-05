@@ -258,8 +258,8 @@ class SAMGUI(object):
     def set_pp_defaults(self,event):
         self.preprocess_args = self.preprocess_args_init.copy()
         fgenes = self.pp_box.children[1].children[1] # checkbox
-        norm = self.pp_box.children[2].children[1] # norm
-        sumnorm = self.pp_box.children[3].children[1] # sumnorm
+        norm = self.pp_box.children[2]
+        sumnorm = self.pp_box.children[3]
         expr_thr = self.pp_box.children[4].children[1] # expr_threshold
         min_expr = self.pp_box.children[5].children[1] # min_expr
 
