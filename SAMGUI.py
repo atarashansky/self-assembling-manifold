@@ -965,7 +965,7 @@ class SAMGUI(object):
         else:
             return; #quit
 
-        markers = ut.find_corr_genes(gene,txt).flatten()
+        markers = ut.find_corr_genes(s,gene).flatten()
         _,i = np.unique(markers,return_index=True)
         markers=markers[np.sort(i)]
         self.marker_genes[self.stab.selected_index] = markers
