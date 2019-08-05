@@ -578,6 +578,7 @@ class SAMGUI(object):
 
         if execute:
             self.create_plot(i,self.SamPlot.children[1].children[1].children[0].children[1].value)
+            self.update_dropdowns(i)
 
     """ END RUN INIT"""
 
@@ -1218,7 +1219,7 @@ class SAMGUI(object):
     def compute_projection(self,event):
         i = self.stab.selected_index
         s = self.sams[i]
-        val = self.cs_box.children[0].children[0].value
+        val = self.cs_box.children[0].children[1].value
         if val == 'UMAP':
             s.run_umap()
         elif val == 't-SNE':
