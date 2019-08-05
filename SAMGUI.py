@@ -10,12 +10,13 @@ import pandas as pd
 from ipyevents import Event
 from ipywidgets import Widget
 
-__version__ = '0.6.4'
+__version__ = '0.6.5'
 
 class SAMGUI(object):
 
-    def __init__(self,sam, obsm_key = 'X_umap', obs_key = ''):
-        Widget.close_all()
+    def __init__(self,sam, close_all_widgets=False):
+        if close_all_widgets:
+            Widget.close_all()
 
         self.sam = sam
         self.sams = [self.sam]
@@ -33,11 +34,6 @@ class SAMGUI(object):
 
         self.run_args = self.sam.run_args.copy()
         self.run_args_init = self.run_args.copy()
-
-        if obs_key == '':
-            self.labels = None#np.ones(self.xdata.size)
-        else:
-            self.labels = self.sam.adata.obs[obs_key].get_values()
 
         self.pp_box = self.init_preprocess()
         self.rs_box = self.init_run_sam()
