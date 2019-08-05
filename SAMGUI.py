@@ -514,13 +514,13 @@ class SAMGUI(object):
         t = self.run_args.get('weight_PCs',True)
         self.run_args['weight_PCs']=not t
     def npcs_update(self,val):
-        self.run_args['npcs']=val['new']
+        self.run_args['npcs']=int(val['new'])
     def nna_update(self,val):
-        self.run_args['num_norm_avg']=val['new']
+        self.run_args['num_norm_avg']=int(val['new'])
     def knn_update(self,val):
         self.run_args['k']=int(val['new'])
     def ngenes_update(self,val):
-        self.run_args['n_genes']=val['new']
+        self.run_args['n_genes']=int(val['new'])
 
     def rnorm_update(self,txt):
         if txt['new'] == 'None':
