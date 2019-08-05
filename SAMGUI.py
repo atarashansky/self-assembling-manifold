@@ -1194,12 +1194,13 @@ class SAMGUI(object):
 
     def display_annotation(self, event):
         key = self.cs_box.children[4].children[1].value
-        labels = self.sams[self.stab.selected_index].adata.obs[key].get_values()
-        self.active_labels[self.stab.selected_index] = labels
-        self.selected[self.stab.selected_index][:]=True
-        self.stab.children[self.stab.selected_index].data[0].selectedpoints = np.where(
-                        self.selected[self.stab.selected_index][:])[0]
-        self.update_colors_anno(labels)
+        if key != '':
+            labels = self.sams[self.stab.selected_index].adata.obs[key].get_values()
+            self.active_labels[self.stab.selected_index] = labels
+            self.selected[self.stab.selected_index][:]=True
+            self.stab.children[self.stab.selected_index].data[0].selectedpoints = np.where(
+                            self.selected[self.stab.selected_index][:])[0]
+            self.update_colors_anno(labels)
 
     def update_colors_expr(self,a,title):
         f1 = self.stab.children[self.stab.selected_index]
@@ -1240,8 +1241,9 @@ class SAMGUI(object):
             tickvals=np.arange(lbls.size)
             ticktext=list(lbls)
         else:
-            tickvals=[0,lbls.size-1]
-            ticktext=[lbls.min(),lbls.max()]
+            idx = np.round(np.linspace(0, len(lbls) - 1, 6)).astype(int)
+            tickvals=list(idx)
+            ticktext=tickvals
 
         title = self.cs_box.children[4].children[1].value.split('_clusters')[0]
 
@@ -1278,7 +1280,7 @@ class SAMGUI(object):
         val = event['new']
         if val == 'Kmeans cluster':
             x.set_trait('min',2)
-            x.set_trait('max',50)
+            x.set_trait('max',200)
             x.set_trait('value',6)
             x.set_trait('step',1)
             l.set_trait('value','Kmeans \'k\'')
@@ -1330,9 +1332,11 @@ class SAMGUI(object):
 
     def display_projection(self,event):
         s=self.sams[self.stab.selected_index]
-        X = s.adata.obsm[self.cs_box.children[1].children[1].value][:,:2]
-        self.stab.children[self.stab.selected_index].data[0]['x'] = X[:,0]
-        self.stab.children[self.stab.selected_index].data[0]['y'] = X[:,1]
+        key = self.cs_box.children[1].children[1].value
+        if key != '':
+            X = s.adata.obsm[key][:,:2]
+            self.stab.children[self.stab.selected_index].data[0]['x'] = X[:,0]
+            self.stab.children[self.stab.selected_index].data[0]['y'] = X[:,1]
 
     def compute_projection(self,event):
         i = self.stab.selected_index
