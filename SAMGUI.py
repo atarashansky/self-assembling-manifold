@@ -973,7 +973,7 @@ class SAMGUI(object):
         self.cs_box.children[11].children[1].set_trait('value',0)
         self.marker_genes_tt[self.stab.selected_index]='Ranked genes from most to least spatially correlated with '+gene+'.'
         self.cs_box.children[11].children[0].set_trait('tooltip',self.marker_genes_tt[self.stab.selected_index])
-        self.show_expression(gene)
+        self.show_expression(str(gene))
 
     def annotate_pop(self,text):
         text = text.value
