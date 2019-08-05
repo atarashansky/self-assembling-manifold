@@ -1065,7 +1065,7 @@ class SAM(object):
         else:
             return np.array(cl.membership)
 
-    def kmeans_clustering(self, numc, X=None, npcs=15):
+    def kmeans_clustering(self, numc, X=None, npcs=25):
         """Performs k-means clustering.
 
         Parameters
@@ -1073,7 +1073,7 @@ class SAM(object):
         numc - int
             Number of clusters
 
-        npcs - int, optional, default 15
+        npcs - int, optional, default 25
             Number of principal components to use as inpute for k-means
             clustering.
 
@@ -1082,8 +1082,7 @@ class SAM(object):
         from sklearn.cluster import KMeans
         if X is None:
             D_sub = self.adata.uns['X_processed']
-            X = (D_sub - D_sub.mean(0)).dot(self.adata.uns[
-                    'pca_obj'].components_[:npcs,:].T)
+            X = ut.weighted_PCA(D_sub,npcs=npcs,do_weight=False)[0]
 
         km = KMeans(n_clusters = numc)
         cl = km.fit_predict(Normalizer().fit_transform(X))
@@ -1131,12 +1130,12 @@ class SAM(object):
         else:
             return np.array(cl.membership)
 
-    def hdbknn_clustering(self, X=None, k=None, **kwargs):
+    def hdbknn_clustering(self, X=None, k=None, npcs = 25, **kwargs):
         import hdbscan
         if X is None:
             #X = self.adata.obsm['X_pca']
             D = self.adata.uns['X_processed']
-            X = (D-D.mean(0)).dot(self.adata.uns['pca_obj'].components_.T)[:,:15]
+            X = ut.weighted_PCA(D,npcs=npcs,do_weight=False)[0]
             X = Normalizer().fit_transform(X)
             save = True
         else:
