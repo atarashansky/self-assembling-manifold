@@ -14,14 +14,66 @@ __version__ = '0.6.6'
 
 class SAMGUI(object):
 
-    def __init__(self,sam, close_all_widgets=False):
+    def __init__(self,sam = None, close_all_widgets=False):
         if close_all_widgets:
             Widget.close_all()
 
-        self.sam = sam
-        self.sams = [self.sam]
+        self.stab = widgets.Tab()
+        self.stab.observe(self.on_switch_tabs,'selected_index')
+
+        if sam is not None:
+            self.init_from_sam(sam)
+            self.create_plot(0,'Full dataset')
+            items = [self.stab,self.tab]
+        else:
+            tab = widgets.Tab()
+            load_box = self.init_load()
+            children = [load_box]
+            self.SAM_LOADED = False
+            tab.children = children
+            tab.set_title(0,'LOAD_SAM')
+            self.create_plot(0,'SAM not loaded')
+            items = [self.stab,tab]
+        self.SamPlot = widgets.HBox(items)
+
+    def init_from_sam(self,sam):
+        tab = widgets.Tab()
+        self.load_vars_from_sam(sam)
+        self.pp_box = self.init_preprocess()
+        self.rs_box = self.init_run_sam()
+        self.cs_box = self.init_cs()
+        self.SAM_LOADED = True
+        self.out = widgets.Output(layout={'border': '1px solid black',
+                                          'height':'600px','width':'400px'})
+        children = [self.cs_box,self.rs_box,self.pp_box,self.out]
+        names = ['Interact','Run','Preprocess','Output']
+        tab.children = children
+        tab.set_trait('selected_index',0)
+        for i in range(len(children)):
+            tab.set_title(i,names[i])
+        tab.set_trait('selected_index',0)
+        self.tab = tab
+
+    def close_all_tabs(self):
+        self.stab.set_trait('selected_index',0)
+        I=1
+        while len(self.sams)>1:
+            self.ds[I].close()
+            self.stab.children[I].close()
+            del self.ds[I]
+            del self.sams[I]
+            del self.selected[I]
+            del self.selected_cells[I]
+            del self.active_labels[I]
+            del self.marker_genes[I]
+            del self.marker_genes_tt[I]
+        self.stab.children = (self.stab.children[0],)
+
+
+    def load_vars_from_sam(self,sam):
+        self.sams = [sam]
         self.GENE_KEY=''
-        self.selected = [np.zeros(self.sam.adata.shape[0],dtype='bool')]
+        self.selected = [np.zeros(sam.adata.shape[0],dtype='bool')]
         self.selected[0][:] = True
         self.active_labels = [np.zeros(self.selected[0].size,dtype='int')]
         try:
@@ -31,91 +83,87 @@ class SAMGUI(object):
             self.marker_genes = [np.array(list(sam.adata.var_names))]
             self.marker_genes_tt = ['Unranked genes (SAM not run).']
 
-        self.selected_cells = [np.array(list(self.sam.adata.obs_names))]
+        self.selected_cells = [np.array(list(sam.adata.obs_names))]
         self.ds = [0]
 
-        self.preprocess_args = self.sam.preprocess_args.copy()
+        self.preprocess_args = sam.preprocess_args.copy()
         self.preprocess_args_init = self.preprocess_args.copy()
 
-        self.run_args = self.sam.run_args.copy()
+        self.run_args = sam.run_args.copy()
         self.run_args_init = self.run_args.copy()
 
-        self.pp_box = self.init_preprocess()
-        self.rs_box = self.init_run_sam()
-        self.cs_box = self.init_cs()
-        self.out = widgets.Output(layout={'border': '1px solid black',
-                                          'height':'600px','width':'600px'})
-        children = [self.cs_box,self.rs_box,self.pp_box,self.out]
-        tab = widgets.Tab()
-        tab.children = children
-        names = ['Interact','Run SAM','Preprocess data','SAM output']
-        for i in range(len(children)):
-            tab.set_title(i,names[i])
-        self.tab = tab
-
-        self.stab = widgets.Tab()
-        self.create_plot(0,'Full dataset')
-        self.stab.observe(self.on_switch_tabs,'selected_index')
-        items = [self.stab,tab]
-        gb = widgets.HBox(items)
-
-        self.SamPlot = gb
-
     def create_plot(self,i, title):
-        projs = list(self.sams[i].adata.obsm.keys())
-        if 'X_umap' in projs:
-            p = 'X_umap'
-        elif len(projs) > 1:
-            p = np.array(projs)[np.where(np.array(projs)!='X_pca')[0]]
-        else:
-            p = 'X_pca'
+        if self.SAM_LOADED:
+            projs = list(self.sams[i].adata.obsm.keys())
+            if 'X_umap' in projs:
+                p = 'X_umap'
+            elif len(projs) > 1:
+                p = np.array(projs)[np.where(np.array(projs)!='X_pca')[0]]
+            else:
+                p = 'X_pca'
 
-        if p not in projs:
-            xdata = np.zeros(self.sams[i].adata.shape[0])
-            ydata = np.zeros(self.sams[i].adata.shape[0])
-        else:
-            xdata = self.sams[i].adata.obsm[p][:,0]
-            ydata = self.sams[i].adata.obsm[p][:,1]
+            if p not in projs:
+                xdata = []
+                ydata = []
+            else:
+                xdata = self.sams[i].adata.obsm[p][:,0]
+                ydata = self.sams[i].adata.obsm[p][:,1]
 
-        if i < len(self.stab.children):
-            f1 = self.stab.children[i]
-            f1.update_layout(autosize=False)
-            f1.data=[]
+            if i < len(self.stab.children):
+                f1 = self.stab.children[i]
+                f1.update_layout(autosize=False)
+                f1.data=[]
+            else:
+                f1 = go.FigureWidget()
+
+            f1.add_scattergl(x=xdata, y=ydata);
+
+            f1.for_each_trace(self.init_graph);
+            f1.update_layout(
+                margin_l=0,margin_r=0,margin_t=40,margin_b=0,
+                width = 600, height=600,
+                xaxis_ticks='',
+                xaxis_showticklabels=False,
+                #xaxis_showgrid=False,
+                #xaxis_zeroline=False,
+                #yaxis_showgrid=False,
+                #yaxis_zeroline=False,
+                yaxis_ticks='',
+                yaxis_showticklabels=False,
+                autosize=True,
+                dragmode='select'
+            )
+            f1.update_yaxes(autorange=True)
+            f1.update_xaxes(autorange=True)
+
+            f1.data[0].text = list(self.active_labels[-1])
+            f1.data[0].hoverinfo = 'text'
+            f1.set_trait('_config',{'displayModeBar':True, 'scrollZoom':True,'displaylogo':False,'edits':{'titleText':False}})
+
+            if i >= len(self.stab.children):
+                self.stab.children += (f1,)
+                #self.stab.set_trait('selected_index',i)
+
+            if type(self.ds[i]) is int:
+                d = Event(source = f1, watched_events = ['keydown'])
+                self.ds[i] = d
+                d.on_dom_event(self.handle_events)
+
         else:
             f1 = go.FigureWidget()
-
-        f1.add_scattergl(x=xdata, y=ydata);
-
-        f1.for_each_trace(self.init_graph);
-        f1.update_layout(
-            margin_l=0,margin_r=0,margin_t=40,margin_b=0,
-            width = 600, height=600,
-            xaxis_ticks='',
-            xaxis_showticklabels=False,
-            #xaxis_showgrid=False,
-            #xaxis_zeroline=False,
-            #yaxis_showgrid=False,
-            #yaxis_zeroline=False,
-            yaxis_ticks='',
-            yaxis_showticklabels=False,
-            autosize=True,
-            dragmode='select'
-        )
-        f1.update_yaxes(autorange=True)
-        f1.update_xaxes(autorange=True)
-
-        f1.data[0].text = list(self.active_labels[-1])
-        f1.data[0].hoverinfo = 'text'
-        f1.set_trait('_config',{'displayModeBar':True, 'scrollZoom':True,'displaylogo':False,'edits':{'titleText':False}})
-
-        if i >= len(self.stab.children):
+            f1.add_scattergl(x=[], y=[]);
+            f1.update_layout(
+                margin_l=0,margin_r=0,margin_t=40,margin_b=0,
+                width = 600, height=600,
+                xaxis_ticks='',
+                xaxis_showticklabels=False,
+                yaxis_ticks='',
+                yaxis_showticklabels=False,
+                autosize=True,
+                dragmode='select'
+            )
+            f1.set_trait('_config',{'displayModeBar':True, 'scrollZoom':True,'displaylogo':False,'edits':{'titleText':False}})
             self.stab.children += (f1,)
-            #self.stab.set_trait('selected_index',i)
-
-        if type(self.ds[i]) is int:
-            d = Event(source = f1, watched_events = ['keydown'])
-            self.ds[i] = d
-            d.on_dom_event(self.handle_events)
 
         self.stab.set_title(i,title)
 
@@ -244,14 +292,73 @@ class SAMGUI(object):
             style = {'description_width': 'initial'}
         )
         norm.observe(self.norm_submit, 'value')
+
+        load = widgets.Button(
+                description = 'Load data',
+                tooltip = 'Enter the path to the desired data file you wish to '
+                'load. Accepted filetypes are .csv (comma), .txt (tab), .h5ad '
+                '(AnnData), and .p (pickled SAM dictionary).',
+                disabled=False)
+        load.on_click(self.load_data)
+        load_data = widgets.Text(
+            value = '',
+            layout={'width':'100%%'}
+        )
+
         pp = widgets.VBox([pdata,
                            widgets.HBox([dfts,fgenes]),
                            norm,
                            sumnorm,
                            widgets.HBox([l1,expr_thr]),
-                           widgets.HBox([l2,min_expr])])
-        #pp = widgets.Box([pdata,dfts,ldata,expr_thr,min_expr,sumnorm,norm])
+                           widgets.HBox([l2,min_expr]),
+                           widgets.HBox([load,load_data])])
         return pp
+
+    def init_load(self):
+        load = widgets.Button(
+                description = 'Load data',
+                tooltip = 'Enter the path to the desired data file you wish to '
+                'load. Accepted filetypes are .csv (comma), .txt (tab), .h5ad '
+                '(AnnData), and .p (pickled SAM dictionary).',
+                disabled=False)
+        load.on_click(self.load_data)
+        load_data = widgets.Text(
+            value = '',
+            layout={'width':'100%'}
+        )
+        return widgets.HBox([load,load_data],layout={'width':'500px'})
+
+    def load_data(self,event):
+        if not self.SAM_LOADED:
+            path = self.SamPlot.children[1].children[0].children[1].value
+        else:
+            path = self.pp_box.children[6].children[1].value
+
+        filetype = path.split('.')[-1]
+        sam=SAM()
+        if filetype == 'h5ad' or filetype == 'csv':
+            sam.load_data(path)
+        elif filetype == 'p':
+            try:
+                sam.load(path)
+            except:
+                sam.load_data(path)
+        else:
+            sam.load_data(path,sep='\t')
+
+        if not self.SAM_LOADED:
+            self.SamPlot.children[1].children[0].children[0].close()
+            self.SamPlot.children[1].children[0].children[1].close()
+            self.SamPlot.children[1].children[0].close()
+            self.SamPlot.children[1].close()
+            self.init_from_sam(sam)
+            self.SamPlot.children =[self.stab,self.tab]
+            self.tab.set_trait('selected_index',2)
+        else:
+            self.close_all_tabs()
+            self.load_vars_from_sam(sam)
+        self.create_plot(0,'Full dataset')
+
     def me_update(self,val):
         self.preprocess_args['min_expression']=val['new']
     def et_update(self,val):
@@ -345,7 +452,7 @@ class SAMGUI(object):
         ngenes = widgets.FloatSlider(
             value=init,
             min=100,
-            max=self.sam.adata.shape[1],
+            max=self.sams[0].adata.shape[1],
             step=100,
             disabled=False,
             continuous_update=False,
@@ -588,7 +695,12 @@ class SAMGUI(object):
             execute=True
 
         if execute:
-            self.create_plot(i,self.SamPlot.children[1].children[1].children[0].children[1].value)
+            title = self.rs_box.children[0].children[1].value
+            if title == '' and i == 0:
+                title = 'Full dataset'
+            elif title == '':
+                title = 'Subcluster ' + str(i)
+            self.create_plot(i,title)
             self.update_dropdowns(i)
 
     """ END RUN INIT"""
@@ -1013,6 +1125,7 @@ class SAMGUI(object):
         self.selected[self.stab.selected_index][:] = False
         self.selected_cells[self.stab.selected_index] = np.array([])
         self.stab.children[self.stab.selected_index].data[0].selectedpoints=np.array([])
+        self.stab.children[self.stab.selected_index].data[0].unselected = {'marker':{'opacity':self.cs_box.children[14].children[1].value}}
     def select_all(self,event):
         self.selected[self.stab.selected_index][:] = True
         self.selected_cells[self.stab.selected_index] = np.array(list(self.sams[self.stab.selected_index].adata.obs_names))
@@ -1243,6 +1356,7 @@ class SAMGUI(object):
                                                         self.stab.selected_index].adata.obs_names[
                                                         self.selected[self.stab.selected_index]]))
         trace.selectedpoints = list(np.where(self.selected[self.stab.selected_index])[0])
+        trace.unselected = {'marker':{'opacity':self.cs_box.children[14].children[1].value}}
     def pick_cells(self,trace, points, selector):
         tf = self.selected[self.stab.selected_index][points.point_inds[0]]
         als = self.active_labels[self.stab.selected_index]
