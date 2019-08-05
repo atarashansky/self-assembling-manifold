@@ -944,9 +944,8 @@ class SAMGUI(object):
                     title=gene
 
                 self.select_all(None)
-                self.update_colors_expr(a)
+                self.update_colors_expr(a,title)
                 self.gene_expression = a
-                self.stab.children[self.stab.selected_index].layout.title=title
             except IndexError:
                 0; # do nothing
 
@@ -1073,35 +1072,26 @@ class SAMGUI(object):
                         self.selected[self.stab.selected_index][:])[0]
         self.update_colors_anno(labels)
 
-    def update_colors_expr(self,a):
-        nlabels = np.unique(a).size
-        if nlabels != 1:
-            x = cl.scales['11']['div']['Spectral']
-            x = cl.interp(x,int(nlabels))[::-1]
-        else:
-            x = 'spectral'#cl.scales['11']['div']['Spectral'][0]
+    def update_colors_expr(self,a,title):
+        f1 = self.stab.children[self.stab.selected_index]
+        f1.update_traces(marker = dict(color = a,colorscale='spectral',reversescale=True,
+                                       showscale=True,colorbar_ticks='outside',
+                                       colorbar_tickmode='auto',colorbar_title='',
+                                       opacity=1))
 
-        markers = self.stab.children[self.stab.selected_index].data[0].marker
-        markers.colorscale = x
-
-        markers.color = a
-        markers.showscale = True
-        markers.colorbar.ticks='outside'
-        markers.colorbar.tickmode='auto'
-        markers.colorbar.title = ''
-
-        markers.opacity = 1
+        f1.update_layout(hovermode = 'closest', title = title)
         self.stab.children[self.stab.selected_index].data[0].text = list(a)
         self.stab.children[self.stab.selected_index].data[0].hoverinfo = 'text'
-        self.stab.children[self.stab.selected_index].layout.hovermode = 'closest'
-        slider = self.cs_box.children[12].children[1]
 
+
+        slider = self.cs_box.children[12].children[1]
         slider.set_trait('max',a.max()+(a.max()-a.min())/100)
         slider.set_trait('min',0)
         slider.set_trait('step',(a.max()-a.min())/100)
         slider.set_trait('value',0)
 
     def update_colors_anno(self,labels):
+        self.labels=labels
         nlabels = np.unique(labels).size
         if nlabels == 1:
             x = 'spectral'
@@ -1115,28 +1105,30 @@ class SAMGUI(object):
             x = cl.scales[nlabels]['qual']['Paired']
             x = cl.interp(x,int(nlabels))
 
-        markers = self.stab.children[self.stab.selected_index].data[0].marker
-        markers.colorscale = x
-
         lbls,inv = np.unique(labels,return_inverse=True)
 
-        markers.color = inv
-        markers.showscale = True
-        markers.colorbar.ticks='outside'
         if type(labels.flatten()[0]) is str:
-            markers.colorbar.tickvals=np.arange(lbls.size)
-            markers.colorbar.ticktext=list(lbls)
+            tickvals=np.arange(lbls.size)
+            ticktext=list(lbls)
         else:
-            markers.colorbar.tickvals=[0,lbls.size-1]
-            markers.colorbar.ticktext=[lbls.min(),lbls.max()]
+            tickvals=[0,lbls.size-1]
+            ticktext=[lbls.min(),lbls.max()]
 
-        markers.colorbar.title = self.cs_box.children[4].children[1].value.split('_clusters')[0]
-        markers.opacity = 1
+        title = self.cs_box.children[4].children[1].value.split('_clusters')[0]
+
+        f1 = self.stab.children[self.stab.selected_index]
+        f1.update_traces(marker = dict(color = inv,colorscale=x,
+                                       showscale=True,colorbar_ticks='outside',
+                                       colorbar_tickmode='array',colorbar_title='',
+                                       colorbar_tickvals=tickvals,
+                                       colorbar_ticktext=ticktext,
+                                       opacity=1))
+        self.stab.children[self.stab.selected_index].layout.title=title
         self.stab.children[self.stab.selected_index].data[0].text = list(lbls[inv])
         self.stab.children[self.stab.selected_index].data[0].hoverinfo = 'text'
         self.stab.children[self.stab.selected_index].layout.hovermode = 'closest'
 
-        self.stab.children[self.stab.selected_index].layout.title=None
+
         slider = self.cs_box.children[12].children[1]
         slider.set_trait('min',0)
         slider.set_trait('max',0)
