@@ -271,12 +271,15 @@ class SAMGUI(object):
 
         init = self.preprocess_args.get('sum_norm','')
         if init is None:
-            sumnorm.set_trait('value','')
+            sumnorm.set_trait('value','None')
         else:
             sumnorm.set_trait('value',init)
 
         init = self.preprocess_args.get('norm','log')
-        norm.set_trait('value',init)
+        if init is None:
+            norm.set_trait('value','None')
+        else:
+            norm.set_trait('value',init)
 
         init = self.preprocess_args.get('filter_genes',True)
         fgenes.set_trait('value',True)
