@@ -24,8 +24,13 @@ class SAMGUI(object):
         self.selected = [np.zeros(self.sam.adata.shape[0],dtype='bool')]
         self.selected[0][:] = True
         self.active_labels = [np.zeros(self.selected[0].size,dtype='int')]
-        self.marker_genes = [np.array(list(sam.adata.var_names))[np.argsort(-sam.adata.var['weights'].get_values())]]
-        self.marker_genes_tt = ['Genes ranked by SAM weights.']
+        try:
+            self.marker_genes = [np.array(list(sam.adata.var_names))[np.argsort(-sam.adata.var['weights'].get_values())]]
+            self.marker_genes_tt = ['Genes ranked by SAM weights.']
+        except KeyError:
+            self.marker_genes = [np.array(list(sam.adata.var_names))]
+            self.marker_genes_tt = ['Unranked genes (SAM not run).']
+
         self.selected_cells = [np.array(list(self.sam.adata.obs_names))]
         self.ds = [0]
 
@@ -38,10 +43,12 @@ class SAMGUI(object):
         self.pp_box = self.init_preprocess()
         self.rs_box = self.init_run_sam()
         self.cs_box = self.init_cs()
-        children = [self.cs_box,self.rs_box,self.pp_box]
+        self.out = widgets.Output(layout={'border': '1px solid black',
+                                          'height':'600px','width':'600px'})
+        children = [self.cs_box,self.rs_box,self.pp_box,self.out]
         tab = widgets.Tab()
         tab.children = children
-        names = ['Interact','Run SAM','Preprocess data']
+        names = ['Interact','Run SAM','Preprocess data','SAM output']
         for i in range(len(children)):
             tab.set_title(i,names[i])
         self.tab = tab
@@ -63,8 +70,12 @@ class SAMGUI(object):
         else:
             p = 'X_pca'
 
-        xdata = self.sams[i].adata.obsm[p][:,0]
-        ydata = self.sams[i].adata.obsm[p][:,1]
+        if p not in projs:
+            xdata = np.zeros(self.sams[i].adata.shape[0])
+            ydata = np.zeros(self.sams[i].adata.shape[0])
+        else:
+            xdata = self.sams[i].adata.obsm[p][:,0]
+            ydata = self.sams[i].adata.obsm[p][:,1]
 
         if i < len(self.stab.children):
             f1 = self.stab.children[i]
@@ -265,7 +276,7 @@ class SAMGUI(object):
         init = self.preprocess_args.get('thresh',0.01)
         expr_thr.set_trait('value',init)
 
-        init = self.preprocess_args.get('sum_norm','')
+        init = self.preprocess_args.get('sum_norm','None')
         if init is None:
             sumnorm.set_trait('value','None')
         else:
@@ -555,7 +566,9 @@ class SAMGUI(object):
                             selected_cells,:].obsm.copy()
 
             sam_subcluster.preprocess_data(**self.preprocess_args)
-            sam_subcluster.run(**self.run_args);
+            self.out.clear_output()
+            with self.out:
+                sam_subcluster.run(**self.run_args);
             self.sams.append(sam_subcluster)
             self.selected.append(np.ones(sam_subcluster.adata.shape[0]).astype('bool'))
             self.selected_cells.append(np.array(list(sam_subcluster.adata.obs_names)))
@@ -567,7 +580,9 @@ class SAMGUI(object):
             execute=True
 
         elif np.all(selected):
-            sam.run(**self.run_args)
+            self.out.clear_output()
+            with self.out:
+                sam.run(**self.run_args)
             self.marker_genes[i] = np.array(list(sam.adata.var_names))[np.argsort(-sam.adata.var['weights'].get_values())]
             self.marker_genes_tt[i] = 'Genes ranked by SAM weights.'
             execute=True
@@ -595,6 +610,7 @@ class SAMGUI(object):
         cp.on_click(self.compute_projection)
 
         initl = list(self.sams[0].adata.obsm.keys())
+        initl = [""] + initl
         if 'X_umap' in initl:
             init = 'X_umap'
         else:

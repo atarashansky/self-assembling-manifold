@@ -638,7 +638,7 @@ class SAM(object):
 
     def run(self,
             max_iter=10,
-            verbose=False,
+            verbose=True,
             projection='umap',
             stopping_condition=5e-3,
             num_norm_avg=50,
@@ -696,6 +696,11 @@ class SAM(object):
             A dictionary of keyword arguments to pass to the projection
             functions.
         """
+        D = self.adata.X
+        if(k < 5):
+            k = 5
+        if(k > D.shape[0] - 1):
+            k = D.shape[0] - 2
 
         self.run_args = {
                 'max_iter':max_iter,
@@ -711,17 +716,6 @@ class SAM(object):
                 'weight_PCs':weight_PCs,
                 'proj_kwargs':proj_kwargs,
                 }
-
-        self.distance = distance
-        D = self.adata.X
-        self.k = k
-        if(self.k < 5):
-            self.k = 5
-        #elif(self.k > 100):
-        #   self.k = 100
-
-        if(self.k > D.shape[0] - 1):
-            self.k = D.shape[0] - 2
 
         numcells = D.shape[0]
 
@@ -752,8 +746,7 @@ class SAM(object):
         edm = sp.coo_matrix((numcells, numcells), dtype='i').tolil()
         nums = np.arange(edm.shape[1])
         RINDS = np.random.randint(
-            0, numcells, (self.k - 1) * numcells).reshape((numcells,
-                                                                 (self.k - 1)))
+            0, numcells, (k - 1) * numcells).reshape((numcells,(k - 1)))
         RINDS = np.hstack((nums[:, None], RINDS))
 
         edm[np.tile(np.arange(RINDS.shape[0])[:, None],
@@ -839,6 +832,10 @@ class SAM(object):
             numcells,
             num_norm_avg,
             weight_PCs):
+
+        k = self.run_args.get('k',20)
+        distance = self.run_args.get('distance','correlation')
+
         if(n_genes is None):
             gkeep = np.arange(W.size)
         else:
@@ -871,12 +868,13 @@ class SAM(object):
         else:
             g_weighted, pca = ut.weighted_PCA(D_sub, npcs=min(
                 npcs, min(D.shape)), do_weight=weight_PCs, solver='full')
-        if self.distance == 'euclidean':
+        if distance == 'euclidean':
             g_weighted = Normalizer().fit_transform(g_weighted)
 
         self.adata.uns['pca_obj'] = pca
 
-        EDM = ut.calc_nnm(g_weighted,self.k,self.distance)
+
+        EDM = ut.calc_nnm(g_weighted,k,distance)
 
         W = self.dispersion_ranking_NN(
             EDM, num_norm_avg=num_norm_avg)
@@ -910,7 +908,8 @@ class SAM(object):
             return dt
 
         else:
-            dt = man.TSNE(metric=self.distance,
+            distance = self.run_args.get('distance','correlation')
+            dt = man.TSNE(metric=distance,
                           **kwargs).fit_transform(self.adata.obsm['X_pca'])
             tsne2d = dt
             self.adata.obsm['X_tsne'] = tsne2d
@@ -927,7 +926,7 @@ class SAM(object):
         import umap as umap
 
         if metric is None:
-            metric = self.distance
+            metric = self.run_args.get('distance','correlation')
 
 
         if type(X) is str:
@@ -991,12 +990,12 @@ class SAM(object):
             save = False
 
         cl = DBSCAN(eps=eps, metric=metric, **kwargs).fit_predict(X)
-
+        k = self.run_args.get('k',20)
         idx0 = np.where(cl != -1)[0]
         idx1 = np.where(cl == -1)[0]
         if idx1.size > 0 and idx0.size > 0:
             xcmap = ut.generate_euclidean_map(X[idx0, :], X[idx1, :])
-            knn = np.argsort(xcmap.T, axis=1)[:, :self.k]
+            knn = np.argsort(xcmap.T, axis=1)[:, :k]
             nnm = np.zeros(xcmap.shape).T
             nnm[np.tile(np.arange(knn.shape[0])[:, None],
                         (1, knn.shape[1])).flatten(),
@@ -1040,7 +1039,7 @@ class SAM(object):
         import igraph as ig
         import louvain
 
-        adjacency = X#ut.to_sparse_knn(X.dot(X.T) / self.k, self.k).tocsr()
+        adjacency = X
         sources, targets = adjacency.nonzero()
         weights = adjacency[sources, targets]
         if isinstance(weights, np.matrix):
@@ -1106,7 +1105,7 @@ class SAM(object):
         import igraph as ig
         import leidenalg
 
-        adjacency = X#ut.to_sparse_knn(X.dot(X.T) / self.k, self.k).tocsr()
+        adjacency = X
         sources, targets = adjacency.nonzero()
         weights = adjacency[sources, targets]
         if isinstance(weights, np.matrix):
@@ -1144,7 +1143,7 @@ class SAM(object):
             save = False
 
         if k is None:
-            k = 20#self.k
+            k = self.run_args.get('k',20)
 
         hdb = hdbscan.HDBSCAN(metric='euclidean', **kwargs)
 
