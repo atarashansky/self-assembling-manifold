@@ -68,13 +68,12 @@ Development version install:
 git clone https://github.com/atarashansky/self-assembling-manifold.git
 cd self-assembling-manifold
 python setup.py install
+```
 
 For interactive data exploration (in the `SAMGUI.py` module), `jupyter`, `ipythonwidgets`, `colorlover`, `ipyevents`, and `plotly` are required. Install them in the previously made environment like so:
 
 ```
 conda install -c conda-forge -c plotly jupyter ipywidgets plotly=4.0.0 colorlover ipyevents
-```
-
 ```
 
 ## Tutorial
