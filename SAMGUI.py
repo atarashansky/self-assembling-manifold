@@ -1123,13 +1123,13 @@ class SAMGUI(object):
 
     def unselect_all(self,event):
         self.selected[self.stab.selected_index][:] = False
-        self.selected_cells[self.stab.selected_index] = np.array([])
+        self.selected_cells[self.stab.selected_index] = []
         self.stab.children[self.stab.selected_index].data[0].selectedpoints=np.array([])
         self.stab.children[self.stab.selected_index].data[0].unselected = {'marker':{'opacity':self.cs_box.children[14].children[1].value}}
     def select_all(self,event):
         self.selected[self.stab.selected_index][:] = True
         self.selected_cells[self.stab.selected_index] = np.array(list(self.sams[self.stab.selected_index].adata.obs_names))
-        self.stab.children[self.stab.selected_index].data[0].selectedpoints=np.arange(self.selected[self.stab.selected_index].size)
+        self.stab.children[self.stab.selected_index].data[0].selectedpoints=list(np.arange(self.selected[self.stab.selected_index].size))
         self.stab.children[self.stab.selected_index].data[0].marker.opacity=1
 
     def ism_genes(self,event):
