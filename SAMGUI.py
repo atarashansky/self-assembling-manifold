@@ -945,7 +945,7 @@ class SAMGUI(object):
             disabled=True,
             layout={'width':'30%'})
         aslider = widgets.FloatSlider(
-            value=0.5,
+            value=0.1,
             min=0.,
             max=1,
             step=0.01,
@@ -1195,11 +1195,8 @@ class SAMGUI(object):
     def display_annotation(self, event):
         key = self.cs_box.children[4].children[1].value
         if key != '':
-            labels = self.sams[self.stab.selected_index].adata.obs[key].get_values()
+            labels = np.array(list(self.sams[self.stab.selected_index].adata.obs[key].get_values()))
             self.active_labels[self.stab.selected_index] = labels
-            self.selected[self.stab.selected_index][:]=True
-            self.stab.children[self.stab.selected_index].data[0].selectedpoints = np.where(
-                            self.selected[self.stab.selected_index][:])[0]
             self.update_colors_anno(labels)
 
     def update_colors_expr(self,a,title):
@@ -1221,7 +1218,6 @@ class SAMGUI(object):
         slider.set_trait('value',0)
 
     def update_colors_anno(self,labels):
-        self.labels=labels
         nlabels = np.unique(labels).size
         if nlabels == 1:
             x = 'spectral'
@@ -1237,7 +1233,7 @@ class SAMGUI(object):
 
         lbls,inv = np.unique(labels,return_inverse=True)
 
-        if type(labels.flatten()[0]) is str:
+        if type(labels.flatten()[0]) is str or type(labels.flatten()[0]) is np.str_:
             tickvals=np.arange(lbls.size)
             ticktext=list(lbls)
         else:
