@@ -305,14 +305,58 @@ class SAMGUI(object):
             layout={'width':'100%%'}
         )
 
+        loada = widgets.Button(
+                description = 'Load annotations',
+                tooltip = 'Enter the path to the desired annotations file you wish to '
+                'load. Accepted filetypes are .csv (comma) or .txt (tab).',
+                disabled=False)
+        loada.on_click(self.load_ann)
+        load_dataa = widgets.Text(
+            value = '',
+            layout={'width':'100%%'}
+        )
+
+        loadv = widgets.Button(
+                description = 'Load gene annotations',
+                tooltip = 'Enter the path to the desired gene annotations file '
+                'you wish to load. Accepted filetypes are .csv (comma) or .txt (tab).',
+                disabled=False)
+        loadv.on_click(self.load_vann)
+        load_datav = widgets.Text(
+            value = '',
+            layout={'width':'100%%'}
+        )
+
+
         pp = widgets.VBox([pdata,
                            widgets.HBox([dfts,fgenes]),
                            norm,
                            sumnorm,
                            widgets.HBox([l1,expr_thr]),
                            widgets.HBox([l2,min_expr]),
-                           widgets.HBox([load,load_data])])
+                           widgets.HBox([load,load_data]),
+                           widgets.HBox([loada,load_dataa]),
+                           widgets.HBox([loadv,load_datav])])
         return pp
+
+    def load_ann(self,event):
+        path = self.pp_box.children[7].children[1].value
+        try:
+            for i in range(len(self.stab.children)):
+                self.sams[i].load_annotations(path)
+                self.update_dropdowns(i)
+        except:
+            with self.out:
+                print('Annotation file not found or was improperly formatted.')
+    def load_vann(self,event):
+        path = self.pp_box.children[8].children[1].value
+        try:
+            for i in range(len(self.stab.children)):
+                self.sams[i].load_var_annotations(path)
+                self.update_dropdowns(i)
+        except:
+            with self.out:
+                print('Annotation file not found or was improperly formatted.')
 
     def init_load(self):
         load = widgets.Button(
