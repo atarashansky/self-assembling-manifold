@@ -1350,7 +1350,7 @@ class SAMGUI(object):
             s.run_diff_map()
         elif val == 'Diffusion UMAP':
             s.run_diff_umap()
-        self.cs_box.children[1].children[0].options = list(s.adata.obsm.keys())
+        self.update_dropdowns(i)
     """ END CS INIT"""
 
     def select(self,trace,points,selector):
