@@ -400,6 +400,8 @@ class SAMGUI(object):
             self.tab.set_trait('selected_index',2)
         else:
             self.close_all_tabs()
+            self.ds[0].close()
+            self.ds[0] = 0
             self.load_vars_from_sam(sam)
         self.create_plot(0,'Full dataset')
 
