@@ -149,6 +149,9 @@ class SAMGUI(object):
                 self.ds[i] = d
                 d.on_dom_event(self.handle_events)
 
+            slider = self.cs_box.children[12].children[1]
+            slider.set_trait('min',slider.value)
+            slider.set_trait('max',slider.value)
         else:
             f1 = go.FigureWidget()
             f1.add_scattergl(x=[], y=[]);
@@ -1049,6 +1052,7 @@ class SAMGUI(object):
     def reset_view(self,event):
         self.create_plot(self.stab.selected_index,self.stab.get_title(self.stab.selected_index))
 
+
     def save_data(self,path):
         path=path.value
         if path != '':
@@ -1303,9 +1307,9 @@ class SAMGUI(object):
 
 
         slider = self.cs_box.children[12].children[1]
-        slider.set_trait('min',0)
-        slider.set_trait('max',0)
-        slider.set_trait('value',0)
+        slider.set_trait('min',slider.value)
+        slider.set_trait('max',slider.value)
+
 
     def threshold_selection(self, val):
         val = val['new']
