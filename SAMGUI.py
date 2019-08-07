@@ -126,6 +126,7 @@ class SAMGUI(object):
                 width = 600, height=600,
                 xaxis_ticks='',
                 xaxis_showticklabels=False,
+                title='',
                 #xaxis_showgrid=False,
                 #xaxis_zeroline=False,
                 #yaxis_showgrid=False,
@@ -183,9 +184,9 @@ class SAMGUI(object):
                     x=0
                 self.cs_box.children[11].children[1].set_trait('value',x)
 
-            elif key == 'shift':
+            elif key == 'Shift':
                 self.irm_genes(None)
-            elif key == 'enter':
+            elif key == 'Enter':
                 self.ism_genes(None)
             elif key == 'x':
                 self.unselect_all(None);
@@ -1266,8 +1267,8 @@ class SAMGUI(object):
 
 
         slider = self.cs_box.children[12].children[1]
-        slider.set_trait('max',a.max()+(a.max()-a.min())/100)
         slider.set_trait('min',0)
+        slider.set_trait('max',a.max()+(a.max()-a.min())/100)
         slider.set_trait('step',(a.max()-a.min())/100)
         slider.set_trait('value',0)
 
