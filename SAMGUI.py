@@ -1099,20 +1099,22 @@ class SAMGUI(object):
                             a = x.flatten()
 
                         norm = self.preprocess_args.get('norm','log')
+                        if norm is not None:
+                            if(norm.lower() == 'log'):
+                                a = np.log2(a + 1)
+                            elif(norm.lower() == 'ftt'):
+                                a = np.sqrt(a) + np.sqrt(a+1) - 1
+                            elif(norm.lower() == 'asin'):
+                                a = np.arcsinh(a)
+                else:
+                    norm = self.preprocess_args.get('norm','log')
+                    if norm is not None:
                         if(norm.lower() == 'log'):
                             a = np.log2(a + 1)
                         elif(norm.lower() == 'ftt'):
                             a = np.sqrt(a) + np.sqrt(a+1) - 1
                         elif(norm.lower() == 'asin'):
                             a = np.arcsinh(a)
-                else:
-                    norm = self.preprocess_args.get('norm','log')
-                    if(norm.lower() == 'log'):
-                        a = np.log2(a + 1)
-                    elif(norm.lower() == 'ftt'):
-                        a = np.sqrt(a) + np.sqrt(a+1) - 1
-                    elif(norm.lower() == 'asin'):
-                        a = np.arcsinh(a)
 
                 if self.GENE_KEY!='':
                     title = gene+'; ' +str(s.adata.var[self.GENE_KEY].T[gene])
