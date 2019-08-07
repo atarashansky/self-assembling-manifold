@@ -67,6 +67,7 @@ class SAMGUI(object):
             del self.active_labels[I]
             del self.marker_genes[I]
             del self.marker_genes_tt[I]
+            del self.gene_expressions[I]
         self.stab.children = (self.stab.children[0],)
 
 
@@ -85,6 +86,7 @@ class SAMGUI(object):
 
         self.selected_cells = [np.array(list(sam.adata.obs_names))]
         self.ds = [0]
+        self.gene_expressions = [np.zeros(sam.adata.shape[0])]
 
         self.preprocess_args = sam.preprocess_args.copy()
         self.preprocess_args_init = self.preprocess_args.copy()
@@ -213,6 +215,7 @@ class SAMGUI(object):
             del self.sams[I]
             del self.selected[I]
             del self.selected_cells[I]
+            del self.gene_expressions[I]
             del self.active_labels[I]
             del self.marker_genes[I]
             del self.marker_genes_tt[I]
@@ -729,6 +732,7 @@ class SAMGUI(object):
             self.selected.append(np.ones(sam_subcluster.adata.shape[0]).astype('bool'))
             self.selected_cells.append(np.array(list(sam_subcluster.adata.obs_names)))
             self.active_labels.append(np.zeros(sam_subcluster.adata.shape[0]))
+            self.gene_expressions.append(np.zeros(sam_subcluster.adata.shape[0]))
             self.marker_genes.append(np.array(list(sam_subcluster.adata.var_names))[np.argsort(-sam_subcluster.adata.var['weights'].get_values())])
             self.marker_genes_tt.append('Genes ranked by SAM weights.')
             self.ds.append(0)
@@ -1123,7 +1127,7 @@ class SAMGUI(object):
 
                 self.select_all(None)
                 self.update_colors_expr(a,title)
-                self.gene_expression = a
+                self.gene_expression[self.stab.selected_index] = a
             except IndexError:
                 0; # do nothing
 
@@ -1316,7 +1320,7 @@ class SAMGUI(object):
         s = self.sams[self.stab.selected_index]
 
         self.selected[self.stab.selected_index][:]=False
-        self.selected[self.stab.selected_index][self.gene_expression>=val]=True
+        self.selected[self.stab.selected_index][self.gene_expression[self.stab.selected_index]>=val]=True
         self.selected_cells[self.stab.selected_index]=np.array(list(s.adata.obs_names))[self.selected[self.stab.selected_index]]
         self.stab.children[self.stab.selected_index].data[0].selectedpoints = np.where(self.selected[self.stab.selected_index])[0]
 
