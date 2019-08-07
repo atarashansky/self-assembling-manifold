@@ -1127,7 +1127,7 @@ class SAMGUI(object):
 
                 self.select_all(None)
                 self.update_colors_expr(a,title)
-                self.gene_expression[self.stab.selected_index] = a
+                self.gene_expressions[self.stab.selected_index] = a
             except IndexError:
                 0; # do nothing
 
@@ -1320,7 +1320,7 @@ class SAMGUI(object):
         s = self.sams[self.stab.selected_index]
 
         self.selected[self.stab.selected_index][:]=False
-        self.selected[self.stab.selected_index][self.gene_expression[self.stab.selected_index]>=val]=True
+        self.selected[self.stab.selected_index][self.gene_expressions[self.stab.selected_index]>=val]=True
         self.selected_cells[self.stab.selected_index]=np.array(list(s.adata.obs_names))[self.selected[self.stab.selected_index]]
         self.stab.children[self.stab.selected_index].data[0].selectedpoints = np.where(self.selected[self.stab.selected_index])[0]
 
