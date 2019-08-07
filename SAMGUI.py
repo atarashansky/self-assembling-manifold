@@ -1099,7 +1099,6 @@ class SAMGUI(object):
                             a = x.flatten()
 
                         norm = self.preprocess_args.get('norm','log')
-                        norm = 'log'
                         if(norm.lower() == 'log'):
                             a = np.log2(a + 1)
                         elif(norm.lower() == 'ftt'):
@@ -1108,7 +1107,6 @@ class SAMGUI(object):
                             a = np.arcsinh(a)
                 else:
                     norm = self.preprocess_args.get('norm','log')
-                    norm = 'log'
                     if(norm.lower() == 'log'):
                         a = np.log2(a + 1)
                     elif(norm.lower() == 'ftt'):
