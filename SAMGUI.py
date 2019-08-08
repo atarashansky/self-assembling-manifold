@@ -65,6 +65,7 @@ class SAMGUI(object):
             del self.selected[I]
             del self.selected_cells[I]
             del self.active_labels[I]
+            del self.dd_opts[I]
             del self.marker_genes[I]
             del self.marker_genes_tt[I]
             del self.gene_expressions[I]
@@ -77,6 +78,7 @@ class SAMGUI(object):
         self.selected = [np.zeros(sam.adata.shape[0],dtype='bool')]
         self.selected[0][:] = True
         self.active_labels = [np.zeros(self.selected[0].size,dtype='int')]
+        self.dd_opts=[['']]
         try:
             self.marker_genes = [np.array(list(sam.adata.var_names))[np.argsort(-sam.adata.var['weights'].get_values())]]
             self.marker_genes_tt = ['Genes ranked by SAM weights.']
@@ -139,7 +141,7 @@ class SAMGUI(object):
             f1.update_yaxes(autorange=True)
             f1.update_xaxes(autorange=True)
 
-            f1.data[0].text = list(self.active_labels[-1])
+            f1.data[0].text = list(self.active_labels[i])
             f1.data[0].hoverinfo = 'text'
             f1.set_trait('_config',{'displayModeBar':True, 'scrollZoom':True,'displaylogo':False,'edits':{'titleText':False}})
 
@@ -218,6 +220,7 @@ class SAMGUI(object):
             del self.selected_cells[I]
             del self.gene_expressions[I]
             del self.active_labels[I]
+            del self.dd_opts[I]
             del self.marker_genes[I]
             del self.marker_genes_tt[I]
 
@@ -733,6 +736,7 @@ class SAMGUI(object):
             self.selected.append(np.ones(sam_subcluster.adata.shape[0]).astype('bool'))
             self.selected_cells.append(np.array(list(sam_subcluster.adata.obs_names)))
             self.active_labels.append(np.zeros(sam_subcluster.adata.shape[0]))
+            self.dd_opts.append([''])
             self.gene_expressions.append(np.zeros(sam_subcluster.adata.shape[0]))
             self.marker_genes.append(np.array(list(sam_subcluster.adata.var_names))[np.argsort(-sam_subcluster.adata.var['weights'].get_values())])
             self.marker_genes_tt.append('Genes ranked by SAM weights.')
@@ -993,6 +997,20 @@ class SAMGUI(object):
             disabled=False)#layout={'width':'30%'})
         close.on_click(self.close_tab)
 
+        hotkeys = widgets.Button(
+            description = 'ReadMe',
+            tooltip = '''While hovering over the scatter plot, the following keyboard inputs are available:
+                - Left/Right arrows: Scroll through & display ranked genes
+                - Shift: Random Forest classifier marker gene identification of selected cells
+                - Enter: SAM weights-based approach to marker gene identification of selected cells
+                - x: Unselect all cells
+                - c: Select all cells
+                - v: Reset view
+                - a: Toggle expression spatial averaging ON/OFF
+
+                Also note that clicking a cell will select/unselect all cells sharing its label.''',
+            disabled=True)#layout={'width':'30%'})
+
         amslider = widgets.Button(
             description = 'Opacity',
             tooltip = 'Changes the opacities of unselected points in the current plot.',
@@ -1035,12 +1053,18 @@ class SAMGUI(object):
         )
         mslider.observe(self.change_msize,'value')
 
+        acc = widgets.Dropdown(
+                value="",
+                options=[""]
+                )
+        acc.observe(self.pick_cells_dd,'value')
+
         return widgets.VBox([
             widgets.HBox([cp,cpm]),
             widgets.HBox([dp,dpm]),
             widgets.HBox([cl,clm]),
             widgets.HBox([l,cslider]),
-            widgets.HBox([da,dam]),
+            widgets.HBox([da,dam,acc]),
             widgets.HBox([dv,dvm]),
             widgets.HBox([irm,ism,avg]),
             widgets.HBox([us,usa,res]),
@@ -1052,7 +1076,7 @@ class SAMGUI(object):
             widgets.HBox([lsf,sf]),
             widgets.HBox([amslider,aslider]),
             widgets.HBox([lmslider,mslider]),
-            close
+            widgets.HBox([close,hotkeys])
         ])
     def reset_view(self,event):
         self.create_plot(self.stab.selected_index,self.stab.get_title(self.stab.selected_index))
@@ -1239,6 +1263,8 @@ class SAMGUI(object):
         self.cs_box.children[1].children[1].options = list(s.adata.obsm.keys())
         self.cs_box.children[4].children[1].options = [''] + list(s.adata.obs.keys())
         self.cs_box.children[5].children[1].options = [''] + list(s.adata.var.keys())
+        self.cs_box.children[4].children[2].options = self.dd_opts[i]
+
     def on_switch_tabs(self,event):
         self.update_dropdowns(self.stab.selected_index)
         self.cs_box.children[11].children[0].set_trait('tooltip',self.marker_genes_tt[self.stab.selected_index])
@@ -1251,6 +1277,15 @@ class SAMGUI(object):
         key = self.cs_box.children[4].children[1].value
         if key != '':
             labels = np.array(list(self.sams[self.stab.selected_index].adata.obs[key].get_values()))
+            tf = True
+            for l in labels:
+                try:
+                    float(l)
+                except ValueError:
+                    tf = False
+                    break
+            if tf:
+                labels = labels.astype('float64')
             self.active_labels[self.stab.selected_index] = labels
             self.update_colors_anno(labels)
 
@@ -1274,6 +1309,13 @@ class SAMGUI(object):
 
     def update_colors_anno(self,labels):
         nlabels = np.unique(labels).size
+        title = self.cs_box.children[4].children[1].value.split('_clusters')[0]
+
+        if nlabels > 300 and (type(labels[0]) is not str and
+                              type(labels[0]) is not np.str_):
+            self.update_colors_expr(labels,title)
+            return;
+
         if nlabels == 1:
             x = 'spectral'
         elif nlabels <= 2:
@@ -1288,6 +1330,10 @@ class SAMGUI(object):
 
         lbls,inv = np.unique(labels,return_inverse=True)
 
+        dd = self.cs_box.children[4].children[2]
+        self.dd_opts[self.stab.selected_index] = [""] + list(lbls)
+        dd.options = self.dd_opts[self.stab.selected_index]
+
         if type(labels.flatten()[0]) is str or type(labels.flatten()[0]) is np.str_:
             tickvals=np.arange(lbls.size)
             ticktext=list(lbls)
@@ -1296,7 +1342,6 @@ class SAMGUI(object):
             tickvals=list(idx)
             ticktext=tickvals
 
-        title = self.cs_box.children[4].children[1].value.split('_clusters')[0]
 
         f1 = self.stab.children[self.stab.selected_index]
         f1.update_traces(marker = dict(color = inv,colorscale=x,
@@ -1412,6 +1457,29 @@ class SAMGUI(object):
                                                         self.selected[self.stab.selected_index]]))
         trace.selectedpoints = list(np.where(self.selected[self.stab.selected_index])[0])
         trace.unselected = {'marker':{'opacity':self.cs_box.children[14].children[1].value}}
+
+    def pick_cells_dd(self,txt):
+        if txt['new'] != '':
+            al = txt['new']
+
+            sel = self.selected[self.stab.selected_index]
+            als = self.active_labels[self.stab.selected_index]
+            ratio = sel[als==al].sum() / sel[als==al].size
+            if ratio >= 0.5:
+                sel[als==al]=False
+            else:
+                sel[als==al]=True
+
+            self.selected_cells[self.stab.selected_index] = np.array(list(self.sams[
+                                                    self.stab.selected_index
+                                                    ].adata.obs_names[sel]))
+
+            self.stab.children[self.stab.selected_index].data[0].selectedpoints = list(np.where(sel)[0])
+
+            self.cs_box.children[4].children[2].value=''
+
+
+
     def pick_cells(self,trace, points, selector):
         tf = self.selected[self.stab.selected_index][points.point_inds[0]]
         als = self.active_labels[self.stab.selected_index]
