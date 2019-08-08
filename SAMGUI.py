@@ -72,6 +72,9 @@ class SAMGUI(object):
         self.stab.children = (self.stab.children[0],)
 
 
+    def get_scatter(self,i):
+        return self.stab.children[i].data[0]
+
     def load_vars_from_sam(self,sam):
         self.sams = [sam]
         self.GENE_KEY=''
