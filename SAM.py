@@ -572,7 +572,7 @@ class SAM(object):
                 elif(norm.lower() == 'asin'):
                     a = np.arcsinh(a)
 
-        ax,_ = self.scatter(c=a, do_GUI = False, **kwargs)
+        ax,_ = self.scatter(c=a, **kwargs)
         ax.set_title(name)
 
         return ax, a
