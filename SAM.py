@@ -507,6 +507,74 @@ class SAM(object):
             self.adata_raw.obs[ann.columns[i]] = ann[ann.columns[i]]
             self.adata.obs[ann.columns[i]] = ann[ann.columns[i]]
 
+def scatter(self, projection=None, c=None, cmap='rainbow', linewidth=0.0,
+            edgecolor='k', axes=None, colorbar=True, s=10, **kwargs):
+    
+    
+    try:
+        import matplotlib.pyplot as plt
+        if(isinstance(projection, str)):
+            try:
+                dt = self.adata.obsm[projection]
+            except KeyError:
+                print('Please create a projection first using run_umap or'
+                  d    'run_tsne')
+
+        elif(projection is None):
+            try:
+                dt = self.adata.obsm['X_umap']
+            except KeyError:
+                try:
+                    dt = self.adata.obsm['X_tsne']
+                except KeyError:
+                    print("Please create either a t-SNE or UMAP projection"
+                          "first.")
+                    return
+        else:
+            dt = projection
+
+        if(axes is None):
+            plt.figure()
+            axes = plt.gca()
+
+        if(c is None):
+            plt.scatter(dt[:, 0], dt[:, 1], s=s,
+                        linewidth=linewidth, edgecolor=edgecolor, **kwargs)
+        else:
+
+            if isinstance(c, str):
+                try:
+                    c = self.adata.obs[c].get_values()
+                except KeyError:
+                    0  # do nothing
+
+            if((isinstance(c[0], str) or isinstance(c[0], np.str_)) and
+               (isinstance(c, np.ndarray) or isinstance(c, list))):
+                i = ut.convert_annotations(c)
+                ui, ai = np.unique(i, return_index=True)
+                cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
+                                   linewidth=linewidth,
+                                   edgecolor=edgecolor,
+                                   **kwargs)
+
+                if(colorbar):
+                    cbar = plt.colorbar(cax, ax=axes, ticks=ui)
+                    cbar.ax.set_yticklabels(c[ai])
+            else:
+                if not (isinstance(c, np.ndarray) or isinstance(c, list)):
+                    colorbar = False
+                i = c
+
+                cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
+                                   linewidth=linewidth,
+                                   edgecolor=edgecolor,
+                                   **kwargs)
+
+                if(colorbar):
+                    plt.colorbar(cax, ax=axes)        
+    except ImportError:
+        print("matplotlib not installed!")
+
 
     def dispersion_ranking_NN(self, nnm = None, num_norm_avg=50):
         """Computes the spatial dispersion factors for each gene.
