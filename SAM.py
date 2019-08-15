@@ -518,7 +518,7 @@ class SAM(object):
                     dt = self.adata.obsm[projection]
                 except KeyError:
                     print('Please create a projection first using run_umap or'
-                      d    'run_tsne')
+                          'run_tsne')
 
             elif(projection is None):
                 try:
