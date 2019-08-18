@@ -73,7 +73,7 @@ python setup.py install
 For interactive data exploration (in the `SAMGUI.py` module), `jupyter`, `ipythonwidgets`, `colorlover`, `ipyevents`, and `plotly` are required. Install them in the previously made environment like so:
 
 ```
-conda install -c conda-forge -c plotly jupyter ipywidgets plotly=4.0.0 colorlover ipyevents
+conda install -c conda-forge -c plotly jupyter ipywidgets plotly=4.0.0 colorlover ipyevents #plotly-orca psutil requests
 ```
 
 ## Tutorial
@@ -139,73 +139,16 @@ sam.run()
 scatter(sam)
 ```
 
+### Saving/Loading SAM
 If you wish to save the SAM outputs and filtered data, you can write `sam.adata` to a `h5ad` file as follows:
 `sam.save_anndata(filename, data = 'adata')`.
 
-If for whatever reason you wish to save the raw, unfiltered AnnData object,
-`sam.save_anndata(filename, data = 'adata_raw')`.
+If you would like to save the entire attirbute dictionary of a SAM object to a Pickle file:
+`sam.save(filename.p)`
 
-
-# SAM GUI
-```
-from SAM import scatter
-# ... run SAM analysis ...
-
-scatter(sam) # launch the GUI -- two windows should pop out
-```
-
-The SAM GUI consists of a scatter plot and a control panel window with various buttons / text boxes. (All buttons with little arrows drawn on them can be scrolled on with the scroll wheel to select different options)
-
-Features include:
-
-Scroll wheel:
- - Zoom in and out
- - Click and hold to pan
-
-Left click:
- - Click and drag to highlight cells. Highlighted cell IDs are stored in `sam.ps.selected_cells`.
-
-Right click:
- - Resets the plot and unselects all cells (if subclustering has been done, the plot is reset to the default view for the subclustering analysis), removes markers.
-
-ESC (keyboard):
- - Resets the plot to the original SAM object (removes subclustering), unselects all cells, removes markers.
-
-Enter (keyboard):
- - If cells are selected, pressing Enter will identify marker genes for those cells. The ranked gene slider can be used to scroll through and display the ranked list of marker genes.
-
-Left/Right arrows (keyboard):
- - Can be used to scroll through the ranked gene slider.
-
-Subcluster/Run (button widget):
- - Pressing this button will rerun SAM on the selected cells.
-
-Cluster (button widget):
- - Pressing this button will perform clustering on the current UMAP projection. Scrolling while hovering over this button changes the clustering algorithm.
- 
-Display annotations (button widget):
- - Pressing this button will display the currently selected annotations. Scrolling hovering over this button changes the annotations to display.
-
-Slider:
- - Selects the resolution parameter for the current clustering algorithm.
-
-Slider:
- - If marker genes for a particular cluster have been identified, this slider scrolls through and displays the ranked list of marker genes.
- - If marker genes were not identified, this slider scrolls through and displays the ranked list of genes according to their SAM weights.
-
-Slider:
-- When showing the expression of a particular gene, slide the bottom slider to select cells with expression in that gene greater than the current value of the slider.
-
-Text box:
- - Type a gene ID and press enter to display the corresponding expression pattern.
-
-`a` (keyboard):
-- pressing `a` toggles gene expression averaging
-
-`x` (keyboard): 
-- pressing `x` unselects all cells.
-
-
+To load these attributes:
+`sam = SAM()`
+`sam.load(filename.p)`
 
 ## Citation
 If using the SAM algorithm, please cite the following preprint:
