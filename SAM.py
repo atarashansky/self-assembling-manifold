@@ -506,7 +506,141 @@ class SAM(object):
         for i in range(ann.shape[1]):
             self.adata_raw.obs[ann.columns[i]] = ann[ann.columns[i]]
             self.adata.obs[ann.columns[i]] = ann[ann.columns[i]]
+            
+    def scatter(self, projection=None, c=None, cmap='rainbow', linewidth=0.0,
+                edgecolor='k', axes=None, colorbar=True, s=10, **kwargs):
+        
+        try:
+            import matplotlib.pyplot as plt
+            if(isinstance(projection, str)):
+                try:
+                    dt = self.adata.obsm[projection]
+                except KeyError:
+                    print('Please create a projection first using run_umap or'
+                          'run_tsne')
 
+            elif(projection is None):
+                try:
+                    dt = self.adata.obsm['X_umap']
+                except KeyError:
+                    try:
+                        dt = self.adata.obsm['X_tsne']
+                    except KeyError:
+                        print("Please create either a t-SNE or UMAP projection"
+                              "first.")
+                        return
+            else:
+                dt = projection
+
+            if(axes is None):
+                plt.figure()
+                axes = plt.gca()
+
+            if(c is None):
+                plt.scatter(dt[:, 0], dt[:, 1], s=s,
+                            linewidth=linewidth, edgecolor=edgecolor, **kwargs)
+            else:
+
+                if isinstance(c, str):
+                    try:
+                        c = self.adata.obs[c].get_values()
+                    except KeyError:
+                        0  # do nothing
+
+                if((isinstance(c[0], str) or isinstance(c[0], np.str_)) and
+                   (isinstance(c, np.ndarray) or isinstance(c, list))):
+                    i = ut.convert_annotations(c)
+                    ui, ai = np.unique(i, return_index=True)
+                    cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
+                                       linewidth=linewidth,
+                                       edgecolor=edgecolor,
+                                       **kwargs)
+
+                    if(colorbar):
+                        cbar = plt.colorbar(cax, ax=axes, ticks=ui)
+                        cbar.ax.set_yticklabels(c[ai])
+                else:
+                    if not (isinstance(c, np.ndarray) or isinstance(c, list)):
+                        colorbar = False
+                    i = c
+
+                    cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
+                                       linewidth=linewidth,
+                                       edgecolor=edgecolor,
+                                       **kwargs)
+
+                    if(colorbar):
+                        plt.colorbar(cax, ax=axes)
+                return axes
+        except ImportError:
+            print("matplotlib not installed!")
+
+    def show_gene_expression(self, gene, avg=True, axes=None, **kwargs):
+        """Display a gene's expressions.
+        Displays a scatter plot using the SAM projection or another input
+        projection with a particular gene's expressions overlaid.
+        Parameters
+        ----------
+        gene - string
+            a case-sensitive string indicating the gene expression pattern
+            to display.
+        avg - bool, optional, default True
+            If True, the plots use the k-nearest-neighbor-averaged expression
+            values to smooth out noisy expression patterns and improves
+            visualization.
+        axes - matplotlib axis, optional, default None
+            Plot output to the specified, existing axes. If None, create new
+            figure window.
+        **kwargs - all keyword arguments in 'SAM.scatter' are eligible.
+        """
+        all_gene_names = np.array(list(self.adata.var_names))
+        cell_names = np.array(list(self.adata.obs_names))
+        all_cell_names = np.array(list(self.adata_raw.obs_names))
+        idx2 = np.where(np.in1d(all_cell_names,cell_names))[0]
+        idx = np.where(all_gene_names == gene)[0]
+        name = gene
+        if(idx.size == 0):
+            print(
+                "Gene note found in the filtered dataset. Note that genes "
+                "are case sensitive.")
+            return
+
+        if(avg):
+            a = self.adata.layers['X_knn_avg'][:, idx].toarray().flatten()
+            if a.sum() == 0:
+                a = self.adata_raw.X[:,idx].toarray().flatten()[idx2]
+                try:
+                    norm = self.preprocess_args['norm']
+                except KeyError:
+                    norm = 'log'
+                if norm is not None:
+                    if(norm.lower() == 'log'):
+                        a = np.log2(a + 1)
+
+                    elif(norm.lower() == 'ftt'):
+                        a = np.sqrt(a) + np.sqrt(a+1)
+                    elif(norm.lower() == 'asin'):
+                        a = np.arcsinh(a)
+        else:
+            a = self.adata_raw.X[:,idx].toarray().flatten()[idx2]
+            try:
+                norm = self.preprocess_args['norm']
+            except KeyError:
+                norm = 'log'
+
+            if norm is not None:
+                if(norm.lower() == 'log'):
+                    a = np.log2(a + 1)
+
+                elif(norm.lower() == 'ftt'):
+                    a = np.sqrt(a) + np.sqrt(a+1)
+                elif(norm.lower() == 'asin'):
+                    a = np.arcsinh(a)
+
+        axes = self.scatter(c=a, axes = axes, **kwargs)
+        axes.set_title(name)
+
+        return axes, a
 
     def dispersion_ranking_NN(self, nnm = None, num_norm_avg=50):
         """Computes the spatial dispersion factors for each gene.
