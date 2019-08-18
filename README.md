@@ -94,7 +94,7 @@ from SAM import SAM #import SAM
 sam=SAM(counts=(matrix,geneIDs,cellIDs))
 sam.preprocess_data() # log transforms and filters the data
 sam.run() #run with default parameters
-scatter(sam)
+sam.scatter()
 ```
 ### Using preloaded pandas.DataFrame (cells x genes):
 ```
@@ -102,7 +102,7 @@ from SAM import SAM #import SAM
 sam=SAM(counts=dataframe)
 sam.preprocess_data() # log transforms and filters the data
 sam.run() #run with default parameters
-scatter(sam)
+sam.scatter()
 ```
 
 ### Using an existing AnnData object:
@@ -111,7 +111,7 @@ from SAM import SAM #import SAM
 sam=SAM(counts=adata)
 sam.preprocess_data() # log transforms and filters the data
 sam.run() #run with default parameters
-scatter(sam)
+sam.scatter()
 ```
 
 ## Using the `load_data` function
@@ -124,7 +124,7 @@ sam.load_data('/path/to/expression_data_file.csv') #load data from a csv file
 sam.preprocess_data() # log transforms and filters the data
 sam.load_annotations('/path/to/annotations_file.csv')
 sam.run()
-scatter(sam)
+sam.scatter()
 ```
 ### Loading an existing AnnData `h5ad` file: 
 
@@ -136,7 +136,7 @@ sam=SAM() #initialize SAM object
 sam.load_data('/path/to/h5ad_file.h5ad') #load data from a h5ad file
 sam.preprocess_data() # log transforms and filters the data
 sam.run()
-scatter(sam)
+sam.scatter()
 ```
 
 ### Saving/Loading SAM
