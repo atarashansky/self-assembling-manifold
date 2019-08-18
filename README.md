@@ -147,8 +147,10 @@ If you would like to save the entire attirbute dictionary of a SAM object to a P
 `sam.save(filename.p)`
 
 To load these attributes:
-`sam = SAM()`
-`sam.load(filename.p)`
+```
+sam = SAM()
+sam.load(filename.p)
+```
 
 ## Citation
 If using the SAM algorithm, please cite the following preprint:
