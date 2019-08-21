@@ -130,7 +130,7 @@ class SAM(object):
 
         div : float, optional, default 1
             The factor by which the gene expression will be divided prior to
-            log normalization.
+            normalization (e.g. log normalization).
 
         downsample : float, optional, default 0
             The factor by which to randomly downsample the data. If 0, the
@@ -152,12 +152,12 @@ class SAM(object):
             datasets). If None, the data is not normalized.
 
         include_genes : array-like of string, optional, default None
-            A vector of gene names or indices that specifies the genes to keep.
+            A vector of gene names that specifies the genes to keep.
             All other genes will be filtered out. Gene names are case-
             sensitive.
 
         exclude_genes : array-like of string, optional, default None
-            A vector of gene names or indices that specifies the genes to
+            A vector of gene names that specifies the genes to
             exclude. These genes will be filtered out. Gene names are case-
             sensitive.
 
@@ -182,8 +182,7 @@ class SAM(object):
             expressed if its expression value exceeds 'min_expression'.
 
         filter_genes : bool, optional, default True
-            Setting this to False turns off filtering operations aside from
-            removing genes with zero expression across all cells. Genes passed
+            Setting this to False turns off filtering operations. Genes passed
             in exclude_genes or not passed in include_genes will still be
             filtered.
 
@@ -343,7 +342,7 @@ class SAM(object):
         self.adata.uns['preprocess_args'] = self.preprocess_args
 
     def load_data(self, filename, transpose=True,
-                  save_sparse_file='h5ad', sep=',', **kwargs):
+                  save_sparse_file=None, sep=',', **kwargs):
         """Loads the specified data file. The file can be a table of
         read counts (i.e. '.csv' or '.txt'), with genes as rows and cells
         as columns by default. The file can also be a pickle file (output from
@@ -360,12 +359,12 @@ class SAM(object):
             The delimeter used to read the input data table. By default
             assumes the input table is delimited by commas.
 
-        save_sparse_file - str, optional, default 'h5ad'
-            If 'h5ad', writes the SAM 'adata_raw' object to a h5ad file
-            (the native AnnData file format) to the same folder as the original
-            data for faster loading in the future. If 'p', pickles the sparse
-            data structure, cell names, and gene names in the same folder as
-            the original data for faster loading in the future.
+        save_sparse_file - str, optional, default None
+            Path to which the sparse data will be saved. If ending with '.h5ad',
+            writes the SAM 'adata_raw' object to a h5ad file (the native AnnData
+            file format) for faster loading in the future. If 'p', pickles the
+            (sparse data structure, gene names, cell names) tuple for faster
+            loading in the future.
 
         transpose - bool, optional, default True
             By default, assumes file is (genes x cells). Set this to False if
@@ -385,7 +384,7 @@ class SAM(object):
 
             save_sparse_file = None
         elif filename.split('.')[-1] != 'h5ad':
-            df = pd.read_csv(filename, sep=sep, index_col=0)
+            df = pd.read_csv(filename, sep=sep, index_col=0, **kwargs)
             if(transpose):
                 dataset = df.T
             else:
@@ -414,14 +413,11 @@ class SAM(object):
                 self.adata.layers['X_disp'] = self.adata.X
             save_sparse_file = None
 
-        if(save_sparse_file == 'p'):
-            new_sparse_file = '.'.join(filename.split('/')[-1].split('.')[:-1])
-            path = filename[:filename.find(filename.split('/')[-1])]
-            self.save_sparse_data(path + new_sparse_file + '_sparse.p')
-        elif(save_sparse_file == 'h5ad'):
-            new_sparse_file = '.'.join(filename.split('/')[-1].split('.')[:-1])
-            path = filename[:filename.find(filename.split('/')[-1])]
-            self.save_anndata(path + new_sparse_file + '_SAM.h5ad')
+        if save_sparse_file is not None:
+            if(save_sparse_file.split('.')[-1] == 'p'):
+                self.save_sparse_data(save_sparse_file)
+            elif(save_sparse_file.split('.')[-1] == 'h5ad'):
+                self.save_anndata(save_sparse_file, data = 'adata_raw')
 
     def save_sparse_data(self, fname):
         """Saves the tuple (raw_data,all_cell_names,all_gene_names) in a
@@ -442,7 +438,7 @@ class SAM(object):
 
         pickle.dump((data, cell_names, gene_names), open(fname, 'wb'))
 
-    def save_anndata(self, fname, data = 'adata_raw', **kwargs):
+    def save_anndata(self, fname, data = 'adata', **kwargs):
         """Saves `adata_raw` to a .h5ad file (AnnData's native file format).
 
         Parameters
@@ -457,13 +453,20 @@ class SAM(object):
     def load_var_annotations(self, aname, sep=',', key_added = 'annotations'):
         """Loads gene annotations.
 
-        Loads the gene annoations specified by the 'aname' path.
+        Loads the gene annotations into .adata_raw.var and .adata.var. The keys
+        added correspond to the column labels in the input table.
 
         Parameters
         ----------
-        aname - string
-            The path to the annotations file. First column should be cell IDs
-            and second column should be the desired annotations.
+        aname - string or pandas.DataFrame
+            If string, it is the path to the annotations file, which should be
+            a table with the first column being the gene IDs and the first row
+            being the column names for the annotations. Alternatively, you can
+            directly pass in a preloaded pandas.DataFrame.
+
+        sep - string, default ','
+            The delimeter used in the file. Ignored if passing in a preloaded
+            pandas.DataFrame.
 
         """
         if isinstance(aname,pd.DataFrame):
@@ -471,31 +474,27 @@ class SAM(object):
         else:
             ann = pd.read_csv(aname,sep=sep,index_col=0)
 
-        gene_names = np.array(list(self.adata.var_names))
+        for i in range(ann.shape[1]):
+            self.adata_raw.var[ann.columns[i]] = ann[ann.columns[i]]
+            self.adata.var[ann.columns[i]] = ann[ann.columns[i]]
 
-        ann.index = np.array(list(ann.index.astype('<U200')))
-        ann = ann.T[gene_names].T
-
-        if ann.shape[1] > 1:
-            for i in range(ann.shape[1]):
-                x=np.array(list(ann[ann.columns[i]].values.flatten()))
-
-                self.adata_raw.var[ann.columns[i]] = pd.Categorical(x)
-                self.adata.var[ann.columns[i]] = pd.Categorical(x)
-        else:
-            self.adata_raw.var[key_added] = pd.Categorical(ann.values.flatten())
-            self.adata.var[key_added] = pd.Categorical(ann.values.flatten())
-
-    def load_annotations(self, aname, sep=',', key_added = 'annotations'):
+    def load_obs_annotations(self, aname, sep=','):
         """Loads cell annotations.
 
-        Loads the cell annoations specified by the 'aname' path.
+        Loads the cell annotations into .adata_raw.obs and .adata.obs. The keys
+        added correspond to the column labels in the input table.
 
         Parameters
         ----------
-        aname - string
-            The path to the annotations file. First column should be cell IDs
-            and second column should be the desired annotations.
+        aname - string or pandas.DataFrame
+            If string, it is the path to the annotations file, which should be
+            a table with the first column being the cell IDs and the first row
+            being the column names for the annotations. Alternatively, you can
+            directly pass in a preloaded pandas.DataFrame.
+
+        sep - string, default ','
+            The delimeter used in the file. Ignored if passing in a preloaded
+            pandas.DataFrame.
 
         """
         if isinstance(aname,pd.DataFrame):
@@ -506,10 +505,11 @@ class SAM(object):
         for i in range(ann.shape[1]):
             self.adata_raw.obs[ann.columns[i]] = ann[ann.columns[i]]
             self.adata.obs[ann.columns[i]] = ann[ann.columns[i]]
-            
+
     def scatter(self, projection=None, c=None, cmap='rainbow', linewidth=0.0,
                 edgecolor='k', axes=None, colorbar=True, s=10, **kwargs):
-        
+
+
         try:
             import matplotlib.pyplot as plt
             if(isinstance(projection, str)):
@@ -537,7 +537,7 @@ class SAM(object):
                 axes = plt.gca()
 
             if(c is None):
-                plt.scatter(dt[:, 0], dt[:, 1], s=s,
+                axes.scatter(dt[:, 0], dt[:, 1], s=s,
                             linewidth=linewidth, edgecolor=edgecolor, **kwargs)
             else:
 
@@ -571,7 +571,7 @@ class SAM(object):
 
                     if(colorbar):
                         plt.colorbar(cax, ax=axes)
-                return axes
+            return axes
         except ImportError:
             print("matplotlib not installed!")
 
@@ -647,8 +647,9 @@ class SAM(object):
 
         Parameters
         ----------
-        nnm - scipy.sparse, float
-            Square cell-to-cell nearest-neighbor matrix.
+        nnm - scipy.sparse, default None
+            Square cell-to-cell nearest-neighbor matrix. If None, uses the
+            nearest neighbor matrix in .adata.uns['neighbors']['connectivities']
 
         num_norm_avg - int, optional, default 50
             The top 'num_norm_avg' dispersions are averaged to determine the
@@ -658,10 +659,6 @@ class SAM(object):
 
         Returns:
         -------
-        indices - ndarray, int
-            The indices corresponding to the gene weights sorted in decreasing
-            order.
-
         weights - ndarray, float
             The vector of gene weights.
         """
@@ -791,9 +788,8 @@ class SAM(object):
             The number of nearest neighbors to identify for each cell.
 
         distance : string, optional, default 'correlation'
-            The distance metric to use when constructing cell distance
-            matrices. Can be any of the distance metrics supported by
-            sklearn's 'pdist'.
+            The distance metric to use when identifying nearest neighbors.
+            Can be any of the distance metrics supported by sklearn's 'pdist'.
 
         max_iter - int, optional, default 10
             The maximum number of iterations SAM will run.
@@ -1142,9 +1138,74 @@ class SAM(object):
 
 
         if save:
-            self.adata.obs['density_clusters'] = pd.Categorical(cl)
+            self.adata.obs['dbscan_clusters'] = pd.Categorical(cl)
         else:
             return cl
+
+    def clustering(self, X=None, param=None, method='leiden'):
+        """A wrapper for clustering the SAM output using various clustering
+        algorithms
+
+        Parameters
+        ----------
+        X - data, optional, default None
+            Data to be passed into the selected clustering algorithm. If None,
+            uses the data in the SAM AnnData object. Different clustering
+            algorithms accept different types of data. For example, Louvain
+            and Leiden accept a scipy.sparse adjacency matrix representing the
+            nearest neighbor graph. Dbscan, kmeans, and Hdbscan accept
+            coordinates (like UMAP coordinates or PCA coordinates). If None,
+            cluster results are saved to the 'obs' attribute in the AnnData
+            object. Otherwise, cluster results are returned.
+
+        param : float, optional, default None
+            The parameter used for the different clustering algorithms. For
+            louvain and leiden, it is the resolution parameter. For dbscan, it
+            is the distance parameter. For kmeans, it is the number of clusters.
+
+        method : string, optional, default 'leiden'
+            Determines which clustering method is run.
+            'leiden' - Leiden clustering with modularity optimization
+            'leiden_sig' - Leiden clustering with significance optimization
+            'louvain' - Louvain clustering with modularity optimization
+            'louvain_sig' - Louvain clustering with significance optimization
+            'kmeans' - Kmeans clustering
+            'dbscan' - DBSCAN clustering
+            'hdbscan' - HDBSCAN clustering
+            If X is None, cluster assignments are saved in '.adata.obs' with
+            key name equal to method + '_clusters'. Otherwise, they are returned.
+        """
+        if method == 'leiden':
+            if param is None:
+                param = 1;
+            cl = self.leiden_clustering(X=X,res=param,method = 'modularity')
+        elif method == 'leiden_sig':
+            if param is None:
+                param = 1;
+            cl = self.leiden_clustering(X=X,res=param,method = 'significance')
+        elif method == 'louvain':
+            if param is None:
+                param = 1;
+            cl = self.louvain_clustering(X=X,res=param,method = 'modularity')
+        elif method == 'louvain_sig':
+            if param is None:
+                param = 1;
+            cl = self.louvain_clustering(X=X,res=param,method = 'significance')
+        elif method == 'kmeans':
+            if param is None:
+                param = 6;
+            cl = self.kmeans_clustering(param,X=X)
+        elif method == 'hdbscan':
+            if param is None:
+                param = 25;
+            cl = self.hdbknn_clustering(npcs = param)
+        elif method == 'dbscan':
+            if param is None:
+                param = 0.5;
+            cl = self.density_clustering(eps=param)
+        else:
+            cl=None;
+        return cl
 
     def louvain_clustering(self, X=None, res=1, method='modularity'):
         """Runs Louvain clustering using the vtraag implementation. Assumes
@@ -1195,7 +1256,10 @@ class SAM(object):
                 resolution_parameter=res)
 
         if save:
-            self.adata.obs['louvain_clusters'] = pd.Categorical(np.array(cl.membership))
+            if method == 'modularity':
+                self.adata.obs['louvain_clusters'] = pd.Categorical(np.array(cl.membership))
+            elif method == 'significance':
+                self.adata.obs['louvain_sig_clusters'] = pd.Categorical(np.array(cl.membership))
         else:
             return np.array(cl.membership)
 
@@ -1260,11 +1324,14 @@ class SAM(object):
                 resolution_parameter=res)
 
         if save:
-            self.adata.obs['leiden_clusters'] = pd.Categorical(np.array(cl.membership))
+            if method == 'modularity':
+                self.adata.obs['leiden_clusters'] = pd.Categorical(np.array(cl.membership))
+            elif method == 'significance':
+                self.adata.obs['leiden_sig_clusters'] = pd.Categorical(np.array(cl.membership))
         else:
             return np.array(cl.membership)
 
-    def hdbknn_clustering(self, X=None, k=None, npcs = 25, **kwargs):
+    def hdbknn_clustering(self, X=None, k=None, npcs = 15, **kwargs):
         import hdbscan
         if X is None:
             #X = self.adata.obsm['X_pca']
@@ -1298,7 +1365,7 @@ class SAM(object):
             cl[idx1] = np.argmax(nnmc, axis=1)
 
         if save:
-            self.adata.obs['hdbknn_clusters'] = pd.Categorical(cl)
+            self.adata.obs['hdbscan_clusters'] = pd.Categorical(cl)
         else:
             return cl
 
@@ -1312,21 +1379,27 @@ class SAM(object):
         ----------
 
         labels - numpy.array or str, optional, default None
-            Cluster labels to use for marker gene identification. If None,
-            assumes that one of SAM's clustering algorithms has been run. Can
-            be a string (i.e. 'louvain_clusters', 'kmeans_clusters', etc) to
-            specify specific cluster labels in adata.obs.
+            Cluster labels to use for marker gene identification.
+            Can also be a string corresponding to any of the keys
+            in adata.obs.
 
-        clusters - int or array-like, default None
-            A number or vector corresponding to the specific cluster ID(s)
-            for which marker genes will be calculated. If None, marker genes
-            will be computed for all clusters.
+        clusters - int/string or array-like, default None
+            A cluster ID (int or string depending on the labels used)
+            or vector corresponding to the specific cluster ID(s) for
+            which marker genes will be calculated. If None, marker genes
+            will be computed for all clusters, and the result will be written
+            to adata.uns.
 
         n_genes - int, optional, default 4000
             By default, trains the classifier on the top 4000 SAM-weighted
             genes.
 
+        Returns
+        -------
+        (dictionary of markers for each cluster,
+        dictionary of marker scores for each cluster)
         """
+
         if(labels is None):
             try:
                 keys = np.array(list(self.adata.obs_keys()))
@@ -1369,7 +1442,10 @@ class SAM(object):
             markers_scores[lblsu[K]] = clf.feature_importances_[idx]
 
         if clusters is None:
-            self.adata.uns['marker_genes_rf'] = markers
+            if isinstance(labels , str):
+                self.adata.uns['rf_'+labels] = markers
+            else:
+                self.adata.uns['rf'] = markers
 
         return markers, markers_scores
 

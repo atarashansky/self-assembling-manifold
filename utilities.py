@@ -16,11 +16,23 @@ INT32_MAX = np.iinfo(np.int32).max - 1
 __version__ = '0.6.7'
 
 
-def find_corr_genes(sam, input_gene, number_of_features=4000):
+def find_corr_genes(sam, input_gene):
+    """Rank genes by their spatially averaged expression pattern correlations to
+    a desired gene.
 
-    weights = sam.adata.var['spatial_dispersions'].values
+    Parameters
+    ----------
 
-    idx = np.sort(np.argsort(-weights)[:number_of_features])
+    sam - SAM
+        The analyzed SAM object
+
+    input_gene - string
+        The gene ID with respect to which correlations will be computed.
+
+    Returns
+    -------
+    A ranked list of gene IDs based on correlation to the input gene.
+    """
     all_gene_names = np.array(list(sam.adata.var_names))
 
     D_avg = sam.adata.layers['X_knn_avg']
@@ -33,8 +45,8 @@ def find_corr_genes(sam, input_gene, number_of_features=4000):
             "that genes are case sensitive.")
         return
 
-    pw_corr = generate_correlation_map(D_avg[:,idx].T.A,D_avg[:,input_gene].T.A)
-    return all_gene_names[idx[np.argsort(-pw_corr.flatten())]]
+    pw_corr = generate_correlation_map(D_avg.T.A,D_avg[:,input_gene].T.A)
+    return all_gene_names[np.argsort(-pw_corr.flatten())]
 
 def nearest_neighbors(X, n_neighbors=15, seed=0, metric='correlation'):
 
@@ -202,6 +214,8 @@ def transform_wPCA(mat, pca):
 
 
 def search_string(vec, s, case_sensitive=False):
+    vec = np.array(vec)
+
     m = []
     if not case_sensitive:
         s = s.lower()

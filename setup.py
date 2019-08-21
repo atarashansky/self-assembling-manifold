@@ -13,11 +13,11 @@ setup(
     py_modules=["SAM", "utilities", "SAMGUI"],
     install_requires=[
         'numpy',
-        'scipy<=1.2.0',
+        'scipy',
         'pandas',
         'scikit-learn',
 	'numba',
-	'umap-learn', 'anndata<=0.6.19'],
+	'umap-learn', 'anndata'],
     extras_require={
         'louvain': [
             'louvain', 'cython', 'python-igraph'],

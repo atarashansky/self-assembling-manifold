@@ -34,9 +34,13 @@ class SAMGUI(object):
             tab.set_title(0,'LOAD_SAM')
             self.create_plot(0,'SAM not loaded')
             items = [self.stab,tab]
+
+        self.current_tab = 0
+        self.current_sam = sam
         self.SamPlot = widgets.HBox(items)
 
     def init_from_sam(self,sam):
+        self.current_sam=sam
         tab = widgets.Tab()
         self.load_vars_from_sam(sam)
         self.pp_box = self.init_preprocess()
@@ -232,6 +236,7 @@ class SAMGUI(object):
 
     """ BEGIN PREPROCESS INIT"""
     def init_preprocess(self):
+        """
         pdata = widgets.Button(
             description = 'Process data',
             disabled = False,
@@ -239,6 +244,7 @@ class SAMGUI(object):
             icon = ''
         )
         pdata.on_click(self.preprocess_sam)
+        """
         fgenes = widgets.Checkbox(
             value=self.preprocess_args.get('filter_genes',True),
             description='Filter genes'
@@ -341,7 +347,7 @@ class SAMGUI(object):
         )
 
 
-        pp = widgets.VBox([pdata,
+        pp = widgets.VBox([#pdata,
                            widgets.HBox([dfts,fgenes]),
                            norm,
                            sumnorm,
@@ -392,6 +398,9 @@ class SAMGUI(object):
             path = self.pp_box.children[6].children[1].value
 
         filetype = path.split('.')[-1]
+        if filetype == 'gz':
+            filetype = path.split('.')[-2]
+
         sam=SAM()
         if filetype == 'h5ad' or filetype == 'csv':
             sam.load_data(path)
@@ -410,7 +419,7 @@ class SAMGUI(object):
             self.SamPlot.children[1].close()
             self.init_from_sam(sam)
             self.SamPlot.children =[self.stab,self.tab]
-            self.tab.set_trait('selected_index',2)
+            self.tab.set_trait('selected_index',1)
         else:
             self.close_all_tabs()
             self.ds[0].close()
@@ -748,12 +757,15 @@ class SAMGUI(object):
             execute=True
 
         elif np.all(selected):
+            sam.preprocess_data(**self.preprocess_args)
+
             self.out.clear_output()
             with self.out:
                 sam.run(**self.run_args)
             self.marker_genes[i] = np.array(list(sam.adata.var_names))[np.argsort(-sam.adata.var['weights'].get_values())]
             self.marker_genes_tt[i] = 'Genes ranked by SAM weights.'
             execute=True
+            self.current_sam=sam
 
         if execute:
             title = self.rs_box.children[0].children[1].value
@@ -1094,6 +1106,12 @@ class SAMGUI(object):
             elif path.split('.')[-1] == 'p':
                 s = self.sams[self.stab.selected_index]
                 s.save(path)
+            elif (path.split('.')[-1] == 'png' or path.split('.')[-1] == 'pdf'
+                  or path.split('.')[-1] == 'eps' or path.split('.')[-1] == 'jpg'):
+                if len(path.split('/'))>1:
+                    ut.create_folder('/'.join(path.split('/')[:-1]))
+                self.stab.children[self.stab.selected_index].write_image(path)
+
     def show_expression(self,text):
         if type(text) is not str:
             gene = text.value
@@ -1271,6 +1289,8 @@ class SAMGUI(object):
     def on_switch_tabs(self,event):
         self.update_dropdowns(self.stab.selected_index)
         self.cs_box.children[11].children[0].set_trait('tooltip',self.marker_genes_tt[self.stab.selected_index])
+        self.current_tab = self.stab.selected_index
+        self.current_sam = self.sams[self.current_tab]
 
 
     def display_var_annotation(self, event):
@@ -1280,15 +1300,7 @@ class SAMGUI(object):
         key = self.cs_box.children[4].children[1].value
         if key != '':
             labels = np.array(list(self.sams[self.stab.selected_index].adata.obs[key].get_values()))
-            tf = True
-            for l in labels:
-                try:
-                    float(l)
-                except ValueError:
-                    tf = False
-                    break
-            if tf:
-                labels = labels.astype('float64')
+
             self.active_labels[self.stab.selected_index] = labels
             self.update_colors_anno(labels)
 
@@ -1314,10 +1326,10 @@ class SAMGUI(object):
         nlabels = np.unique(labels).size
         title = self.cs_box.children[4].children[1].value.split('_clusters')[0]
 
-        if nlabels > 300 and (type(labels[0]) is not str and
-                              type(labels[0]) is not np.str_):
-            self.update_colors_expr(labels,title)
-            return;
+        if issubclass(labels.dtype.type,np.number):
+            if issubclass(labels.dtype.type,np.float) or nlabels > 300:
+                self.update_colors_expr(labels,title)
+                return;
 
         if nlabels == 1:
             x = 'spectral'
@@ -1337,13 +1349,13 @@ class SAMGUI(object):
         self.dd_opts[self.stab.selected_index] = [""] + list(lbls)
         dd.options = self.dd_opts[self.stab.selected_index]
 
-        if type(labels.flatten()[0]) is str or type(labels.flatten()[0]) is np.str_:
+        if issubclass(labels.dtype.type,np.character):
             tickvals=np.arange(lbls.size)
             ticktext=list(lbls)
         else:
             idx = np.round(np.linspace(0, len(lbls) - 1, 6)).astype(int)
             tickvals=list(idx)
-            ticktext=tickvals
+            ticktext=lbls[tickvals]
 
 
         f1 = self.stab.children[self.stab.selected_index]
