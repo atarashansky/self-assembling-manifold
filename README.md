@@ -5,7 +5,7 @@ The Self-Assembling-Manifold (SAM) algorithm.
 
 ## Requirements
  - `numpy`
- - `scipy<=1.2.0`
+ - `scipy`
  - `pandas`
  - `scikit-learn`
  - `umap-learn`
