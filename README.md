@@ -73,6 +73,11 @@ git clone https://github.com/atarashansky/self-assembling-manifold.git
 cd self-assembling-manifold
 python setup.py install
 ```
+For plotting, install `matplotlib`:
+
+```
+pip install matplotlib
+```
 
 For interactive data exploration (in the `SAMGUI.py` module), `jupyter`, `ipythonwidgets`, `colorlover`, `ipyevents`, and `plotly` are required. Install them in the previously made environment like so:
 
