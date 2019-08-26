@@ -656,29 +656,29 @@ class SAMGUI(object):
         #,knn
         #,nna
         #norm,dist,proj
-        wpca = self.rs_box.children[1].children[1]
-        ngenes = self.rs_box.children[2].children[1]
-        npcs = self.rs_box.children[3].children[1]
-        knn = self.rs_box.children[4].children[1]
-        nna = self.rs_box.children[5].children[1]
-        rnorm = self.rs_box.children[6]
-        dist = self.rs_box.children[7]
-        proj = self.rs_box.children[8]
+        #wpca = self.rs_box.children[1].children[1]
+        #ngenes = self.rs_box.children[2].children[1]
+        #npcs = self.rs_box.children[3].children[1]
+        knn = self.rs_box.children[2].children[1]
+        nna = self.rs_box.children[3].children[1]
+        rnorm = self.rs_box.children[4]
+        dist = self.rs_box.children[5]
+        proj = self.rs_box.children[6]
 
         init = self.run_args.get('num_norm_avg',50)
         nna.set_trait('value',init)
         init = self.run_args.get('k',20)
         knn.set_trait('value',init)
 
-        init = self.run_args.get('npcs',150)
-        if init is None:
-            init = 150;
-        npcs.set_trait('value',init)
+        #init = self.run_args.get('npcs',150)
+        #if init is None:
+        #    init = 150;
+        #npcs.set_trait('value',init)
 
-        init = self.run_args.get('n_genes',3000)
-        if init is None:
-            init = 3000;
-        ngenes.set_trait('value',init)
+        #init = self.run_args.get('n_genes',3000)
+        #if init is None:
+        #    init = 3000;
+        #ngenes.set_trait('value',init)
 
         init = self.run_args.get('preprocessing','Normalizer')
         if init is None:
@@ -689,9 +689,9 @@ class SAMGUI(object):
         init = self.run_args.get('projection','umap')
         proj.set_trait('value',init)
 
-        init = self.run_args.get('weight_PCs',True)
-        wpca.set_trait('value',init)
-        self.run_args['weight_PCs'] = init
+        #init = self.run_args.get('weight_PCs',True)
+        #wpca.set_trait('value',init)
+        #self.run_args['weight_PCs'] = init
 
     def weightpcs(self,event):
         t = self.run_args.get('weight_PCs',True)
