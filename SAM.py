@@ -705,16 +705,14 @@ class SAM(object):
 
         Parameters
         ----------
-        genes - numpy.array or list
-            Genes for which contribution to each PC will be calculated.
+        genes - numpy.array or list, default None
+            Genes for which contribution to each PC will be calculated. Set to None 
+            if you know ahead of time which PC you wish to remove from the data using
+            'regress_genes'.
 
         npcs - int, optional, default None
             How many PCs to calculate when computing PCA of the filtered and
             log-transformed expression data. If None, calculate all PCs.
-
-        plot - bool, optional, default False
-            If True, plot the scores reflecting how correlated each PC is with
-            genes of interest. Otherwise, do not plot anything.
 
         Returns:
         -------
