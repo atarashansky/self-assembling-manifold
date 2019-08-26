@@ -640,9 +640,7 @@ class SAMGUI(object):
         proj.observe(self.proj_update,'value')
 
         rs = widgets.VBox([widgets.HBox([runb,title]),
-                           widgets.HBox([dfts,wpca]),
-                           widgets.HBox([l1,ngenes]),
-                           widgets.HBox([l2,npcs]),
+                           widgets.HBox([dfts]),
                            widgets.HBox([l3,knn]),
                            widgets.HBox([l4,nna]),
                            norm,
