@@ -109,7 +109,7 @@ class SAMGUI(object):
             if 'X_umap' in projs:
                 p = 'X_umap'
             elif len(projs) > 1:
-                p = np.array(projs)[np.where(np.array(projs)!='X_pca')[0]]
+                p = np.array(projs)[np.where(np.array(projs)!='X_pca')[0][0]]
             else:
                 p = 'X_pca'
 
