@@ -1082,8 +1082,8 @@ class SAM(object):
         distance = self.run_args.get('distance','correlation')
         sc.pp.neighbors(self.adata,use_rep=use_rep,n_neighbors=k,
                                        metric=distance,method=method)
-        sc.tl.diffmap(self.adata, n_comps=n_comps)
-
+        sc.tl.diffmap(self.adata, n_comps=n_comps+1)
+        self.adata.obsm['X_diffmap'] = self.adata.obsm['X_diffmap'][:,1:]
         sc.pp.neighbors(self.adata,use_rep='X_diffmap',n_neighbors=k,
                         metric='euclidean',method=method)
 
@@ -1105,8 +1105,8 @@ class SAM(object):
         distance = self.run_args.get('distance','correlation')
         sc.pp.neighbors(self.adata,use_rep=use_rep,n_neighbors=k,
                                        metric=distance,method=method)
-        sc.tl.diffmap(self.adata, n_comps=n_comps)
-
+        sc.tl.diffmap(self.adata, n_comps=n_comps+1)
+        self.adata.obsm['X_diffmap'] = self.adata.obsm['X_diffmap'][:,1:]
 
     def density_clustering(self, X=None, eps=1, metric='euclidean', **kwargs):
         from sklearn.cluster import DBSCAN
