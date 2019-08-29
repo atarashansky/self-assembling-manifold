@@ -359,7 +359,7 @@ class SAMGUI(object):
         return pp
 
     def load_ann(self,event):
-        path = self.pp_box.children[7].children[1].value
+        path = self.pp_box.children[6].children[1].value
         try:
             for i in range(len(self.stab.children)):
                 self.sams[i].load_annotations(path)
@@ -368,7 +368,7 @@ class SAMGUI(object):
             with self.out:
                 print('Annotation file not found or was improperly formatted.')
     def load_vann(self,event):
-        path = self.pp_box.children[8].children[1].value
+        path = self.pp_box.children[7].children[1].value
         try:
             for i in range(len(self.stab.children)):
                 self.sams[i].load_var_annotations(path)
@@ -395,7 +395,7 @@ class SAMGUI(object):
         if not self.SAM_LOADED:
             path = self.SamPlot.children[1].children[0].children[1].value
         else:
-            path = self.pp_box.children[6].children[1].value
+            path = self.pp_box.children[5].children[1].value
 
         filetype = path.split('.')[-1]
         if filetype == 'gz':
@@ -439,11 +439,11 @@ class SAMGUI(object):
 
     def set_pp_defaults(self,event):
         self.preprocess_args = self.preprocess_args_init.copy()
-        fgenes = self.pp_box.children[1].children[1] # checkbox
-        norm = self.pp_box.children[2]
-        sumnorm = self.pp_box.children[3]
-        expr_thr = self.pp_box.children[4].children[1] # expr_threshold
-        min_expr = self.pp_box.children[5].children[1] # min_expr
+        fgenes = self.pp_box.children[0].children[1] # checkbox
+        norm = self.pp_box.children[1]
+        sumnorm = self.pp_box.children[2]
+        expr_thr = self.pp_box.children[3].children[1] # expr_threshold
+        min_expr = self.pp_box.children[4].children[1] # min_expr
 
         init = self.preprocess_args.get('min_expression',1)
         min_expr.set_trait('value',init)
