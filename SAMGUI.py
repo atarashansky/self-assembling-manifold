@@ -362,7 +362,7 @@ class SAMGUI(object):
         path = self.pp_box.children[6].children[1].value
         try:
             for i in range(len(self.stab.children)):
-                self.sams[i].load_annotations(path)
+                self.sams[i].load_obs_annotations(path)
                 self.update_dropdowns(i)
         except:
             with self.out:
