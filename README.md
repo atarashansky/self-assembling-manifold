@@ -85,6 +85,23 @@ For interactive data exploration (in the `SAMGUI.py` module), `jupyter`, `ipytho
 conda install -c conda-forge -c plotly jupyter ipywidgets plotly=4.0.0 colorlover ipyevents #plotly-orca psutil requests
 ```
 
+### Enabling the SAM GUI in JupyterLab
+
+If you use Jupyter Notebooks, these steps are not needed. If you would like to be able to run SAMGUI in JupyterLab, please do the following:
+
+First install nodejs with:
+`conda install nodejs`
+
+To enable ipythonwidgets in Jupyter lab, please run the following:
+```
+jupyter labextension install @jupyter-widgets/jupyterlab-manager@1.0 --no-build
+jupyter labextension install plotlywidget@1.1.0 --no-build
+jupyter labextension install jupyterlab-plotly@1.1.0 --no-build
+jupyter lab build
+```
+
+SAMGUI should now work in JupyterLab.
+
 ## Tutorial
 Please see the Jupyter notebooks in the 'tutorial' folder for basic tutorials. If you installed a fresh environment, do not forget to install jupyter into that environment! Please run
 ```
