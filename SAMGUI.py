@@ -10,7 +10,7 @@ import pandas as pd
 from ipyevents import Event
 from ipywidgets import Widget
 
-__version__ = '0.6.8'
+__version__ = '0.6.9'
 
 class SAMGUI(object):
 
@@ -640,12 +640,14 @@ class SAMGUI(object):
         proj.observe(self.proj_update,'value')
 
         rs = widgets.VBox([widgets.HBox([runb,title]),
-                           widgets.HBox([dfts]),
+                           widgets.HBox([dfts,wpca]),
                            widgets.HBox([l3,knn]),
                            widgets.HBox([l4,nna]),
                            norm,
                            distance,
-                           proj])
+                           proj,
+                           widgets.HBox([l1,ngenes]),
+                           widgets.HBox([l2,npcs])])
         return rs
     def set_run_defaults(self,event):
         self.run_args = self.run_args_init.copy()
@@ -656,9 +658,9 @@ class SAMGUI(object):
         #,knn
         #,nna
         #norm,dist,proj
-        #wpca = self.rs_box.children[1].children[1]
-        #ngenes = self.rs_box.children[2].children[1]
-        #npcs = self.rs_box.children[3].children[1]
+        wpca = self.rs_box.children[1].children[1]
+        ngenes = self.rs_box.children[7].children[1]
+        npcs = self.rs_box.children[8].children[1]
         knn = self.rs_box.children[2].children[1]
         nna = self.rs_box.children[3].children[1]
         rnorm = self.rs_box.children[4]
@@ -670,15 +672,15 @@ class SAMGUI(object):
         init = self.run_args.get('k',20)
         knn.set_trait('value',init)
 
-        #init = self.run_args.get('npcs',150)
-        #if init is None:
-        #    init = 150;
-        #npcs.set_trait('value',init)
+        init = self.run_args.get('npcs',150)
+        if init is None:
+            init = 150;
+        npcs.set_trait('value',init)
 
-        #init = self.run_args.get('n_genes',3000)
-        #if init is None:
-        #    init = 3000;
-        #ngenes.set_trait('value',init)
+        init = self.run_args.get('n_genes',3000)
+        if init is None:
+            init = 3000;
+        ngenes.set_trait('value',init)
 
         init = self.run_args.get('preprocessing','Normalizer')
         if init is None:
@@ -689,9 +691,9 @@ class SAMGUI(object):
         init = self.run_args.get('projection','umap')
         proj.set_trait('value',init)
 
-        #init = self.run_args.get('weight_PCs',True)
-        #wpca.set_trait('value',init)
-        #self.run_args['weight_PCs'] = init
+        init = self.run_args.get('weight_PCs',True)
+        wpca.set_trait('value',init)
+        self.run_args['weight_PCs'] = init
 
     def weightpcs(self,event):
         t = self.run_args.get('weight_PCs',True)

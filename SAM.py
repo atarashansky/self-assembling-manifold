@@ -13,7 +13,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-__version__ = '0.6.8'
+__version__ = '0.6.9'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -706,7 +706,7 @@ class SAM(object):
         Parameters
         ----------
         genes - numpy.array or list, default None
-            Genes for which contribution to each PC will be calculated. Set to None 
+            Genes for which contribution to each PC will be calculated. Set to None
             if you know ahead of time which PC you wish to remove from the data using
             'regress_genes'.
 
@@ -1082,8 +1082,7 @@ class SAM(object):
         distance = self.run_args.get('distance','correlation')
         sc.pp.neighbors(self.adata,use_rep=use_rep,n_neighbors=k,
                                        metric=distance,method=method)
-        sc.tl.diffmap(self.adata, n_comps=n_comps+1)
-        self.adata.obsm['X_diffmap'] = self.adata.obsm['X_diffmap'][:,1:]
+        sc.tl.diffmap(self.adata, n_comps=n_comps)
         sc.pp.neighbors(self.adata,use_rep='X_diffmap',n_neighbors=k,
                         metric='euclidean',method=method)
 
@@ -1577,7 +1576,7 @@ class SAM(object):
         pickle_dict = self.__dict__#self._create_dict(exc)
 
         try:
-            del pickle_dict['ps']
+            del pickle_dict['adata'].layers['X_knn_avg']
         except:
             0;
 
@@ -1593,7 +1592,7 @@ class SAM(object):
         pickle.dump(pickle_dict, f)
         f.close()
 
-    def load(self, n):
+    def load(self, n, recalc_avg=True):
         """Loads SAM attributes from a Pickle file.
 
         Loads all SAM attributes from the specified Pickle file into the SAM
@@ -1610,3 +1609,6 @@ class SAM(object):
             self.__dict__[list(pick_dict.keys())[i]
                           ] = pick_dict[list(pick_dict.keys())[i]]
         f.close()
+
+        if recalc_avg:
+            self.dispersion_ranking_NN();
