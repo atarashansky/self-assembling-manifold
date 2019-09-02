@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.com/atarashansky/self-assembling-manifold.svg?branch=master)](https://travis-ci.com/atarashansky/self-assembling-manifold)
 
-# self-assembling-manifold -- SAM version 0.6.8
+# self-assembling-manifold -- SAM version 0.6.9
 The Self-Assembling-Manifold (SAM) algorithm.
 
 ## Requirements
