@@ -1107,6 +1107,7 @@ class SAMGUI(object):
             elif path.split('.')[-1] == 'p':
                 s = self.sams[self.stab.selected_index]
                 s.save(path)
+                s.dispersion_ranking_NN()
             elif (path.split('.')[-1] == 'png' or path.split('.')[-1] == 'pdf'
                   or path.split('.')[-1] == 'eps' or path.split('.')[-1] == 'jpg'):
                 if len(path.split('/'))>1:
@@ -1172,9 +1173,8 @@ class SAMGUI(object):
                 else:
                     title=gene
 
-                self.select_all(None)
+                #self.select_all(None)
                 self.update_colors_expr(a,title)
-                self.gene_expressions[self.stab.selected_index] = a
             except IndexError:
                 0; # do nothing
 
@@ -1306,6 +1306,8 @@ class SAMGUI(object):
             self.update_colors_anno(labels)
 
     def update_colors_expr(self,a,title):
+        self.gene_expressions[self.stab.selected_index] = a
+
         f1 = self.stab.children[self.stab.selected_index]
         f1.update_traces(marker = dict(color = a,colorscale='spectral',reversescale=True,
                                        showscale=True,colorbar_ticks='outside',
