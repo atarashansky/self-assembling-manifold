@@ -165,7 +165,7 @@ class SAMGUI(object):
             slider.set_trait('min',slider.value)
             slider.set_trait('max',slider.value)
 
-            self.marker_genes[i] = [np.array(list(self.sams[i].adata.var_names))[np.argsort(-self.sams[i].adata.var['weights'].get_values())]]
+            self.marker_genes[i] = np.array(list(self.sams[i].adata.var_names))[np.argsort(-self.sams[i].adata.var['weights'].get_values())]
         else:
             f1 = go.FigureWidget()
             f1.add_scattergl(x=[], y=[]);
