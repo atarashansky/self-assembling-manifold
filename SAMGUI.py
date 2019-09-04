@@ -165,7 +165,6 @@ class SAMGUI(object):
             slider.set_trait('min',slider.value)
             slider.set_trait('max',slider.value)
 
-            self.marker_genes[i] = np.array(list(self.sams[i].adata.var_names))[np.argsort(-self.sams[i].adata.var['weights'].get_values())]
         else:
             f1 = go.FigureWidget()
             f1.add_scattergl(x=[], y=[]);
@@ -1097,8 +1096,10 @@ class SAMGUI(object):
             widgets.HBox([close,hotkeys])
         ])
     def reset_view(self,event):
-        self.create_plot(self.stab.selected_index,self.stab.get_title(self.stab.selected_index))
-
+        i=self.stab.selected_index
+        self.create_plot(i,self.stab.get_title(i))
+        self.marker_genes[i] = np.array(list(self.sams[i].adata.var_names))[np.argsort(-self.sams[i].adata.var['weights'].get_values())]
+        self.marker_genes_tt[i] = 'Genes ranked by SAM weights.'
 
     def save_data(self,path):
         path=path.value
