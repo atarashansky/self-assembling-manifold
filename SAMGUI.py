@@ -205,7 +205,7 @@ class SAMGUI(object):
             elif key == 'v':
                 self.reset_view(None);
             elif key == 'a':
-                self.cs_box.children[6].children[2].set_trait('value',not self.cs_box.children[6].children[2].value)
+                self.cs_box.children[5].children[2].set_trait('value',not self.cs_box.children[5].children[2].value)
 
     def close_tab(self,event):
         I = self.stab.selected_index
@@ -791,7 +791,7 @@ class SAMGUI(object):
 
         cp = widgets.Button(
                description = 'Compute projection',
-               tooltip = 'Compute a 2D projection using the selected method in the dropdown menu to the left.',
+               tooltip = 'Compute a 2D projection using the selected method in the dropdown menu to the right.',
             layout={'width':'40%'}
         )
         cp.on_click(self.compute_projection)
@@ -811,7 +811,7 @@ class SAMGUI(object):
         )
         dp = widgets.Button(
                description = 'Display projection',
-               tooltip = 'Display the 2D projection selected in the dropdown menu to the left.',
+               tooltip = 'Display the 2D projection selected in the dropdown menu to the right.',
             layout={'width':'40%'}
         )
         dp.on_click(self.display_projection)
@@ -825,7 +825,7 @@ class SAMGUI(object):
         clm.observe(self.rewire_cluster_slider,'value')
         cl = widgets.Button(
                description = 'Cluster',
-               tooltip = 'Cluster the data using the selected method in the dropdown menu to the left.',
+               tooltip = 'Cluster the data using the selected method in the dropdown menu to the right.',
             layout={'width':'40%'}
         )
         cl.on_click(self.cluster_data)
@@ -857,7 +857,7 @@ class SAMGUI(object):
         )
         da = widgets.Button(
                description = 'Disp obs ann',
-               tooltip = 'Overlay the annotations selected in the dropdown menu to the left.',
+               tooltip = 'Overlay the annotations selected in the dropdown menu to the right.',
             layout={'width':'40%'}
         )
         da.on_click(self.display_annotation)
@@ -915,6 +915,13 @@ class SAMGUI(object):
                description = 'Avg expr',
             layout={'width':'50%'}
         )
+
+        log = widgets.Checkbox(
+               value=False,
+               description = 'Log colorbar',
+            layout={'width':'50%'}
+        )
+
         lann = widgets.Button(
             description='Annotate',
             tooltip = ('Enter the key of the \'obs\' annotation vector you wish to modify.'
@@ -1082,8 +1089,8 @@ class SAMGUI(object):
             widgets.HBox([cl,clm]),
             widgets.HBox([l,cslider]),
             widgets.HBox([da,dam,acc]),
-            widgets.HBox([dv,dvm]),
-            widgets.HBox([irm,ism,avg]),
+            widgets.HBox([dv,dvm,avg]),
+            widgets.HBox([irm,ism,log]),
             widgets.HBox([us,usa,res]),
             widgets.HBox([lann,anno_name,anno]),
             widgets.HBox([lgsm,gsm]),
@@ -1100,6 +1107,7 @@ class SAMGUI(object):
         self.create_plot(i,self.stab.get_title(i))
         self.marker_genes[i] = np.array(list(self.sams[i].adata.var_names))[np.argsort(-self.sams[i].adata.var['weights'].get_values())]
         self.marker_genes_tt[i] = 'Genes ranked by SAM weights.'
+        self.cs_box.children[11].children[0].set_trait('tooltip',self.marker_genes_tt[i])
 
     def save_data(self,path):
         path=path.value
@@ -1132,7 +1140,7 @@ class SAMGUI(object):
                 if genes is not -1:
                     gene=genes[0]
 
-                if self.cs_box.children[6].children[2].value:
+                if self.cs_box.children[5].children[2].value:
                     x = s.adata[:,gene].layers['X_knn_avg']
                     if sp.issparse(x):
                         a = x.A.flatten()
@@ -1145,7 +1153,7 @@ class SAMGUI(object):
                     else:
                         a = x.flatten()
 
-                if(self.cs_box.children[6].children[2].value):
+                if(self.cs_box.children[5].children[2].value):
                     if a.sum() == 0:
                         x = s.adata_raw[:,gene].X
                         if sp.issparse(x):
@@ -1309,6 +1317,8 @@ class SAMGUI(object):
             self.update_colors_anno(labels)
 
     def update_colors_expr(self,a,title):
+        if self.cs_box.children[6].children[2].value:
+            a=np.log2(a+1)
         self.gene_expressions[self.stab.selected_index] = a
 
         f1 = self.stab.children[self.stab.selected_index]
