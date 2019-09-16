@@ -28,24 +28,6 @@ The Self-Assembling-Manifold (SAM) algorithm.
 
  - `scanpy`
 
-## Version 0.6.7
-
-Various bugfixes, added a wrapper for all clustering algorithms, and added more extensive tutorials.
-
-## Version 0.6.6
-
-I scrapped the matplotlib GUI I was using before in favor of using the magical `Plotly` and `ipythonwidgets` packages. To interactively explore the data, use the new module `SAMGUI.py`. Run the following in a jupyter notebook:
-```
-from SAMGUI import SAMGUI
-sam_gui = SAMGUI(sam) # sam is your SAM object
-sam_gui.SamPlot
-```
-This will launch an interactive widget that you can use to explore the data. I tried my best to add tooltips (hover mouse over labels) wherever possible. Please submit an issue if there are any outstanding bugs / feature requests.
-
-I still have to document this, but you can click on a cell to select / deselect all cells with matching labels.
-
-I would recommend installing from the development version for now (not pip) as I currently do not have a stable release of this GUI.
-
 ![SAM GUI example image](samgui.png)
 
 ## Installation
