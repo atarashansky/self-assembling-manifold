@@ -28,8 +28,6 @@ The Self-Assembling-Manifold (SAM) algorithm.
 
  - `scanpy`
 
-![SAM GUI example image](samgui.png)
-
 ## Installation
 SAM has been most extensively tested using python3.6 but presumably should work on python>=3.6. Python can be installed using Anaconda.
 
@@ -83,6 +81,19 @@ jupyter lab build
 ```
 
 SAMGUI should now work in JupyterLab.
+
+## Running the SAM GUI
+
+The SAM GUI interface can be run in Jupyer notebooks with the following:
+
+```
+from SAMGUI import SAMGUI
+sam_gui = SAMGUI(sam) # sam is your SAM object
+sam_gui.SamPlot
+```
+Please see the plotting tutorial for more information about the GUI interface.
+
+![SAM GUI example image](samgui.png)
 
 ## Tutorial
 Please see the Jupyter notebooks in the 'tutorial' folder for basic tutorials. If you installed a fresh environment, do not forget to install jupyter into that environment! Please run
