@@ -172,8 +172,12 @@ sam.load(filename.p)
 ```
 
 ## Citation
-If using the SAM algorithm, please cite the following preprint:
-https://www.biorxiv.org/content/early/2018/07/07/364166
+If using the SAM algorithm, please cite the following eLife paper:
+https://elifesciences.org/articles/48994
+
+```
+Tarashansky, A. J. et al. Self-assembling manifolds in single-cell RNA sequencing data. eLife 8, e48994 (2019).
+```
 
 ## Adding extra functionality
 As always, please submit a new issue if you would like to see any functionalities / convenience functions / etc added.
