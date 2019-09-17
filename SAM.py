@@ -42,20 +42,15 @@ class SAM(object):
         Only use this argument if you want to pass in preloaded data. Otherwise
         use one of the load functions.
 
-    annotations : numpy.ndarray, optional, default None
-        A Numpy array of cell annotations.
-
 
     Attributes
     ----------
 
-    k: int
-        The number of nearest neighbors to identify for each cell
-        when constructing the nearest neighbor graph.
+    preprocess_args: dict
+        Dictionary of arguments used for the 'preprocess_data' function.
 
-    distance: str
-        The distance metric used when constructing the cell-to-cell
-        distance matrix.
+    run_args: dict
+        Dictionary of arguments used for the 'run' function.
 
     adata_raw: AnnData
         An AnnData object containing the raw, unfiltered input data.
@@ -65,7 +60,7 @@ class SAM(object):
 
     """
 
-    def __init__(self, counts=None, annotations=None):
+    def __init__(self, counts=None):
 
         if isinstance(counts, tuple) or isinstance(counts, list):
             raw_data, all_gene_names, all_cell_names = counts
@@ -99,11 +94,6 @@ class SAM(object):
                 "\'counts\' must be either a tuple/list of "
                 "(data,gene IDs,cell IDs) or a Pandas DataFrame of"
                 "cells x genes")
-
-        if(annotations is not None):
-            annotations = np.array(list(annotations))
-            if counts is not None:
-                self.adata_raw.obs['annotations'] = pd.Categorical(annotations)
 
         if(counts is not None):
             if(np.unique(all_gene_names).size != all_gene_names.size):
@@ -509,7 +499,28 @@ class SAM(object):
     def scatter(self, projection=None, c=None, cmap='rainbow', linewidth=0.0,
                 edgecolor='k', axes=None, colorbar=True, s=10, **kwargs):
 
-
+        """Display a scatter plot.
+        Displays a scatter plot using the SAM projection or another input
+        projection.
+        
+        Parameters
+        ----------
+        projection - string, numpy.ndarray, default None
+            A case-sensitive string indicating the projection to display (a key
+            in adata.obsm) or a 2D numpy array with cell coordinates. If None,
+            projection defaults to UMAP.
+            
+        c - string, numpy.ndarray, default None
+            Cell color values overlaid on the projection. Can be a string from adata.obs
+            to overlay cluster assignments / annotations or a 1D numpy array.
+            
+        axes - matplotlib axis, optional, default None
+            Plot output to the specified, existing axes. If None, create new
+            figure window.
+        
+        **kwargs - all keyword arguments in matplotlib.pyplot.scatter are eligible.
+        """
+        
         try:
             import matplotlib.pyplot as plt
             if(isinstance(projection, str)):
@@ -1028,8 +1039,7 @@ class SAM(object):
         """Wrapper for sklearn's t-SNE implementation.
 
         See sklearn for the t-SNE documentation. All arguments are the same
-        with the exception that 'metric' is set to 'precomputed' by default,
-        implying that this function expects a distance matrix by default.
+        with the exception that 'metric' is set to 'correlation' by default.
         """
         if(X is not None):
             dt = man.TSNE(metric=metric, **kwargs).fit_transform(X)
@@ -1041,8 +1051,6 @@ class SAM(object):
                           **kwargs).fit_transform(self.adata.obsm['X_pca'])
             tsne2d = dt
             self.adata.obsm['X_tsne'] = tsne2d
-
-    #def run_InPCA(self): #TODO
 
     def run_umap(self, X='X_pca', metric=None, **kwargs):
         """Wrapper for umap-learn.
@@ -1075,7 +1083,7 @@ class SAM(object):
     def run_diff_umap(self,use_rep='X_pca', metric='euclidean', n_comps=15,
                       method='gauss', **kwargs):
         """
-        Experimental -- running UMAP on the diffusion components
+        Experimental -- running UMAP on the diffusion components. Requires scanpy.
         """
         import scanpy.api as sc
         k = self.run_args.get('k',20)
@@ -1096,9 +1104,6 @@ class SAM(object):
 
     def run_diff_map(self,use_rep='X_pca', metric='euclidean', n_comps=15,
                      method = 'gauss', **kwargs):
-        """
-        Experimental -- running UMAP on the diffusion components
-        """
         import scanpy.api as sc
         k = self.run_args.get('k',20)
         distance = self.run_args.get('distance','correlation')
@@ -1494,64 +1499,8 @@ class SAM(object):
 
         return markers
 
-    def identify_marker_genes_corr(self, labels=None, n_genes=4000):
-        """
-        Ranking marker genes based on their respective magnitudes in the
-        correlation dot products with cluster-specific reference expression
-        profiles.
-
-        Parameters
-        ----------
-
-        labels - numpy.array or str, optional, default None
-            Cluster labels to use for marker gene identification. If None,
-            assumes that one of SAM's clustering algorithms has been run. Can
-            be a string (i.e. 'louvain_clusters', 'kmeans_clusters', etc) to
-            specify specific cluster labels in adata.obs.
-
-        n_genes - int, optional, default 4000
-            By default, computes correlations on the top 4000 SAM-weighted genes.
-
-        """
-        if(labels is None):
-            try:
-                keys = np.array(list(self.adata.obs_keys()))
-                lbls = self.adata.obs[ut.search_string(
-                    keys, '_clusters')[0][0]].get_values()
-            except KeyError:
-                print("Please generate cluster labels first or set the "
-                      "'labels' keyword argument.")
-                return
-        elif isinstance(labels, str):
-            lbls = self.adata.obs[labels].get_values().flatten()
-        else:
-            lbls = labels
-
-
-        w=self.adata.var['weights'].values
-        s = StandardScaler()
-        idxg = np.argsort(-w)[:n_genes]
-        y1=s.fit_transform(self.adata.layers['X_disp'][:,idxg].A)*w[idxg]
-
-        all_gene_names = np.array(list(self.adata.var_names))[idxg]
-
-        markers = {}
-        lblsu=np.unique(lbls)
-        for i in lblsu:
-            Gcells = np.array(list(self.adata.obs_names[lbls==i]))
-            z1 = y1[np.in1d(self.adata.obs_names,Gcells),:]
-            m1 = (z1 - z1.mean(1)[:,None])/z1.std(1)[:,None]
-            ref = z1.mean(0)
-            ref = (ref-ref.mean())/ref.std()
-            g2 = (m1*ref).mean(0)
-            markers[i] = all_gene_names[np.argsort(-g2)]
-
-
-        self.adata.uns['marker_genes_corr'] = markers
-        return markers
-
-
-    def save(self, savename, dirname=None, exc=None):
+   
+    def save(self, savename, dirname=None):
         """Saves all SAM attributes to a Pickle file.
 
         Saves all SAM attributes to a Pickle file which can be later loaded
@@ -1567,13 +1516,8 @@ class SAM(object):
             The path/name of the directory in which the Pickle file will be
             saved. If None, the file will be saved to the current working
             directory.
-
-        exc - array-like of strings, optional, default None
-            A vector of SAM attributes to exclude from the saved file. Use this
-            to exclude bulky objects that do not need to be saved.
-
         """
-        pickle_dict = self.__dict__#self._create_dict(exc)
+        pickle_dict = self.__dict__
 
         try:
             del pickle_dict['adata'].layers['X_knn_avg']
