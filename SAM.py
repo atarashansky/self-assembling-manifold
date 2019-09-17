@@ -1022,19 +1022,6 @@ class SAM(object):
 
         return W, g_weighted, EDM
 
-    def _create_dict(self, exc):
-        pickle_dict = self.__dict__.copy()
-        if(exc is not None):
-            if 'ps' not in exc:
-                exc.append('ps')
-
-            for i in range(len(exc)):
-                try:
-                    del pickle_dict[exc[i]]
-                except NameError:
-                    0
-        return pickle_dict
-
     def run_tsne(self, X=None, metric='correlation', **kwargs):
         """Wrapper for sklearn's t-SNE implementation.
 
