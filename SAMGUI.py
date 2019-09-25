@@ -1147,7 +1147,7 @@ class SAMGUI(object):
                     else:
                         a = x.flatten()
                 else:
-                    x = s.adata_raw[:,gene].X
+                    x = s.adata_raw[:,gene][s.adata.obs_names,:].X
                     if sp.issparse(x):
                         a = x.A.flatten()
                     else:
@@ -1155,7 +1155,7 @@ class SAMGUI(object):
 
                 if(self.cs_box.children[5].children[2].value):
                     if a.sum() == 0:
-                        x = s.adata_raw[:,gene].X
+                        x = s.adata_raw[:,gene][s.adata.obs_names,:].X
                         if sp.issparse(x):
                             a = x.A.flatten()
                         else:
