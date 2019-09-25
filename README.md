@@ -62,7 +62,7 @@ pip install matplotlib
 For interactive data exploration (in the `SAMGUI.py` module), `jupyter`, `ipythonwidgets`, `colorlover`, `ipyevents`, and `plotly` are required. Install them in the previously made environment like so:
 
 ```
-conda install -c conda-forge -c plotly jupyter ipywidgets plotly=4.0.0 colorlover ipyevents #plotly-orca psutil requests
+conda install -c conda-forge -c plotly jupyter ipywidgets plotly=4.0.0 colorlover ipyevents
 ```
 
 ### Enabling the SAM GUI in JupyterLab
