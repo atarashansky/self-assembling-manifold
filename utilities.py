@@ -13,7 +13,7 @@ from umap.nndescent import (
 INT32_MIN = np.iinfo(np.int32).min + 1
 INT32_MAX = np.iinfo(np.int32).max - 1
 
-__version__ = '0.6.9'
+__version__ = '0.6.10'
 
 
 def find_corr_genes(sam, input_gene):
@@ -264,7 +264,9 @@ def generate_correlation_map(x, y):
 def extract_annotation(cn, x, c='_'):
     m = []
     for i in range(cn.size):
-        m.append(cn[i].split(c)[x])
+        f = cn[i].split(c)
+        x = min(len(f)-1,x)
+        m.append(f[x])
     return np.array(m)
 
 
