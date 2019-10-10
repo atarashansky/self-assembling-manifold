@@ -205,7 +205,7 @@ class SAMGUI(object):
             elif key == 'v':
                 self.reset_view(None);
             elif key == 'a':
-                self.cs_box.children[5].children[2].set_trait('value',not self.cs_box.children[5].children[2].value)
+                self.cs_box.children[9].children[2].set_trait('value',not self.cs_box.children[9].children[2].value)
 
     def close_tab(self,event):
         I = self.stab.selected_index
@@ -641,15 +641,15 @@ class SAMGUI(object):
         proj.observe(self.proj_update,'value')
 
         rs = widgets.VBox([widgets.HBox([runb,title]),
-                           widgets.HBox([dfts]),
+                           widgets.HBox([dfts,wpca]),
                            widgets.HBox([l3,knn]),
                            widgets.HBox([l4,nna]),
                            norm,
                            distance,
                            proj,
-                           #widgets.HBox([l1,ngenes]),
-                           #widgets.HBox([l2,npcs])])
-                           ])
+                           widgets.HBox([l1,ngenes]),
+                           widgets.HBox([l2,npcs])])
+
         return rs
     def set_run_defaults(self,event):
         self.run_args = self.run_args_init.copy()
@@ -660,9 +660,9 @@ class SAMGUI(object):
         #,knn
         #,nna
         #norm,dist,proj
-        #wpca = self.rs_box.children[1].children[1]
-        #ngenes = self.rs_box.children[7].children[1]
-        #npcs = self.rs_box.children[8].children[1]
+        wpca = self.rs_box.children[1].children[1]
+        ngenes = self.rs_box.children[7].children[1]
+        npcs = self.rs_box.children[8].children[1]
         knn = self.rs_box.children[2].children[1]
         nna = self.rs_box.children[3].children[1]
         rnorm = self.rs_box.children[4]
@@ -674,15 +674,15 @@ class SAMGUI(object):
         init = self.run_args.get('k',20)
         knn.set_trait('value',init)
 
-        #init = self.run_args.get('npcs',150)
-        #if init is None:
-        #    init = 150;
-        #npcs.set_trait('value',init)
+        init = self.run_args.get('npcs',150)
+        if init is None:
+            init = 150;
+        npcs.set_trait('value',init)
 
-        #init = self.run_args.get('n_genes',3000)
-        #if init is None:
-        #    init = 3000;
-        #ngenes.set_trait('value',init)
+        init = self.run_args.get('n_genes',3000)
+        if init is None:
+            init = 3000;
+        ngenes.set_trait('value',init)
 
         init = self.run_args.get('preprocessing','Normalizer')
         if init is None:
@@ -696,6 +696,16 @@ class SAMGUI(object):
         #init = self.run_args.get('weight_PCs',True)
         #wpca.set_trait('value',init)
         #self.run_args['weight_PCs'] = init
+    def sam_weights(self,event):
+        s = self.sams[self.stab.selected_index]
+        self.marker_genes[self.stab.selected_index] = np.array(list(s.adata.var_names[np.argsort(-s.adata.var['weights'].get_values())]))
+        self.marker_genes_tt[self.stab.selected_index] = 'Genes ranked by SAM weights.'
+        self.cs_box.children[11].children[0].set_trait('tooltip',self.marker_genes_tt[self.stab.selected_index])
+
+        if self.cs_box.children[11].children[1].value != 0:
+            self.cs_box.children[11].children[1].set_trait('value',0)
+        else:
+            self.show_expression(str(self.marker_genes[self.stab.selected_index][0]))
 
     def weightpcs(self,event):
         t = self.run_args.get('weight_PCs',True)
@@ -881,15 +891,23 @@ class SAMGUI(object):
         irm = widgets.Button(
                description = 'Find markers (RF)',
                tooltip = 'Identify marker genes of selected cells using a random forest classifier.',
-            layout={'width':'40%'}
+            layout={'width':'34%'}
         )
         irm.on_click(self.irm_genes)
         ism = widgets.Button(
                description = 'Find markers (SW)',
                tooltip = 'Identify marker genes of selected cells by finding genes with large SAM weights among the selected cells.',
-            layout={'width':'40%'}
+            layout={'width':'33%'}
         )
         ism.on_click(self.ism_genes)
+
+        sws = widgets.Button(
+               description = 'SAM ranking',
+               tooltip = 'Ranks genes by SAM weights.',
+            layout={'width':'33%'}
+        )
+        sws.on_click(self.sam_weights)
+
         us = widgets.Button(
                description = 'Unselect all (x)',
                tooltip = 'Unselect all cells. Pressing \'x\' on the keyboard while hovering over the scatter plot will do the same thing.',
@@ -910,16 +928,16 @@ class SAMGUI(object):
         usa.on_click(self.select_all)
         res.on_click(self.reset_view)
 
-        avg = widgets.Checkbox(
+        avg = widgets.Checkbox(indent=False,
                value=True,
                description = 'Avg expr',
-            layout={'width':'50%'}
+            layout={'width':'20%'}
         )
 
-        log = widgets.Checkbox(
+        log = widgets.Checkbox(indent=False,
                value=False,
                description = 'Log colorbar',
-            layout={'width':'50%'}
+            layout={'width':'20%'}
         )
 
         lann = widgets.Button(
@@ -948,7 +966,7 @@ class SAMGUI(object):
         )
         gsm = widgets.Text(
             value = '',
-            layout={'width':'70%'}
+            layout={'width':'50%'}
         )
         gsm.on_submit(self.get_similar_genes)
         lshg = widgets.Button(
@@ -959,7 +977,7 @@ class SAMGUI(object):
         )
         shg = widgets.Text(
             value = '',
-            layout={'width':'70%'}
+            layout={'width':'50%'}
         )
         shg.on_submit(self.show_expression)
 
@@ -971,7 +989,7 @@ class SAMGUI(object):
         rgenes = widgets.IntSlider(
             value=0,
             min=0,
-            max=50,
+            max=200,
             step=1,
             disabled=False,
             continuous_update=False,
@@ -1041,7 +1059,7 @@ class SAMGUI(object):
             disabled=True,
             layout={'width':'30%'})
         aslider = widgets.FloatSlider(
-            value=0.1,
+            value=0.05,
             min=0.,
             max=1,
             step=0.01,
@@ -1089,12 +1107,12 @@ class SAMGUI(object):
             widgets.HBox([cl,clm]),
             widgets.HBox([l,cslider]),
             widgets.HBox([da,dam,acc]),
-            widgets.HBox([dv,dvm,avg]),
-            widgets.HBox([irm,ism,log]),
+            widgets.HBox([dv,dvm]),
+            widgets.HBox([irm,ism,sws]),
             widgets.HBox([us,usa,res]),
             widgets.HBox([lann,anno_name,anno]),
-            widgets.HBox([lgsm,gsm]),
-            widgets.HBox([lshg,shg]),
+            widgets.HBox([lgsm,gsm,avg]),
+            widgets.HBox([lshg,shg,log]),
             widgets.HBox([lgenes,rgenes]),
             widgets.HBox([lthr,thr]),
             widgets.HBox([lsf,sf]),
@@ -1140,7 +1158,7 @@ class SAMGUI(object):
                 if genes is not -1:
                     gene=genes[0]
 
-                if self.cs_box.children[5].children[2].value:
+                if self.cs_box.children[9].children[2].value:
                     x = s.adata[:,gene].layers['X_knn_avg']
                     if sp.issparse(x):
                         a = x.A.flatten()
@@ -1153,7 +1171,7 @@ class SAMGUI(object):
                     else:
                         a = x.flatten()
 
-                if(self.cs_box.children[5].children[2].value):
+                if(self.cs_box.children[9].children[2].value):
                     if a.sum() == 0:
                         x = s.adata_raw[:,gene][s.adata.obs_names,:].X
                         if sp.issparse(x):
@@ -1317,7 +1335,7 @@ class SAMGUI(object):
             self.update_colors_anno(labels)
 
     def update_colors_expr(self,a,title):
-        if self.cs_box.children[6].children[2].value:
+        if self.cs_box.children[10].children[-1].value:
             a=np.log2(a+1)
         self.gene_expressions[self.stab.selected_index] = a
 
