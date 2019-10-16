@@ -693,9 +693,9 @@ class SAMGUI(object):
         init = self.run_args.get('projection','umap')
         proj.set_trait('value',init)
 
-        #init = self.run_args.get('weight_PCs',True)
-        #wpca.set_trait('value',init)
-        #self.run_args['weight_PCs'] = init
+        init = self.run_args.get('weight_PCs',True)
+        wpca.set_trait('value',init)
+        self.run_args['weight_PCs'] = init
     def sam_weights(self,event):
         s = self.sams[self.stab.selected_index]
         self.marker_genes[self.stab.selected_index] = np.array(list(s.adata.var_names[np.argsort(-s.adata.var['weights'].get_values())]))
