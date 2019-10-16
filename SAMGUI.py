@@ -1153,10 +1153,10 @@ class SAMGUI(object):
         if gene != '':
 
             try:
-                genes = ut.search_string(np.array(list(s.adata.var_names)),gene, case_sensitive=True)[0]
-
-                if genes is not -1:
-                    gene=genes[0]
+                if not (gene in s.adata.var_names):
+                    genes = ut.search_string(np.array(list(s.adata.var_names)),gene, case_sensitive=True)[0]
+                    if genes is not -1:
+                        gene=genes[0]
 
                 if self.cs_box.children[9].children[2].value:
                     x = s.adata[:,gene].layers['X_knn_avg']
