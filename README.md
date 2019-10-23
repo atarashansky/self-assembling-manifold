@@ -13,12 +13,15 @@ The Self-Assembling-Manifold (SAM) algorithm.
  - `anndata`
 
 ### Optional dependencies
- - Plotting
+ - Interactive GUI (Jupyter notebooks)
    - `plotly==4.0.0`
    - `ipythonwidgets`
    - `jupyter`
    - `colorlover`
    - `ipyevents`
+ 
+ - Plots
+   - `matplotlib`
 
  - Clustering
    - `louvain`
