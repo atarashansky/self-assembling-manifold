@@ -1052,11 +1052,11 @@ class SAM(object):
             umap_obj = umap.UMAP(metric=metric, **kwargs)
             umap2d = umap_obj.fit_transform(X)
             self.adata.obsm['X_umap'] = umap2d
-
+            self.adata.uns['umap_obj'] = umap_obj
         else:
             umap_obj = umap.UMAP(metric=metric, **kwargs)
             dt = umap_obj.fit_transform(X)
-            return dt
+            return dt,umap_obj
 
     def run_diff_umap(self,use_rep='X_pca', metric='euclidean', n_comps=15,
                       method='gauss', **kwargs):
