@@ -939,15 +939,9 @@ class SAM(object):
                 print('Computing the t-SNE embedding...')
             self.run_tsne(**proj_kwargs)
         elif(projection == 'umap'):
-            if D.shape[0] < 100000:
-                if verbose:
-                    print('Computing the UMAP embedding...')
-                self.run_umap(**proj_kwargs)
-            else:
-                import scanpy.api as sc
-                self.adata.uns['neighbors']['connectivities'].setdiag(0)
-                self.adata.uns['neighbors']['connectivities'].eliminate_zeros()
-                sc.tl.umap(self.adata,min_dist=0.1)
+            if verbose:
+                print('Computing the UMAP embedding...')
+            self.run_umap(**proj_kwargs)
         elif(projection == 'diff_umap'):
             if verbose:
                 print('Computing the diffusion UMAP embedding...')
@@ -957,9 +951,6 @@ class SAM(object):
         elapsed = time.time() - tinit
         if verbose:
             print('Elapsed time: ' + str(elapsed) + ' seconds')
-
-
-
 
     def calculate_nnm(
             self,
