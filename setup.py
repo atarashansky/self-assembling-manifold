@@ -28,6 +28,6 @@ setup(
         'plot': [
             'ipythonwidgets', 'jupyter', 'plotly==4.0.0', 'matplotlib'],
         'scanpy': [
-            'scanpy<=1.3.7'],	    
+            'scanpy'],	    
         },
 )
