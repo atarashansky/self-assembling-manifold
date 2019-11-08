@@ -840,7 +840,10 @@ class SAM(object):
             k = 5
         if(k > D.shape[0] - 1):
             k = D.shape[0] - 2
-
+        
+        if preprocessing not in ['StandardScaler','Normalizer',None,'None']:
+            raise ValueError('preprocessing must be \'StandardScaler\', \'Normalizer\', or None')
+        
         self.run_args = {
                 'max_iter':max_iter,
                 'verbose':verbose,
