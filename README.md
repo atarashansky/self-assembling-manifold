@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.com/atarashansky/self-assembling-manifold.svg?branch=master)](https://travis-ci.com/atarashansky/self-assembling-manifold)
 
-# self-assembling-manifold -- SAM version 0.6.10
+# self-assembling-manifold -- SAM version 0.6.11
 The Self-Assembling-Manifold (SAM) algorithm.
 
 ## Requirements
@@ -30,6 +30,9 @@ The Self-Assembling-Manifold (SAM) algorithm.
    - `cython`
 
  - `scanpy`
+
+## Changelog notes 0.6.11
+I removed the `sam.save` and `sam.load` pickling functions because it is difficult to unpickle the AnnData objects if the AnnData version used changes. Now, I instead store the raw data in `sam.adata.raw` when saving using `sam.save_anndata`. The raw and filtered data can be loaded from the resulting file using `sam.load_data`.
 
 ## Installation
 SAM has been most extensively tested using python3.6 but presumably should work on python>=3.6. Python can be installed using Anaconda.
@@ -162,17 +165,11 @@ sam.scatter()
 ```
 
 ### Saving/Loading SAM
-If you wish to save the SAM outputs and filtered data, you can write `sam.adata` to a `h5ad` file as follows:
-`sam.save_anndata(filename, data = 'adata')`.
+If you wish to save the SAM outputs and raw and filtered data, you can write `sam.adata` to a `h5ad` file as follows:
+`sam.save_anndata(filename)`.
 
-If you would like to save the entire attirbute dictionary of a SAM object to a Pickle file:
-`sam.save(filename.p)`
-
-To load these attributes:
-```
-sam = SAM()
-sam.load(filename.p)
-```
+You can load this data back with `sam.load_data`:
+`sam.load_data(filename)`
 
 ## Citation
 If using the SAM algorithm, please cite the following eLife paper:
