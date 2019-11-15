@@ -13,7 +13,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-__version__ = '0.6.11'
+__version__ = '0.6.12'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -376,7 +376,10 @@ class SAM(object):
 
         x.write_h5ad(fname, **kwargs)
         x.raw = None
-        self.adata.layers['X_knn_avg'] = Xknn
+        try:
+            self.adata.layers['X_knn_avg'] = Xknn
+        except:
+            0;
 
     def load_var_annotations(self, aname, sep=',', key_added = 'annotations'):
         """Loads gene annotations.

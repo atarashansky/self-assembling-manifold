@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.com/atarashansky/self-assembling-manifold.svg?branch=master)](https://travis-ci.com/atarashansky/self-assembling-manifold)
 
-# self-assembling-manifold -- SAM version 0.6.11
+# self-assembling-manifold -- SAM version 0.6.12
 The Self-Assembling-Manifold (SAM) algorithm.
 
 ## Requirements
@@ -31,7 +31,7 @@ The Self-Assembling-Manifold (SAM) algorithm.
 
  - `scanpy`
 
-## Changelog notes 0.6.11
+## Changelog notes 0.6.12
 I removed the `sam.save` and `sam.load` pickling functions because it is difficult to unpickle the AnnData objects if the AnnData version used changes. Now, I instead store the raw data in `sam.adata.raw` when saving using `sam.save_anndata`. The raw and filtered data can be loaded from the resulting file using `sam.load_data`.
 
 ## Installation
