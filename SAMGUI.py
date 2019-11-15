@@ -1132,11 +1132,7 @@ class SAMGUI(object):
         if path != '':
             if path.split('.')[-1] == 'h5ad':
                 s = self.sams[self.stab.selected_index]
-                s.save_anndata(path,data='adata')
-            elif path.split('.')[-1] == 'p':
-                s = self.sams[self.stab.selected_index]
-                s.save(path)
-                s.dispersion_ranking_NN()
+                s.save_anndata(path)
             elif (path.split('.')[-1] == 'png' or path.split('.')[-1] == 'pdf'
                   or path.split('.')[-1] == 'eps' or path.split('.')[-1] == 'jpg'):
                 if len(path.split('/'))>1:

@@ -109,8 +109,6 @@ class SAM(object):
         self.preprocess_args = {}
 
     def preprocess_data(self, div=1, downsample=0, sum_norm=None,
-                        include_genes=None, exclude_genes=None,
-                        include_cells=None, exclude_cells=None,
                         norm='log', min_expression=1, thresh=0.01,
                         filter_genes=True):
         """Log-normalizes and filters the expression data.
@@ -141,26 +139,6 @@ class SAM(object):
             experimental and should only be used for raw, un-normalized UMI
             datasets). If None, the data is not normalized.
 
-        include_genes : array-like of string, optional, default None
-            A vector of gene names that specifies the genes to keep.
-            All other genes will be filtered out. Gene names are case-
-            sensitive.
-
-        exclude_genes : array-like of string, optional, default None
-            A vector of gene names that specifies the genes to
-            exclude. These genes will be filtered out. Gene names are case-
-            sensitive.
-
-        include_cells : array-like of string, optional, default None
-            A vector of cell names that specifies the cells to keep.
-            All other cells will be filtered out. Cell names are
-            case-sensitive.
-
-        exclude_cells : array-like of string, optional, default None
-            A vector of cell names that specifies the cells to exclude.
-            Thses cells will be filtered out. Cell names are
-            case-sensitive.
-
         min_expression : float, optional, default 1
             The threshold above which a gene is considered
             expressed. Gene expression values less than 'min_expression' are
@@ -172,18 +150,13 @@ class SAM(object):
             expressed if its expression value exceeds 'min_expression'.
 
         filter_genes : bool, optional, default True
-            Setting this to False turns off filtering operations. Genes passed
-            in exclude_genes or not passed in include_genes will still be
-            filtered.
+            Setting this to False turns off filtering operations.
 
         """
 
         self.preprocess_args = {
                 'div':div,
-                'downsample':downsample,
                 'sum_norm':sum_norm,
-                'include_genes':include_genes,
-                'exclude_genes':exclude_genes,
                 'norm':norm,
                 'min_expression':min_expression,
                 'thresh':thresh,
@@ -197,34 +170,6 @@ class SAM(object):
 
         except AttributeError:
             print('No data loaded')
-
-        # filter cells
-        cell_names = np.array(list(self.adata_raw.obs_names))
-        idx_cells = np.arange(D.shape[0])
-        if(include_cells is not None):
-            include_cells = np.array(list(include_cells))
-            idx2 = np.where(np.in1d(cell_names, include_cells))[0]
-            idx_cells = np.array(list(set(idx2) & set(idx_cells)))
-
-        if(exclude_cells is not None):
-            exclude_cells = np.array(list(exclude_cells))
-            idx4 = np.where(np.in1d(cell_names, exclude_cells,
-                                    invert=True))[0]
-            idx_cells = np.array(list(set(idx4) & set(idx_cells)))
-
-        if downsample > 0:
-            numcells = int(D.shape[0] / downsample)
-            rand_ind = np.random.choice(np.arange(D.shape[0]),
-                                        size=numcells, replace=False)
-            idx_cells = np.array(list(set(rand_ind) & set(idx_cells)))
-        else:
-            numcells = D.shape[0]
-
-        mask_cells = np.zeros(D.shape[0], dtype='bool')
-        mask_cells[idx_cells] = True
-
-        if mask_cells.sum() < mask_cells.size:
-            self.adata = self.adata_raw[mask_cells,:].copy()
 
         D = self.adata.X
         if isinstance(D,np.ndarray):
@@ -293,19 +238,7 @@ class SAM(object):
         D.data[idx] = 0
 
         # filter genes
-        gene_names = np.array(list(self.adata.var_names))
         idx_genes = np.arange(D.shape[1])
-        if(include_genes is not None):
-            include_genes = np.array(list(include_genes))
-            idx = np.where(np.in1d(gene_names, include_genes))[0]
-            idx_genes = np.array(list(set(idx) & set(idx_genes)))
-
-        if(exclude_genes is not None):
-            exclude_genes = np.array(list(exclude_genes))
-            idx3 = np.where(np.in1d(gene_names, exclude_genes,
-                                    invert=True))[0]
-            idx_genes = np.array(list(set(idx3) & set(idx_genes)))
-
         if(filter_genes):
             a, ct = np.unique(D.indices, return_counts=True)
             c = np.zeros(D.shape[1])
@@ -350,16 +283,13 @@ class SAM(object):
             assumes the input table is delimited by commas.
 
         save_sparse_file - str, optional, default None
-            Path to which the sparse data will be saved. If ending with '.h5ad',
-            writes the SAM 'adata_raw' object to a h5ad file (the native AnnData
-            file format) for faster loading in the future. If 'p', pickles the
-            (sparse data structure, gene names, cell names) tuple for faster
-            loading in the future.
+            Path to which the sparse data will be saved ('.h5ad').
+            Writes the SAM 'adata_raw' object to a h5ad file (the native AnnData
+            file format) for faster loading in the future.
 
         transpose - bool, optional, default True
             By default, assumes file is (genes x cells). Set this to False if
             the file has dimensions (cells x genes).
-
 
         """
         if filename.split('.')[-1] == 'p':
@@ -397,8 +327,19 @@ class SAM(object):
             self.adata.layers['X_disp'] = raw_data
 
         else:
-            self.adata_raw = anndata.read_h5ad(filename, **kwargs)
-            self.adata = self.adata_raw.copy()
+            self.adata = anndata.read_h5ad(filename, **kwargs)
+            if self.adata.raw is not None:
+                self.adata_raw = AnnData(X=self.adata.raw.X)
+                self.adata_raw.var_names = self.adata.raw.var_names
+                self.adata_raw.obs_names = self.adata.obs_names
+                self.adata_raw.obs = self.adata.obs
+                self.adata.raw = None
+                if ('X_knn_avg' not in self.adata.layers.keys()
+                    and 'neighbors' in self.adata.uns.keys()):
+                    self.dispersion_ranking_NN();
+            else:
+                self.adata_raw = self.adata
+
             if 'X_disp' not in list(self.adata.layers.keys()):
                 self.adata.layers['X_disp'] = self.adata.X
             save_sparse_file = None
@@ -409,26 +350,8 @@ class SAM(object):
             elif(save_sparse_file.split('.')[-1] == 'h5ad'):
                 self.save_anndata(save_sparse_file, data = 'adata_raw')
 
-    def save_sparse_data(self, fname):
-        """Saves the tuple (raw_data,all_cell_names,all_gene_names) in a
-        Pickle file.
 
-        Parameters
-        ----------
-        fname - string
-            The filename of the output file.
-
-        """
-        data = self.adata_raw.X.T
-        if data.getformat()=='csr':
-            data=data.tocsc()
-
-        cell_names = np.array(list(self.adata_raw.obs_names))
-        gene_names = np.array(list(self.adata_raw.var_names))
-
-        pickle.dump((data, cell_names, gene_names), open(fname, 'wb'))
-
-    def save_anndata(self, fname, data = 'adata', **kwargs):
+    def save_anndata(self, fname, save_knn=False, **kwargs):
         """Saves `adata_raw` to a .h5ad file (AnnData's native file format).
 
         Parameters
@@ -436,9 +359,24 @@ class SAM(object):
         fname - string
             The filename of the output file.
 
+        save_knn - bool, optional, default = False
+            If True, saves `.layers['X_knn_avg']`. If False, does not save
+            this layer. Default value is set to False as the nearest-neighbor
+            averaged expression values can be quite dense.
+
         """
-        x = self.__dict__[data]
+        if not save_knn:
+            try:
+                Xknn = self.adata.layers['X_knn_avg']
+                del self.adata.layers['X_knn_avg']
+            except:
+                0;
+        x = self.adata
+        x.raw = self.adata_raw
+
         x.write_h5ad(fname, **kwargs)
+        x.raw = None
+        self.adata.layers['X_knn_avg'] = Xknn
 
     def load_var_annotations(self, aname, sep=',', key_added = 'annotations'):
         """Loads gene annotations.
@@ -502,25 +440,25 @@ class SAM(object):
         """Display a scatter plot.
         Displays a scatter plot using the SAM projection or another input
         projection.
-        
+
         Parameters
         ----------
         projection - string, numpy.ndarray, default None
             A case-sensitive string indicating the projection to display (a key
             in adata.obsm) or a 2D numpy array with cell coordinates. If None,
             projection defaults to UMAP.
-            
+
         c - string, numpy.ndarray, default None
             Cell color values overlaid on the projection. Can be a string from adata.obs
             to overlay cluster assignments / annotations or a 1D numpy array.
-            
+
         axes - matplotlib axis, optional, default None
             Plot output to the specified, existing axes. If None, create new
             figure window.
-        
+
         **kwargs - all keyword arguments in matplotlib.pyplot.scatter are eligible.
         """
-        
+
         try:
             import matplotlib.pyplot as plt
             if(isinstance(projection, str)):
@@ -840,10 +778,10 @@ class SAM(object):
             k = 5
         if(k > D.shape[0] - 1):
             k = D.shape[0] - 2
-        
+
         if preprocessing not in ['StandardScaler','Normalizer',None,'None']:
             raise ValueError('preprocessing must be \'StandardScaler\', \'Normalizer\', or None')
-        
+
         self.run_args = {
                 'max_iter':max_iter,
                 'verbose':verbose,
@@ -1012,7 +950,8 @@ class SAM(object):
         W = self.dispersion_ranking_NN(
             EDM, num_norm_avg=num_norm_avg)
 
-        self.adata.uns['X_processed'] = D_sub
+        self.adata.uns['X_processed'] = (D_sub,
+                              np.array(list(self.adata.var_names[gkeep])))
 
         return W, g_weighted, EDM
 
@@ -1479,43 +1418,6 @@ class SAM(object):
         self.adata.uns['marker_genes_ratio'] = markers
 
         return markers
-
-   
-    def save(self, savename, dirname=None):
-        """Saves all SAM attributes to a Pickle file.
-
-        Saves all SAM attributes to a Pickle file which can be later loaded
-        into an empty SAM object.
-
-        Parameters
-        ----------
-        savename - string
-            The name of the pickle file (not including the file extension) to
-            write to.
-
-        dirname - string, optional, default None
-            The path/name of the directory in which the Pickle file will be
-            saved. If None, the file will be saved to the current working
-            directory.
-        """
-        pickle_dict = self.__dict__
-
-        try:
-            del pickle_dict['adata'].layers['X_knn_avg']
-        except:
-            0;
-
-        if savename[-2:] != '.p':
-            savename = savename + '.p'
-
-        if(dirname is not None):
-            ut.create_folder(dirname + "/")
-            f = open(dirname + "/" + savename, 'wb')
-        else:
-            f = open(savename, 'wb')
-
-        pickle.dump(pickle_dict, f)
-        f.close()
 
     def load(self, n, recalc_avg=True):
         """Loads SAM attributes from a Pickle file.
