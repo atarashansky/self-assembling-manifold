@@ -348,7 +348,7 @@ class SAM(object):
             if(save_sparse_file.split('.')[-1] == 'p'):
                 self.save_sparse_data(save_sparse_file)
             elif(save_sparse_file.split('.')[-1] == 'h5ad'):
-                self.save_anndata(save_sparse_file, data = 'adata_raw')
+                self.save_anndata(save_sparse_file)
 
 
     def save_anndata(self, fname, save_knn=False, **kwargs):
