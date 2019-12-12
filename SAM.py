@@ -265,7 +265,7 @@ class SAM(object):
         self.adata.uns['preprocess_args'] = self.preprocess_args
 
     def load_data(self, filename, transpose=True,
-                  save_sparse_file=None, sep=',', **kwargs):
+                  save_sparse_file=None, sep=',', calculate_avg=True,**kwargs):
         """Loads the specified data file. The file can be a table of
         read counts (i.e. '.csv' or '.txt'), with genes as rows and cells
         as columns by default. The file can also be a pickle file (output from
@@ -290,6 +290,13 @@ class SAM(object):
         transpose - bool, optional, default True
             By default, assumes file is (genes x cells). Set this to False if
             the file has dimensions (cells x genes).
+           
+        calculate_avg - bool, optional, default True
+            If nearest neighbors are already calculated in the .h5ad file,
+            setting this parameter to True performs knn averaging and stores
+            the result in adata.layers['X_knn_avg']. This is a fairly dense
+            matrix, so set this to False if you do not need the averaged
+            expressions.
 
         """
         if filename.split('.')[-1] == 'p':
@@ -335,7 +342,8 @@ class SAM(object):
                 self.adata_raw.obs = self.adata.obs
                 self.adata.raw = None
                 if ('X_knn_avg' not in self.adata.layers.keys()
-                    and 'neighbors' in self.adata.uns.keys()):
+                    and 'neighbors' in self.adata.uns.keys() and
+                    calculate_avg):
                     self.dispersion_ranking_NN();
             else:
                 self.adata_raw = self.adata
