@@ -13,7 +13,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-__version__ = '0.6.12'
+__version__ = '0.6.13'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -60,7 +60,7 @@ class SAM(object):
 
     """
 
-    def __init__(self, counts=None):
+    def __init__(self, counts=None, inplace = False):
 
         if isinstance(counts, tuple) or isinstance(counts, list):
             raw_data, all_gene_names, all_cell_names = counts
@@ -87,8 +87,6 @@ class SAM(object):
             all_gene_names=np.array(list(counts.var_names))
             self.adata_raw = counts
 
-
-
         elif counts is not None:
             raise Exception(
                 "\'counts\' must be either a tuple/list of "
@@ -100,8 +98,12 @@ class SAM(object):
                 self.adata_raw.var_names_make_unique()
             if(np.unique(all_cell_names).size != all_cell_names.size):
                 self.adata_raw.obs_names_make_unique()
-
-            self.adata = self.adata_raw.copy()
+            
+            if inplace:
+                self.adata = self.adata_raw
+            else:
+                self.adata = self.adata_raw.copy()
+                
             if 'X_disp' not in self.adata_raw.layers.keys():
                   self.adata.layers['X_disp'] = self.adata.X
 
