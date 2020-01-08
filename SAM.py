@@ -99,12 +99,12 @@ class SAM(object):
                 self.adata_raw.var_names_make_unique()
             if(np.unique(all_cell_names).size != all_cell_names.size):
                 self.adata_raw.obs_names_make_unique()
-            
+
             if inplace:
                 self.adata = self.adata_raw
             else:
                 self.adata = self.adata_raw.copy()
-                
+
             if 'X_disp' not in self.adata_raw.layers.keys():
                   self.adata.layers['X_disp'] = self.adata.X
 
@@ -267,6 +267,14 @@ class SAM(object):
             self.adata.layers['X_disp'] = self.adata.X
         self.adata.uns['preprocess_args'] = self.preprocess_args
 
+    def get_cells(self,label,key):
+        if key not in list(self.adata.obs.keys()):
+            print('Key does not exist in `obs`.')
+            return np.array([])
+        else:
+            return np.array(list(self.adata.obs_names[
+                            np.array(list(self.adata.obs[key]))==label]))
+
     def load_data(self, filename, transpose=True,
                   save_sparse_file=None, sep=',', calculate_avg=True,**kwargs):
         """Loads the specified data file. The file can be a table of
@@ -293,7 +301,7 @@ class SAM(object):
         transpose - bool, optional, default True
             By default, assumes file is (genes x cells). Set this to False if
             the file has dimensions (cells x genes).
-           
+
         calculate_avg - bool, optional, default True
             If nearest neighbors are already calculated in the .h5ad file,
             setting this parameter to True performs knn averaging and stores
@@ -343,7 +351,7 @@ class SAM(object):
                 self.adata_raw.var_names = self.adata.raw.var_names
                 self.adata_raw.obs_names = self.adata.obs_names
                 self.adata_raw.obs = self.adata.obs
-                
+
                 if version.parse(anndata.__version__) >= version.parse("0.7rc1"):
                     del self.adata.raw;
                 else:
