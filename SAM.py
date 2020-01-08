@@ -268,6 +268,14 @@ class SAM(object):
         self.adata.uns['preprocess_args'] = self.preprocess_args
 
     def get_cells(self,label,key):
+        """Retrieves cells of a particular annotation.
+
+        Parameters
+        ----------
+        label - The annotation to retrieve
+        key - The key in `obs` from which to retrieve the annotation.
+
+        """
         if key not in list(self.adata.obs.keys()):
             print('Key does not exist in `obs`.')
             return np.array([])
