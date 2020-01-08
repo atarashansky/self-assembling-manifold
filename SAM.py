@@ -10,10 +10,11 @@ import utilities as ut
 import sklearn.manifold as man
 import sklearn.utils.sparsefuncs as sf
 import warnings
+from packaging import version
 warnings.filterwarnings("ignore")
 
 
-__version__ = '0.6.13'
+__version__ = '0.6.14'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -342,7 +343,12 @@ class SAM(object):
                 self.adata_raw.var_names = self.adata.raw.var_names
                 self.adata_raw.obs_names = self.adata.obs_names
                 self.adata_raw.obs = self.adata.obs
-                self.adata.raw = None
+                
+                if version.parse(anndata.__version__) >= version.parse("0.7rc1"):
+                    del self.adata.raw;
+                else:
+                    self.adata.raw=None;
+
                 if ('X_knn_avg' not in self.adata.layers.keys()
                     and 'neighbors' in self.adata.uns.keys() and
                     calculate_avg):

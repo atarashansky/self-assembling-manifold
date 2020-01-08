@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='sam-algorithm',
-    version='0.6.13',
+    version='0.6.14',
     description='The Self-Assembling-Manifold algorithm',
     long_description="The Self-Assembling-Manifold algorithm for analyzing single-cell RNA sequencing data.",
     long_description_content_type='text/markdown',
