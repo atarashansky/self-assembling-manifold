@@ -14,7 +14,7 @@ from packaging import version
 warnings.filterwarnings("ignore")
 
 
-__version__ = '0.6.14'
+__version__ = '0.6.15'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -267,6 +267,29 @@ class SAM(object):
             self.adata.layers['X_disp'] = self.adata.X
         self.adata.uns['preprocess_args'] = self.preprocess_args
 
+    def get_avg_obsm(self,keym,keyl):
+        clu = self.get_labels_un(keyl)
+        cl = self.get_labels(keyl)
+        x = []
+        for i in range(clu.size):
+            x.append(self.adata.obsm[keym][cl==clu[i]].mean(0))
+        x = np.vstack(x)
+        return x
+
+    def get_labels_un(self,key):
+        if key not in list(self.adata.obs.keys()):
+            print('Key does not exist in `obs`.')
+            return np.array([])
+        else:
+            return np.array(list(np.unique(self.adata.obs[key])))
+
+    def get_labels(self,key):
+        if key not in list(self.adata.obs.keys()):
+            print('Key does not exist in `obs`.')
+            return np.array([])
+        else:
+            return np.array(list(self.adata.obs[key]))
+
     def get_cells(self,label,key):
         """Retrieves cells of a particular annotation.
 
@@ -407,7 +430,11 @@ class SAM(object):
         x.raw = self.adata_raw
 
         x.write_h5ad(fname, **kwargs)
-        x.raw = None
+        if version.parse(anndata.__version__) >= version.parse("0.7rc1"):
+            del x.raw;
+        else:
+            x.raw=None;
+
         try:
             self.adata.layers['X_knn_avg'] = Xknn
         except:
