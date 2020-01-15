@@ -14,7 +14,7 @@ from packaging import version
 warnings.filterwarnings("ignore")
 
 
-__version__ = '0.6.15'
+__version__ = '0.6.16'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -1004,7 +1004,7 @@ class SAM(object):
         if distance == 'euclidean':
             g_weighted = Normalizer().fit_transform(g_weighted)
 
-        self.adata.uns['pca_obj'] = pca
+        self.pca_obj = pca
 
 
         EDM = ut.calc_nnm(g_weighted,k,distance)
@@ -1012,7 +1012,7 @@ class SAM(object):
         W = self.dispersion_ranking_NN(
             EDM, num_norm_avg=num_norm_avg)
 
-        self.adata.uns['X_processed'] = (D_sub,
+        self.X_processed = (D_sub,
                               np.array(list(self.adata.var_names[gkeep])))
 
         return W, g_weighted, EDM
@@ -1056,7 +1056,7 @@ class SAM(object):
             umap_obj = umap.UMAP(metric=metric, **kwargs)
             umap2d = umap_obj.fit_transform(X)
             self.adata.obsm['X_umap'] = umap2d
-            self.adata.uns['umap_obj'] = umap_obj
+            self.umap_obj = umap_obj
         else:
             umap_obj = umap.UMAP(metric=metric, **kwargs)
             dt = umap_obj.fit_transform(X)
