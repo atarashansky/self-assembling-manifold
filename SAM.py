@@ -1263,7 +1263,7 @@ class SAM(object):
 
         from sklearn.cluster import KMeans
         if X is None:
-            D_sub = self.adata.uns['X_processed'][0]
+            D_sub = self.X_processed[0]
             X = ut.weighted_PCA(D_sub,npcs=npcs,do_weight=False)[0]
 
         km = KMeans(n_clusters = numc)
@@ -1319,7 +1319,7 @@ class SAM(object):
         import hdbscan
         if X is None:
             #X = self.adata.obsm['X_pca']
-            D = self.adata.uns['X_processed'][0]
+            D = self.X_processed[0]
             X = ut.weighted_PCA(D,npcs=npcs,do_weight=False)[0]
             X = Normalizer().fit_transform(X)
             save = True

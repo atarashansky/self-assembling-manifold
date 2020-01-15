@@ -22,5 +22,5 @@ if __name__ == '__main__':
     sam.kmeans_clustering(4)    
     sam.identify_marker_genes_ratio();
     sam.identify_marker_genes_rf();
-    umap_obj = sam.adata.uns['umap_obj'] #checking to see if umap_obj is stored in adata structure
+    umap_obj = sam.umap_obj #checking to see if umap_obj is stored in sam object
     
