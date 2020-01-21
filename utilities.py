@@ -263,11 +263,32 @@ def generate_correlation_map(x, y):
 
 def extract_annotation(cn, x, c='_'):
     m = []
-    for i in range(cn.size):
-        f = cn[i].split(c)
-        x = min(len(f)-1,x)
-        m.append(f[x])
-    return np.array(m)
+    if x is not None:
+        for i in range(cn.size):
+            f = cn[i].split(c)
+            x = min(len(f)-1,x)
+            m.append(f[x])
+        return np.array(m)
+    else:
+        ms=[]
+        ls=[]
+        for i in range(cn.size):
+            f = cn[i].split(c)
+            m=[]
+            for x in range(len(f)):
+                m.append(f[x])
+            ms.append(m)
+            ls.append(len(m))
+        ml = max(ls)
+        for i in range(len(ms)):
+            ms[i].extend(['']*(ml-len(ms[i])))
+            if ml-len(ms[i]) > 0:
+                ms[i]=np.concatenate(ms[i])
+        ms=np.vstack(ms)
+        MS=[]
+        for i in range(ms.shape[1]):
+            MS.append(ms[:,i])
+        return MS
 
 
 def isolate(dt, x1, x2, y1, y2):
