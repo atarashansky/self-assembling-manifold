@@ -554,7 +554,7 @@ class SAM(object):
 
                 if isinstance(c, str):
                     try:
-                        c = self.get_labels(c)
+                        c = self.adata.obs[c].get_values()
                     except KeyError:
                         0  # do nothing
 
@@ -1007,8 +1007,10 @@ class SAM(object):
         self.pca_obj = pca
 
 
-        EDM = ut.calc_nnm(g_weighted,k,distance)
-
+        edm = ut.calc_nnm(g_weighted,k,distance)
+        self.adata.uns['nnm']=edm
+        EDM = edm.copy()
+        EDM.data[:]=1
         W = self.dispersion_ranking_NN(
             EDM, num_norm_avg=num_norm_avg)
 
@@ -1387,13 +1389,14 @@ class SAM(object):
         if(labels is None):
             try:
                 keys = np.array(list(self.adata.obs_keys()))
-                lbls = self.get_labels(ut.search_string(keys, '_clusters')[0][0])
+                lbls = self.adata.obs[ut.search_string(
+                    keys, '_clusters')[0][0]].get_values()
             except KeyError:
                 print("Please generate cluster labels first or set the "
                       "'labels' keyword argument.")
                 return
         elif isinstance(labels, str):
-            lbls = self.get_labels(labels)
+            lbls = np.array(list(self.adata.obs[labels].get_values().flatten()))
         else:
             lbls = labels
 
@@ -1450,13 +1453,14 @@ class SAM(object):
         if(labels is None):
             try:
                 keys = np.array(list(self.adata.obs_keys()))
-                lbls = self.get_labels(ut.search_string(keys, '_clusters')[0][0])
+                lbls = self.adata.obs[ut.search_string(
+                    keys, '_clusters')[0][0]].get_values()
             except KeyError:
                 print("Please generate cluster labels first or set the "
                       "'labels' keyword argument.")
                 return
         elif isinstance(labels, str):
-            lbls = self.get_labels(labels)
+            lbls = self.adata.obs[labels].get_values().flatten()
         else:
             lbls = labels
 
