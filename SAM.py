@@ -554,7 +554,7 @@ class SAM(object):
 
                 if isinstance(c, str):
                     try:
-                        c = self.adata.obs[c].get_values()
+                        c = self.get_labels(c)
                     except KeyError:
                         0  # do nothing
 
@@ -1389,14 +1389,13 @@ class SAM(object):
         if(labels is None):
             try:
                 keys = np.array(list(self.adata.obs_keys()))
-                lbls = self.adata.obs[ut.search_string(
-                    keys, '_clusters')[0][0]].get_values()
+                lbls = self.get_labels(ut.search_string(keys,'_clusters')[0][0])
             except KeyError:
                 print("Please generate cluster labels first or set the "
                       "'labels' keyword argument.")
                 return
         elif isinstance(labels, str):
-            lbls = np.array(list(self.adata.obs[labels].get_values().flatten()))
+            lbls = self.get_labels(labels)
         else:
             lbls = labels
 
@@ -1453,14 +1452,13 @@ class SAM(object):
         if(labels is None):
             try:
                 keys = np.array(list(self.adata.obs_keys()))
-                lbls = self.adata.obs[ut.search_string(
-                    keys, '_clusters')[0][0]].get_values()
+                lbls = self.get_labels(ut.search_string(keys,'_clusters')[0][0])
             except KeyError:
                 print("Please generate cluster labels first or set the "
                       "'labels' keyword argument.")
                 return
         elif isinstance(labels, str):
-            lbls = self.adata.obs[labels].get_values().flatten()
+            lbls = self.get_labels(labels)
         else:
             lbls = labels
 
