@@ -17,7 +17,7 @@ setup(
         'pandas',
         'scikit-learn','packaging',
 	'numba',
-	'umap-learn', 'anndata'],
+	'umap-learn', 'anndata>=0.7rc1'],
     extras_require={
         'louvain': [
             'louvain', 'cython', 'python-igraph'],
