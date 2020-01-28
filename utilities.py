@@ -1,4 +1,5 @@
 import numpy as np
+import hnswlib
 import scipy as sp
 import os
 import errno
@@ -48,6 +49,18 @@ def find_corr_genes(sam, input_gene):
     pw_corr = generate_correlation_map(D_avg.T.A,D_avg[:,input_gene].T.A)
     return all_gene_names[np.argsort(-pw_corr.flatten())]
 
+
+def nearest_neighbors_hnsw(x,ef=200,M=48,n_neighbors = 100):
+    labels = np.arange(x.shape[0])
+    p = hnswlib.Index(space = 'cosine', dim = x.shape[1])
+    p.init_index(max_elements = x.shape[0], ef_construction = ef, M = M)
+    p.add_items(x, labels)
+    p.set_ef(ef)
+    idx, dist = p.knn_query(x, k = n_neighbors)
+    dist = 1-dist
+    dist[dist<0]=0
+    return idx,dist
+
 def nearest_neighbors(X, n_neighbors=15, seed=0, metric='correlation'):
 
     distance_func = dist.named_distances[metric]
@@ -83,21 +96,11 @@ def nearest_neighbors(X, n_neighbors=15, seed=0, metric='correlation'):
 
 
 def knndist(nnma):
-    knn = []
-    for i in range(nnma.shape[0]):
-        knn.append(np.where(nnma[i, :] == 1)[0])
-    knn = np.vstack(knn)
-    dist = np.ones(knn.shape)
-    return knn, dist
-
-"""
-def affinity_calc(data, d = 'correlation', k=20):
-    dist = compute_distances(data,d)
-    local_scale = np.sort(dist,axis=1)[:,k].flatten()
-    affinity = np.exp(-dist**2 / (local_scale[:,None] * local_scale[None,:]))
-    nnm = sp.sparse.csr_matrix(dist_to_nn(1-affinity,k)*affinity)
-    return nnm
-"""
+    x,y = nnma.nonzero()
+    data = nnma.data
+    knn = y.reshape((nnma.shape[0],nnma[0,:].data.size))
+    val = data.reshape(knn.shape)
+    return knn, val
 
 def save_figures(filename, fig_IDs=None, **kwargs):
     """
@@ -175,35 +178,6 @@ def weighted_PCA(mat, do_weight=True, npcs=None, solver='auto'):
     return reduced_weighted, pca
 
 
-def weighted_sparse_PCA(mat, do_weight=True, npcs=None):
-
-    if(do_weight):
-        if(min(mat.shape) >= 10000 and npcs is None):
-            print(
-                "More than 10,000 cells. Running with 'npcs' set to < 1000 is"
-                " recommended.")
-
-        if(npcs is None):
-            ncom = min(mat.shape)
-        else:
-            ncom = min((min(mat.shape), npcs))
-
-        pca = TruncatedSVD(n_components=ncom)
-        reduced = pca.fit_transform(mat)
-        scaled_eigenvalues = reduced.var(0)
-        scaled_eigenvalues = scaled_eigenvalues / scaled_eigenvalues.max()
-        reduced_weighted = reduced * scaled_eigenvalues[None, :]**0.5
-    else:
-        pca = TruncatedSVD(n_components=npcs, svd_solver='auto')
-        reduced = pca.fit_transform(mat)
-        if reduced.shape[1] == 1:
-            pca = TruncatedSVD(n_components=2, svd_solver='auto')
-            reduced = pca.fit_transform(mat)
-        reduced_weighted = reduced
-
-    return reduced_weighted, pca
-
-
 def transform_wPCA(mat, pca):
     mat = (mat - pca.mean_)
     reduced = mat.dot(pca.components_.T)
@@ -211,7 +185,6 @@ def transform_wPCA(mat, pca):
     scaled_eigenvalues = v / v.max()
     reduced_weighted = np.array(reduced) * scaled_eigenvalues[None, :]**0.5
     return reduced_weighted
-
 
 def search_string(vec, s, case_sensitive=False):
     vec = np.array(vec)
@@ -231,7 +204,6 @@ def search_string(vec, s, case_sensitive=False):
         return vec[np.array(m)], np.array(m)
     else:
         return [-1, -1]
-
 
 def distance_matrix_error(dist1, dist2):
     s = 0
@@ -296,7 +268,6 @@ def isolate(dt, x1, x2, y1, y2):
         dt[:, 0] > x1, dt[:, 0] < x2), np.logical_and(dt[:, 1] > y1,
                                                             dt[:, 1] < y2)))[0]
 
-
 def to_lower(y):
     x = y.copy().flatten()
     for i in range(x.size):
@@ -318,7 +289,6 @@ def create_folder(path):
         if exception.errno != errno.EEXIST:
             raise
 
-
 def convert_annotations(A):
     x = np.unique(A)
     y = np.zeros(A.size)
@@ -329,20 +299,11 @@ def convert_annotations(A):
 
     return y.astype('int')
 
-def calc_nnm(g_weighted,k,distance):
-    numcells=g_weighted.shape[0]
+def calc_nnm(g_weighted,k,distance=None):
     if g_weighted.shape[0] > 8000:
-        try:
-            nnm, dists = nearest_neighbors(
-                g_weighted, n_neighbors=k, metric=distance)
-        except SystemError:
-            print('Adding noise...')
-            g_weighted = g_weighted + np.random.normal(loc=0,scale=g_weighted.flatten().std()/4,size=g_weighted.shape)
-            nnm, dists = nearest_neighbors(
-                g_weighted, n_neighbors=k, metric=distance)
-        EDM = sp.sparse.coo_matrix((numcells, numcells), dtype='i').tolil()
-        EDM[np.tile(np.arange(nnm.shape[0])[:, None],
-                    (1, nnm.shape[1])).flatten(), nnm.flatten()] = 1
+        # only uses cosine
+        nnm, dists = nearest_neighbors_hnsw(g_weighted, n_neighbors=k)
+        EDM = gen_sparse_knn(nnm,dists)
         EDM = EDM.tocsr()
     else:
         if sp.sparse.issparse(g_weighted):
@@ -379,24 +340,6 @@ def dist_to_nn(d, K):#, offset = 0):
     E[E > 0] = 1
     return E  # ,x
 
-"""
-def to_sparse_knn(D1, k):
-    D1 = D1.tocoo()
-    idr = np.argsort(D1.row)
-    D1.row[:] = D1.row[idr]
-    D1.col[:] = D1.col[idr]
-    D1.data[:] = D1.data[idr]
-
-    _, ind = np.unique(D1.row, return_index=True)
-    ind = np.append(ind, D1.data.size)
-    for i in range(ind.size - 1):
-        idx = np.argsort(D1.data[ind[i]:ind[i + 1]])
-        if idx.size > k:
-            idx = idx[:-k]
-            D1.data[np.arange(ind[i], ind[i + 1])[idx]] = 0
-    D1.eliminate_zeros()
-    return D1
-"""
 def to_sparse_knn(D1,k):
     for i in range(D1.shape[0]):
         x = D1.data[D1.indptr[i]:D1.indptr[i+1]]
@@ -406,6 +349,7 @@ def to_sparse_knn(D1,k):
         D1.data[D1.indptr[i]:D1.indptr[i+1]] = x
     D1.eliminate_zeros()
     return D1
+
 def gen_sparse_knn(knni, knnd, shape = None):
     if shape is None:
         shape = (knni.shape[0],knni.shape[0])
@@ -417,12 +361,3 @@ def gen_sparse_knn(knni, knnd, shape = None):
     D1=D1.tocsr()
     return D1
 
-def get_knn_ind_dist(nnm,dist):
-    x,y = nnm.nonzero();
-    k = int(nnm[0,:].sum())
-    knnd = dist[x,y].reshape((nnm.shape[0],k))
-    knni = y.reshape((nnm.shape[0],k))
-    i = np.argsort(knnd,axis=1)
-    knni = knni[x,i.flatten()].reshape(knni.shape)
-    knnd = knnd[x,i.flatten()].reshape(knnd.shape)
-    return knni,knnd
