@@ -936,10 +936,14 @@ class SAMGUI(object):
 
         log = widgets.Checkbox(indent=False,
                value=False,
-               description = 'Log colorbar',
+               description = 'Log cbar',
             layout={'width':'20%'}
         )
-
+        show_colorbar = widgets.Checkbox(indent=False,
+               value=False,
+               description = 'Show cbar',
+            layout={'width':'20%'}
+        )
         lann = widgets.Button(
             description='Annotate',
             tooltip = ('Enter the key of the \'obs\' annotation vector you wish to modify.'
@@ -1110,7 +1114,7 @@ class SAMGUI(object):
             widgets.HBox([dv,dvm]),
             widgets.HBox([irm,ism,sws]),
             widgets.HBox([us,usa,res]),
-            widgets.HBox([lann,anno_name,anno]),
+            widgets.HBox([lann,anno_name,anno,show_colorbar]),
             widgets.HBox([lgsm,gsm,avg]),
             widgets.HBox([lshg,shg,log]),
             widgets.HBox([lgenes,rgenes]),
@@ -1333,11 +1337,15 @@ class SAMGUI(object):
     def update_colors_expr(self,a,title):
         if self.cs_box.children[10].children[-1].value:
             a=np.log2(a+1)
+        if self.cs_box.children[8].children[-1].value:
+            showscale = True
+        else:
+            showscale = False
         self.gene_expressions[self.stab.selected_index] = a
 
         f1 = self.stab.children[self.stab.selected_index]
         f1.update_traces(marker = dict(color = a,colorscale='spectral',reversescale=True,
-                                       showscale=True,colorbar_ticks='outside',
+                                       showscale=showscale,colorbar_ticks='outside',
                                        colorbar_tickmode='auto',colorbar_title='',
                                        opacity=1))
 
