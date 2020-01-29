@@ -376,7 +376,8 @@ def convert_annotations(A):
 def calc_nnm(g_weighted,k,distance=None):
     if g_weighted.shape[0] > 8000:
         # only uses cosine
-        nnm, dists = nearest_neighbors_hnsw(g_weighted, n_neighbors=k)
+        nnm, dists = nearest_neighbors(g_weighted, n_neighbors=k,
+                                       metric=distance)
         EDM = gen_sparse_knn(nnm,dists)
         EDM = EDM.tocsr()
     else:
