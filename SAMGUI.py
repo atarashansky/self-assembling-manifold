@@ -940,7 +940,7 @@ class SAMGUI(object):
             layout={'width':'20%'}
         )
         show_colorbar = widgets.Checkbox(indent=False,
-               value=False,
+               value=True,
                description = 'Show cbar',
             layout={'width':'20%'}
         )
