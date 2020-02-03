@@ -1,5 +1,4 @@
 import numpy as np
-import hnswlib
 import scipy as sp
 import os
 import errno
@@ -56,7 +55,8 @@ def find_corr_genes(sam, input_gene):
     pw_corr = generate_correlation_map(D_avg.T.A,D_avg[:,input_gene].T.A)
     return all_gene_names[np.argsort(-pw_corr.flatten())]
 
-
+"""
+import hnswlib
 def nearest_neighbors_hnsw(x,ef=200,M=48,n_neighbors = 100):
     labels = np.arange(x.shape[0])
     p = hnswlib.Index(space = 'cosine', dim = x.shape[1])
@@ -67,7 +67,7 @@ def nearest_neighbors_hnsw(x,ef=200,M=48,n_neighbors = 100):
     dist = 1-dist
     dist[dist<0]=0
     return idx,dist
-
+"""
 if UMAP4:
     def nearest_neighbors(
         X,
