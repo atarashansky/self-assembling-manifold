@@ -383,7 +383,7 @@ class SAM(object):
                 self.adata_raw.obs_names = self.adata.obs_names
                 self.adata_raw.obs = self.adata.obs
 
-                if version.parse(anndata.__version__) >= version.parse("0.7rc1"):
+                if version.parse(str(anndata.__version__)) >= version.parse("0.7rc1"):
                     del self.adata.raw;
                 else:
                     self.adata.raw=None;
