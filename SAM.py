@@ -14,7 +14,7 @@ from packaging import version
 warnings.filterwarnings("ignore")
 
 
-__version__ = '0.6.16'
+__version__ = '0.6.17'
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.

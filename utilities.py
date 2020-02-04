@@ -20,7 +20,7 @@ except ImportError:
 INT32_MIN = np.iinfo(np.int32).min + 1
 INT32_MAX = np.iinfo(np.int32).max - 1
 
-__version__ = '0.6.16'
+__version__ = '0.6.17'
 
 
 def find_corr_genes(sam, input_gene):
