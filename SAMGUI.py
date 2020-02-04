@@ -96,11 +96,15 @@ class SAMGUI(object):
         self.selected_cells = [np.array(list(sam.adata.obs_names))]
         self.ds = [0]
         self.gene_expressions = [np.zeros(sam.adata.shape[0])]
-
-        self.preprocess_args = sam.preprocess_args.copy()
+        try:
+            self.preprocess_args = sam.adata.uns['preprocess_args'].copy()
+        except:
+            self.preprocess_args = {}
         self.preprocess_args_init = self.preprocess_args.copy()
-
-        self.run_args = sam.run_args.copy()
+        try:
+            self.run_args = sam.adata.uns['run_args'].copy()
+        except:
+            self.run_args = {}
         self.run_args_init = self.run_args.copy()
 
     def create_plot(self,i, title):
