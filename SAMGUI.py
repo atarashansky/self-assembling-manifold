@@ -251,7 +251,7 @@ class SAMGUI(object):
         pdata.on_click(self.preprocess_sam)
         """
         fgenes = widgets.Checkbox(
-            value=self.preprocess_args.get('filter_genes',True),
+            value=bool(self.preprocess_args.get('filter_genes',True)),
             description='Filter genes'
         )
         fgenes.observe(self.pp_filtergenes,names = 'value')
