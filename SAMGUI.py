@@ -87,7 +87,7 @@ class SAMGUI(object):
         self.active_labels = [np.zeros(self.selected[0].size,dtype='int')]
         self.dd_opts=[['']]
         try:
-            self.marker_genes = [np.array(list(sam.adata.var_names))[np.argsort(-sam.adata.var['weights'].get_values())]]
+            self.marker_genes = [np.array(list(sam.adata.var_names))[np.argsort(-sam.adata.var['weights'].values)]]
             self.marker_genes_tt = ['Genes ranked by SAM weights.']
         except KeyError:
             self.marker_genes = [np.array(list(sam.adata.var_names))]
@@ -698,7 +698,7 @@ class SAMGUI(object):
         self.run_args['weight_PCs'] = init
     def sam_weights(self,event):
         s = self.sams[self.stab.selected_index]
-        self.marker_genes[self.stab.selected_index] = np.array(list(s.adata.var_names[np.argsort(-s.adata.var['weights'].get_values())]))
+        self.marker_genes[self.stab.selected_index] = np.array(list(s.adata.var_names[np.argsort(-s.adata.var['weights'].values)]))
         self.marker_genes_tt[self.stab.selected_index] = 'Genes ranked by SAM weights.'
         self.cs_box.children[11].children[0].set_trait('tooltip',self.marker_genes_tt[self.stab.selected_index])
 
@@ -762,7 +762,7 @@ class SAMGUI(object):
             self.active_labels.append(np.zeros(sam_subcluster.adata.shape[0]))
             self.dd_opts.append([''])
             self.gene_expressions.append(np.zeros(sam_subcluster.adata.shape[0]))
-            self.marker_genes.append(np.array(list(sam_subcluster.adata.var_names))[np.argsort(-sam_subcluster.adata.var['weights'].get_values())])
+            self.marker_genes.append(np.array(list(sam_subcluster.adata.var_names))[np.argsort(-sam_subcluster.adata.var['weights'].values)])
             self.marker_genes_tt.append('Genes ranked by SAM weights.')
             self.ds.append(0)
             i = len(self.sams)-1
@@ -774,7 +774,7 @@ class SAMGUI(object):
             self.out.clear_output()
             with self.out:
                 sam.run(**self.run_args)
-            self.marker_genes[i] = np.array(list(sam.adata.var_names))[np.argsort(-sam.adata.var['weights'].get_values())]
+            self.marker_genes[i] = np.array(list(sam.adata.var_names))[np.argsort(-sam.adata.var['weights'].values)]
             self.marker_genes_tt[i] = 'Genes ranked by SAM weights.'
             execute=True
             self.current_sam=sam
@@ -1127,7 +1127,7 @@ class SAMGUI(object):
     def reset_view(self,event):
         i=self.stab.selected_index
         self.create_plot(i,self.stab.get_title(i))
-        self.marker_genes[i] = np.array(list(self.sams[i].adata.var_names))[np.argsort(-self.sams[i].adata.var['weights'].get_values())]
+        self.marker_genes[i] = np.array(list(self.sams[i].adata.var_names))[np.argsort(-self.sams[i].adata.var['weights'].values)]
         self.marker_genes_tt[i] = 'Genes ranked by SAM weights.'
         self.cs_box.children[11].children[0].set_trait('tooltip',self.marker_genes_tt[i])
 
@@ -1239,7 +1239,7 @@ class SAMGUI(object):
 
             if text!='' and text_name != '' and selected.sum()!=selected.size:
                 if text_name in list(s.adata.obs.keys()):
-                    a = s.adata.obs[text_name].get_values().copy().astype('<U100')
+                    a = s.get_labels(text_name).copy().astype('<U100')
                     a[np.in1d(x1,selected_cells)] = text
                     s.adata.obs[text_name] = pd.Categorical(a)
 
@@ -1329,7 +1329,7 @@ class SAMGUI(object):
     def display_annotation(self, event):
         key = self.cs_box.children[4].children[1].value
         if key != '':
-            labels = np.array(list(self.sams[self.stab.selected_index].adata.obs[key].get_values()))
+            labels = np.array(list(self.sams[self.stab.selected_index].get_labels(key)))
 
             self.active_labels[self.stab.selected_index] = labels
             self.update_colors_anno(labels)
