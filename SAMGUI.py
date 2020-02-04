@@ -500,7 +500,7 @@ class SAMGUI(object):
             value = '',
         )
         wpca = widgets.Checkbox(
-            value=bool(self.run_args.get('weight_PCs',True),)
+            value=bool(self.run_args.get('weight_PCs',True)),
             description='Weight PCs'
         )
         wpca.observe(self.weightpcs)
