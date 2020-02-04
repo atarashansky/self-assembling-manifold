@@ -725,7 +725,7 @@ class SAMGUI(object):
         init = self.run_args.get('projection','umap')
         proj.set_trait('value',init)
 
-        init = self.run_args.get('weight_PCs',True)
+        init = bool(self.run_args.get('weight_PCs',True))
         wpca.set_trait('value',init)
         self.run_args['weight_PCs'] = init
     def sam_weights(self,event):
