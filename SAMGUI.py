@@ -265,7 +265,7 @@ class SAMGUI(object):
 
         l1 = widgets.Label('Expr threshold:')
         expr_thr = widgets.FloatSlider(
-            value=self.preprocess_args.get('thresh',0.01),
+            value=float(self.preprocess_args.get('thresh',0.01)),
             min=0,
             max=0.1,
             step=0.005,
@@ -280,7 +280,7 @@ class SAMGUI(object):
 
         l2 = widgets.Label('Min expr:')
         min_expr = widgets.FloatSlider(
-            value=self.preprocess_args.get('min_expression',1),
+            value=float(self.preprocess_args.get('min_expression',1)),
             min=0,
             max=6.0,
             step=0.02,
@@ -294,6 +294,8 @@ class SAMGUI(object):
         min_expr.observe(self.me_update, names='value')
 
         init = self.preprocess_args.get('sum_norm','None')
+        if isinstance(init,np.ndarray):
+            init=init[0]
         if init is None:
             init = 'None'
         sumnorm = widgets.Dropdown(
@@ -306,6 +308,8 @@ class SAMGUI(object):
         sumnorm.observe(self.sumnorm_submit, 'value')
 
         init = self.preprocess_args.get('norm','log')
+        if isinstance(init,np.ndarray):
+            init=init[0]
         if init is None:
             init = 'None'
         norm = widgets.Dropdown(
@@ -450,25 +454,29 @@ class SAMGUI(object):
         expr_thr = self.pp_box.children[3].children[1] # expr_threshold
         min_expr = self.pp_box.children[4].children[1] # min_expr
 
-        init = self.preprocess_args.get('min_expression',1)
+        init = float(self.preprocess_args.get('min_expression',1))
         min_expr.set_trait('value',init)
 
-        init = self.preprocess_args.get('thresh',0.01)
+        init = float(self.preprocess_args.get('thresh',0.01))
         expr_thr.set_trait('value',init)
 
         init = self.preprocess_args.get('sum_norm','None')
+        if isinstance(init,np.ndarray):
+            init=init[0]
         if init is None:
             sumnorm.set_trait('value','None')
         else:
             sumnorm.set_trait('value',init)
 
         init = self.preprocess_args.get('norm','log')
+        if isinstance(init,np.ndarray):
+            init=init[0]
         if init is None:
             norm.set_trait('value','None')
         else:
             norm.set_trait('value',init)
 
-        init = self.preprocess_args.get('filter_genes',True)
+        init = bool(self.preprocess_args.get('filter_genes',True))
         fgenes.set_trait('value',True)
         self.preprocess_args['filter_genes']=init
 
@@ -479,7 +487,7 @@ class SAMGUI(object):
             self.preprocess_args['norm']=txt['new']
 
     def pp_filtergenes(self,event):
-        t = self.preprocess_args.get('filter_genes',True)
+        t = bool(self.preprocess_args.get('filter_genes',True))
         self.preprocess_args['filter_genes']=not t
 
     def preprocess_sam(self,event):
@@ -520,6 +528,8 @@ class SAMGUI(object):
             icon = ''
         )
         init = self.run_args.get('n_genes',3000)
+        if isinstance(init,np.ndarray):
+            init=init[0]
         if init is None:
             init = 3000
         ngenes = widgets.FloatSlider(
@@ -543,6 +553,8 @@ class SAMGUI(object):
             icon = ''
         )
         init = self.run_args.get('npcs',150)
+        if isinstance(init,np.ndarray):
+            init=init[0]
         if init is None:
             init = 150
         npcs = widgets.FloatSlider(
@@ -566,6 +578,8 @@ class SAMGUI(object):
             icon = ''
         )
         init = self.run_args.get('k',20)
+        if isinstance(init,np.ndarray):
+            init=init[0]
         if init is None:
             init = 20
         knn = widgets.FloatSlider(
@@ -592,6 +606,8 @@ class SAMGUI(object):
             icon = ''
         )
         init = self.run_args.get('num_norm_avg',50)
+        if isinstance(init,np.ndarray):
+            init=init[0]
         if init is None:
             init = 50
         nna = widgets.FloatSlider(
@@ -609,6 +625,8 @@ class SAMGUI(object):
         nna.observe(self.nna_update, names='value')
 
         init = self.run_args.get('preprocessing','Normalizer')
+        if isinstance(init,np.ndarray):
+            init=init[0]
         if init is None:
             init = 'None'
         norm = widgets.Dropdown(
@@ -621,6 +639,8 @@ class SAMGUI(object):
         norm.observe(self.rnorm_update,'value')
 
         init = self.run_args.get('distance','correlation')
+        if isinstance(init,np.ndarray):
+            init=init[0]
         if init is None:
             init = 'correlation'
         distance = widgets.Dropdown(
@@ -633,6 +653,8 @@ class SAMGUI(object):
         distance.observe(self.dist_update,'value')
 
         init = self.run_args.get('projection','umap')
+        if isinstance(init,np.ndarray):
+            init=init[0]
         if init is None:
             init = 'umap'
         proj = widgets.Dropdown(
