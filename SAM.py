@@ -430,7 +430,7 @@ class SAM(object):
         x.raw = self.adata_raw
 
         x.write_h5ad(fname, **kwargs)
-        if version.parse(anndata.__version__) >= version.parse("0.7rc1"):
+        if version.parse(str(anndata.__version__)) >= version.parse("0.7rc1"):
             del x.raw;
         else:
             x.raw=None;
