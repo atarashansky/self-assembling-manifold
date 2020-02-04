@@ -98,11 +98,17 @@ class SAMGUI(object):
         self.gene_expressions = [np.zeros(sam.adata.shape[0])]
         try:
             self.preprocess_args = sam.adata.uns['preprocess_args'].copy()
+            for i in range(list(self.preprocess_args.keys())):
+                if isinstance(i,np.ndarray):
+                    self.preprocess_args[i]=self.preprocess_args[i][0]
         except:
             self.preprocess_args = {}
         self.preprocess_args_init = self.preprocess_args.copy()
         try:
             self.run_args = sam.adata.uns['run_args'].copy()
+            for i in range(list(self.run_args.keys())):
+                if isinstance(i,np.ndarray):
+                    self.run_args[i]=self.run_args[i][0]
         except:
             self.run_args = {}
         self.run_args_init = self.run_args.copy()
