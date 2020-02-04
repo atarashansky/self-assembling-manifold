@@ -99,7 +99,7 @@ class SAMGUI(object):
         try:
             self.preprocess_args = sam.adata.uns['preprocess_args'].copy()
             for i in list(self.preprocess_args.keys()):
-                if isinstance(i,np.ndarray):
+                if isinstance(self.preprocess_args[i],np.ndarray):
                     self.preprocess_args[i]=self.preprocess_args[i][0]
         except:
             self.preprocess_args = {}
@@ -107,7 +107,7 @@ class SAMGUI(object):
         try:
             self.run_args = sam.adata.uns['run_args'].copy()
             for i in list(self.run_args.keys()):
-                if isinstance(i,np.ndarray):
+                if isinstance(self.run_args[i],np.ndarray):
                     self.run_args[i]=self.run_args[i][0]
         except:
             self.run_args = {}
