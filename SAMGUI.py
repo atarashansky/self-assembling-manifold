@@ -1427,12 +1427,16 @@ class SAMGUI(object):
             tickvals=list(idx)
             ticktext=lbls[tickvals]
 
+        if self.cs_box.children[8].children[-1].value:
+            showscale = True
+        else:
+            showscale = False
 
         f1 = self.stab.children[self.stab.selected_index]
         f1.update_traces(marker = dict(color = inv,colorscale=x,
                                        showscale=True,colorbar_ticks='outside',
                                        colorbar_tickmode='array',colorbar_title='',
-                                       colorbar_tickvals=tickvals,
+                                       colorbar_tickvals=tickvals,showscale=showscale,
                                        colorbar_ticktext=ticktext,
                                        opacity=1))
         self.stab.children[self.stab.selected_index].layout.title=title
