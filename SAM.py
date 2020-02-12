@@ -110,6 +110,8 @@ class SAM(object):
 
         self.run_args = {}
         self.preprocess_args = {}
+        self.adata.uns['preprocess_args'] = self.preprocess_args
+        self.adata.uns['run_args'] = self.run_args        
 
     def preprocess_data(self, div=1, downsample=0, sum_norm=None,
                         norm='log', min_expression=1, thresh=0.01,
