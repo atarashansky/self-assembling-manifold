@@ -990,7 +990,7 @@ class SAM(object):
 
         if preprocessing == 'Normalizer':
             Ds = D[:, gkeep]
-            if sp.issparse(Ds):
+            if sp.issparse(Ds) and not sparse_pca:
                   Ds=Ds.toarray()
 
             Ds = Normalizer().fit_transform(Ds)
@@ -1026,7 +1026,7 @@ class SAM(object):
             self.pca_obj = pca
         else:
             g_weighted, components = ut.sparse_pca(D_sub,npcs=min(
-                    npcs, min(D.shape)))
+                    npcs, min(D.shape)-1))
             if weight_PCs:
                 ev = g_weighted.var(0)
                 ev=ev/ev.max()
