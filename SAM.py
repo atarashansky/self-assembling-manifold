@@ -788,6 +788,7 @@ class SAM(object):
             npcs=None,
             n_genes=None,
             weight_PCs = True,
+            sparse_pca = False,
             proj_kwargs={}):
         """Runs the Self-Assembling Manifold algorithm.
 
@@ -831,6 +832,16 @@ class SAM(object):
             genes with large spatial dispersions from skewing the distribution
             of weights.
 
+        sparse_pca - bool, optional, default False
+            If True, uses an implementation of PCA that accepts sparse inputs.
+            This is worth setting True for large datasets, where memory
+            constraints start becoming noticeable.
+
+        weight_PCs - bool, optional, default True
+            Scale the principal components by their eigenvalues. If many
+            cell populations are expected, it is recommended to set this False
+            as the populations may be found on lesser-varying PCs.
+
         proj_kwargs - dict, optional, default {}
             A dictionary of keyword arguments to pass to the projection
             functions.
@@ -857,6 +868,7 @@ class SAM(object):
                 'n_genes':n_genes,
                 'weight_PCs':weight_PCs,
                 'proj_kwargs':proj_kwargs,
+                'sparse_pca':sparse_pca
                 }
 
         numcells = D.shape[0]
@@ -922,7 +934,8 @@ class SAM(object):
             old = new
 
             W, wPCA_data, EDM, = self.calculate_nnm(
-                D, W, n_genes, preprocessing, npcs, numcells, nnas, weight_PCs)
+                D, W, n_genes, preprocessing, npcs, numcells, nnas, weight_PCs,
+                sparse_pca)
             new = W
             err = ((new - old)**2).mean()**0.5
 
@@ -964,7 +977,8 @@ class SAM(object):
             npcs,
             numcells,
             num_norm_avg,
-            weight_PCs):
+            weight_PCs,
+            sparse_pca):
 
         k = self.run_args.get('k',20)
         distance = self.run_args.get('distance','correlation')
@@ -982,29 +996,45 @@ class SAM(object):
             Ds = Normalizer().fit_transform(Ds)
 
         elif preprocessing == 'StandardScaler':
-            Ds = D[:, gkeep]
-            if sp.issparse(Ds):
-                  Ds=Ds.toarray()
+            if not sparse_pca:
+                Ds = D[:, gkeep]
+                if sp.issparse(Ds):
+                      Ds=Ds.toarray()
 
-            Ds = StandardScaler(with_mean=True).fit_transform(Ds)
-            Ds[Ds > 10] = 10
-            Ds[Ds < -10] = -10
+                Ds = StandardScaler(with_mean=True).fit_transform(Ds)
+                Ds[Ds > 10] = 10
+                Ds[Ds < -10] = -10
+            else:
+                Ds = D[:, gkeep]
+                Ds = StandardScaler(with_mean=False).fit_transform(Ds)
 
         else:
             Ds = D[:, gkeep].toarray()
 
-        D_sub = Ds * (W[gkeep])
-
-        if numcells > 500:
-            g_weighted, pca = ut.weighted_PCA(D_sub, npcs=min(
-                npcs, min(D.shape)), do_weight=weight_PCs, solver='auto')
+        if sp.issparse(Ds):
+            D_sub = Ds.multiply(W[gkeep]).tocsr()
         else:
-            g_weighted, pca = ut.weighted_PCA(D_sub, npcs=min(
-                npcs, min(D.shape)), do_weight=weight_PCs, solver='full')
+            D_sub = Ds * (W[gkeep])
+
+        if not sparse_pca:
+            if numcells > 500:
+                g_weighted, pca = ut.weighted_PCA(D_sub, npcs=min(
+                    npcs, min(D.shape)), do_weight=weight_PCs, solver='auto')
+            else:
+                g_weighted, pca = ut.weighted_PCA(D_sub, npcs=min(
+                    npcs, min(D.shape)), do_weight=weight_PCs, solver='full')
+        else:
+            g_weighted, components = ut.sparse_pca(D_sub,npcs=min(
+                    npcs, min(D.shape)))
+            if weight_PCs:
+                ev = g_weighted.var(0)
+                ev=ev/ev.max()
+                g_weighted = g_weighted*(ev**0.5)
+
         if distance == 'euclidean':
             g_weighted = Normalizer().fit_transform(g_weighted)
 
-        self.pca_obj = pca
+        self.components = components
 
 
         edm = ut.calc_nnm(g_weighted,k,distance)

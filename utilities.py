@@ -68,6 +68,39 @@ def nearest_neighbors_hnsw(x,ef=200,M=48,n_neighbors = 100):
     dist[dist<0]=0
     return idx,dist
 """
+
+def sparse_pca(X,npcs,mu = None):
+    if mu is None:
+        mu = X.mean(0).A.flatten()[None,:]
+    mdot = mu.dot
+    mmat = mdot
+    mhdot = mu.T.dot
+    mhmat = mu.T.dot
+    Xdot = X.dot
+    Xmat = Xdot
+    XHdot = X.T.conj().dot
+    XHmat = X.T.conj().dot
+    ones = np.ones(X.shape[0])[None,:].dot
+    def matvec(x):
+        return Xdot(x) - mdot(x)
+    def matmat(x):
+        return Xmat(x) - mmat(x)
+    def rmatvec(x):
+        return XHdot(x) - mhdot(ones(x))
+    def rmatmat(x):
+        return XHmat(x) - mhmat(ones(x))
+    XL = sp.sparse.linalg.LinearOperator(matvec = matvec, dtype = X.dtype,
+                                         matmat = matmat,
+                                         shape = X.shape,
+                                        rmatvec = rmatvec, rmatmat = rmatmat)
+
+    u,s,v = sp.sparse.linalg.svds(XL,solver='arpack',k=npcs)
+    idx = np.argsort(-s)
+    S = np.diag(s[idx])
+    wpca = u[:,idx].dot(S)
+    cpca = v[idx,:]
+    return wpca,cpca
+
 if UMAP4:
     def nearest_neighbors(
         X,

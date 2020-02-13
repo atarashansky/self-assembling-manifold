@@ -31,6 +31,9 @@ The Self-Assembling-Manifold (SAM) algorithm.
 
  - `scanpy`
 
+## Changelog notes 0.6.17
+I added a `sparse_pca` argument to `sam.run`. Setting it to `True` will use an implementation of PCA that can accept sparse inputs, thus allowing us to not need to create a temporary dense copy of the data. This allows for improved scalability to massive datasets.
+
 ## Changelog notes 0.6.12
 I removed the `sam.save` and `sam.load` pickling functions because it is difficult to unpickle the AnnData objects if the AnnData version used changes. Now, I instead store the raw data in `sam.adata.raw` when saving using `sam.save_anndata`. The raw and filtered data can be loaded from the resulting file using `sam.load_data`.
 
