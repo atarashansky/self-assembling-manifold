@@ -14,7 +14,7 @@ setup(
     install_requires=[
         'numpy',
         'scipy',
-        'pandas',
+        'pandas>=1.0.0',
         'scikit-learn','packaging',
 	'numba',
 	'umap-learn', 'anndata>=0.7rc1'],
