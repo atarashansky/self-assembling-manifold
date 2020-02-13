@@ -407,40 +407,44 @@ class SAMGUI(object):
         return widgets.HBox([load,load_data],layout={'width':'500px'})
 
     def load_data(self,event):
-        if not self.SAM_LOADED:
-            path = self.SamPlot.children[1].children[0].children[1].value
-        else:
-            path = self.pp_box.children[5].children[1].value
+        try:
+            if not self.SAM_LOADED:
+                path = self.SamPlot.children[1].children[0].children[1].value
+            else:
+                path = self.pp_box.children[5].children[1].value
 
-        filetype = path.split('.')[-1]
-        if filetype == 'gz':
-            filetype = path.split('.')[-2]
+            filetype = path.split('.')[-1]
+            if filetype == 'gz':
+                filetype = path.split('.')[-2]
 
-        sam=SAM()
-        if filetype == 'h5ad' or filetype == 'csv':
-            sam.load_data(path)
-        elif filetype == 'p':
-            try:
-                sam.load(path)
-            except:
+            sam=SAM()
+            if filetype == 'h5ad' or filetype == 'csv':
                 sam.load_data(path)
-        else:
-            sam.load_data(path,sep='\t')
+            elif filetype == 'p':
+                try:
+                    sam.load(path)
+                except:
+                    sam.load_data(path)
+            else:
+                sam.load_data(path,sep='\t')
 
-        if not self.SAM_LOADED:
-            self.SamPlot.children[1].children[0].children[0].close()
-            self.SamPlot.children[1].children[0].children[1].close()
-            self.SamPlot.children[1].children[0].close()
-            self.SamPlot.children[1].close()
-            self.init_from_sam(sam)
-            self.SamPlot.children =[self.stab,self.tab]
-            self.tab.set_trait('selected_index',1)
-        else:
-            self.close_all_tabs()
-            self.ds[0].close()
-            self.ds[0] = 0
-            self.load_vars_from_sam(sam)
-        self.create_plot(0,'Full dataset')
+            if not self.SAM_LOADED:
+                self.SamPlot.children[1].children[0].children[0].close()
+                self.SamPlot.children[1].children[0].children[1].close()
+                self.SamPlot.children[1].children[0].close()
+                self.SamPlot.children[1].close()
+                self.init_from_sam(sam)
+                self.SamPlot.children =[self.stab,self.tab]
+                self.tab.set_trait('selected_index',1)
+            else:
+                self.close_all_tabs()
+                self.ds[0].close()
+                self.ds[0] = 0
+                self.load_vars_from_sam(sam)
+            self.create_plot(0,'Full dataset')
+        except FileNotFoundError:
+            0; #do nothing
+
 
     def me_update(self,val):
         self.preprocess_args['min_expression']=val['new']
@@ -1434,7 +1438,7 @@ class SAMGUI(object):
 
         f1 = self.stab.children[self.stab.selected_index]
         f1.update_traces(marker = dict(color = inv,colorscale=x,
-                                       showscale=True,colorbar_ticks='outside',
+                                       colorbar_ticks='outside',
                                        colorbar_tickmode='array',colorbar_title='',
                                        colorbar_tickvals=tickvals,showscale=showscale,
                                        colorbar_ticktext=ticktext,
