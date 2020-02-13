@@ -1023,6 +1023,7 @@ class SAM(object):
             else:
                 g_weighted, pca = ut.weighted_PCA(D_sub, npcs=min(
                     npcs, min(D.shape)), do_weight=weight_PCs, solver='full')
+            self.pca_obj = pca
         else:
             g_weighted, components = ut.sparse_pca(D_sub,npcs=min(
                     npcs, min(D.shape)))
@@ -1030,12 +1031,10 @@ class SAM(object):
                 ev = g_weighted.var(0)
                 ev=ev/ev.max()
                 g_weighted = g_weighted*(ev**0.5)
+            self.components = components
 
         if distance == 'euclidean':
             g_weighted = Normalizer().fit_transform(g_weighted)
-
-        self.components = components
-
 
         edm = ut.calc_nnm(g_weighted,k,distance)
         self.adata.uns['nnm']=edm
