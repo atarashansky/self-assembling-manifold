@@ -1240,8 +1240,16 @@ class SAMGUI(object):
 
                 #self.select_all(None)
                 self.update_colors_expr(a,title)
-            except IndexError:
-                0; # do nothing
+            except:
+                if self.cs_box.children[9].children[2].value:
+                    if not (gene in s.adata.var_names):
+                        with self.out:
+                            print('X_knn_avg does not exist. Either run'
+                                  ' sam.dispersion_ranking_NN() or uncheck'
+                                  ' `avg` in the control panel.')
+                elif not (gene in s.adata.var_names):
+                    print('Gene not found. Check your spelling and '
+                          'capitalization.')
 
     def get_similar_genes(self,txt):
         gene = txt.value
