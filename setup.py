@@ -1,8 +1,8 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='sam-algorithm',
-    version='0.6.17',
+    version='0.7.0',
     description='The Self-Assembling-Manifold algorithm',
     long_description="The Self-Assembling-Manifold algorithm for analyzing single-cell RNA sequencing data.",
     long_description_content_type='text/markdown',
@@ -10,11 +10,12 @@ setup(
     author='Alexander J. Tarashansky',
     author_email='tarashan@stanford.edu',
     keywords='scrnaseq analysis manifold reconstruction',
-    py_modules=["SAM", "utilities", "SAMGUI"],
+    python_requires='>=3.6',
+    #py_modules=["SAM", "utilities", "SAMGUI"],
     install_requires=[
         'numpy',
         'scipy',
-        'pandas>=1.0.0',
+        'pandas',
         'scikit-learn','packaging',
 	'numba',
 	'umap-learn', 'anndata>=0.7rc1'],
@@ -30,4 +31,7 @@ setup(
         'scanpy': [
             'scanpy'],	    
         },
+    packages=find_packages(),
+    include_package_data=True,
+    zip_safe=False
 )
