@@ -1248,8 +1248,9 @@ class SAMGUI(object):
                                   ' sam.dispersion_ranking_NN() or uncheck'
                                   ' `avg` in the control panel.')
                 elif not (gene in s.adata.var_names):
-                    print('Gene not found. Check your spelling and '
-                          'capitalization.')
+                    with self.out:
+                        print('Gene not found. Check your spelling and '
+                              'capitalization.')
 
     def get_similar_genes(self,txt):
         gene = txt.value
