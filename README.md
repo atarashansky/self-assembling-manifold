@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.com/atarashansky/self-assembling-manifold.svg?branch=master)](https://travis-ci.com/atarashansky/self-assembling-manifold)
 
-# self-assembling-manifold -- SAM version 0.6.17
+# self-assembling-manifold -- SAM version 0.7.0
 The Self-Assembling-Manifold (SAM) algorithm.
 
 ## Requirements
@@ -30,6 +30,15 @@ The Self-Assembling-Manifold (SAM) algorithm.
    - `cython`
 
  - `scanpy`
+
+## Changelog notes 0.7.0
+Converted SAM to have package structure as oppposed to global modules. Imports change as follows:
+
+```
+from samalg import SAM
+from samalg.gui import SAMGUI
+import samalg.utilities as ut
+```
 
 ## Changelog notes 0.6.17
 I added a `sparse_pca` argument to `sam.run`. Setting it to `True` will use an implementation of PCA that can accept sparse inputs, thus allowing us to not need to create a temporary dense copy of the data. This allows for improved scalability to massive datasets.
@@ -96,7 +105,7 @@ SAMGUI should now work in JupyterLab.
 The SAM GUI interface can be run in Jupyer notebooks with the following:
 
 ```
-from SAMGUI import SAMGUI
+from samalg.gui import SAMGUI
 sam_gui = SAMGUI(sam) # sam is your SAM object
 sam_gui.SamPlot
 ```
@@ -118,7 +127,7 @@ There are a number of different ways to load data into the SAM object.
 ## Using the SAM constructor
 ### Using preloaded scipy.sparse or numpy expression matrix, gene IDs, and cell IDs:
 ```
-from SAM import SAM #import SAM
+from samalg import SAM #import SAM
 sam=SAM(counts=(matrix,geneIDs,cellIDs))
 sam.preprocess_data() # log transforms and filters the data
 sam.run() #run with default parameters
@@ -126,7 +135,7 @@ sam.scatter()
 ```
 ### Using preloaded pandas.DataFrame (cells x genes):
 ```
-from SAM import SAM #import SAM
+from samalg import SAM #import SAM
 sam=SAM(counts=dataframe)
 sam.preprocess_data() # log transforms and filters the data
 sam.run() #run with default parameters
@@ -135,7 +144,7 @@ sam.scatter()
 
 ### Using an existing AnnData object:
 ```
-from SAM import SAM #import SAM
+from samalg import SAM #import SAM
 sam=SAM(counts=adata)
 sam.preprocess_data() # log transforms and filters the data
 sam.run() #run with default parameters
@@ -145,7 +154,7 @@ sam.scatter()
 ## Using the `load_data` function
 ### Loading data from a tabular file (e.g. csv or txt):
 ```
-from SAM import SAM #import SAM
+from samalg import SAM #import SAM
 sam=SAM() #initialize SAM object
 sam.load_data('/path/to/expression_data_file.csv') #load data from a csv file
 #sam.load_data('/path/to/expression_data_file.txt', sep='\t') #load data from a txt file with tab delimiters
@@ -159,7 +168,7 @@ sam.scatter()
 If loading tabular data (e.g. from a `csv`), `load_data` by default saves the sparse data structure to a `h5ad` file in the same location as the tabular file for faster loading in subsequent analyses. This file can be loaded as:
 
 ```
-from SAM import SAM #import SAM
+from samalg import SAM #import SAM
 sam=SAM() #initialize SAM object
 sam.load_data('/path/to/h5ad_file.h5ad') #load data from a h5ad file
 sam.preprocess_data() # log transforms and filters the data
