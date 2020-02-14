@@ -6,7 +6,7 @@ date:       10/01/2018
 content:    Tests for SAM.
 """
 # Modules
-from SAM import SAM
+from samalg import SAM
 
 
 # Script
