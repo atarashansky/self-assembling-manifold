@@ -1,5 +1,8 @@
 [![Build Status](https://travis-ci.com/atarashansky/self-assembling-manifold.svg?branch=master)](https://travis-ci.com/atarashansky/self-assembling-manifold)
 
+# self-assembling-manifold -- SAM version 0.7.0
+The Self-Assembling-Manifold (SAM) algorithm.
+
 # SAM is now on Scanpy!
 https://github.com/theislab/scanpy
 
@@ -10,9 +13,6 @@ import scanpy.external as sce
 #returns the SAM object if `inplace=True` and (SAM,AnnData) otherwise
 sam = sce.tl.sam(adata, inplace=True) #adata is your AnnData object
 ```
-
-# self-assembling-manifold -- SAM version 0.7.0
-The Self-Assembling-Manifold (SAM) algorithm.
 
 ## Requirements
  - `numpy`
