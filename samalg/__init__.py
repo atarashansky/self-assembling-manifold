@@ -1506,6 +1506,9 @@ class SAM(object):
         else:
             lblsu = np.unique(clusters)
 
+        if 'X_knn_avg' not in list(self.adata.layers.keys()):
+            print('Performing kNN-averaging...')
+            self.dispersion_ranking_NN();
         l = self.adata.layers['X_knn_avg']
         m = l.mean(0).A.flatten()
         cells = np.array(list(self.adata.obs_names))
