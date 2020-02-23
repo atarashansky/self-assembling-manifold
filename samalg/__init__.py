@@ -11,12 +11,13 @@ import sklearn.manifold as man
 import sklearn.utils.sparsefuncs as sf
 from packaging import version
 
-__version__ = '0.7.0'
+__version__ = "0.7.0"
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
 Email: <tarashan@stanford.edu>
 """
+
 
 class SAM(object):
     """Self-Assembling Manifolds single-cell RNA sequencing analysis tool.
@@ -58,7 +59,7 @@ class SAM(object):
 
     """
 
-    def __init__(self, counts=None, inplace = False):
+    def __init__(self, counts=None, inplace=False):
 
         if isinstance(counts, tuple) or isinstance(counts, list):
             raw_data, all_gene_names, all_cell_names = counts
@@ -66,9 +67,10 @@ class SAM(object):
                 raw_data = sp.csr_matrix(raw_data)
 
             self.adata_raw = AnnData(
-                X=raw_data, obs={
-                    'obs_names': all_cell_names}, var={
-                    'var_names': all_gene_names})
+                X=raw_data,
+                obs={"obs_names": all_cell_names},
+                var={"var_names": all_gene_names},
+            )
 
         elif isinstance(counts, pd.DataFrame):
             raw_data = sp.csr_matrix(counts.values)
@@ -76,25 +78,27 @@ class SAM(object):
             all_cell_names = np.array(list(counts.index.values))
 
             self.adata_raw = AnnData(
-                X=raw_data, obs={
-                    'obs_names': all_cell_names}, var={
-                    'var_names': all_gene_names})
+                X=raw_data,
+                obs={"obs_names": all_cell_names},
+                var={"var_names": all_gene_names},
+            )
 
         elif isinstance(counts, AnnData):
-            all_cell_names=np.array(list(counts.obs_names))
-            all_gene_names=np.array(list(counts.var_names))
+            all_cell_names = np.array(list(counts.obs_names))
+            all_gene_names = np.array(list(counts.var_names))
             self.adata_raw = counts
 
         elif counts is not None:
             raise Exception(
-                "\'counts\' must be either a tuple/list of "
+                "'counts' must be either a tuple/list of "
                 "(data,gene IDs,cell IDs) or a Pandas DataFrame of"
-                "cells x genes")
+                "cells x genes"
+            )
 
-        if(counts is not None):
-            if(np.unique(all_gene_names).size != all_gene_names.size):
+        if counts is not None:
+            if np.unique(all_gene_names).size != all_gene_names.size:
                 self.adata_raw.var_names_make_unique()
-            if(np.unique(all_cell_names).size != all_cell_names.size):
+            if np.unique(all_cell_names).size != all_cell_names.size:
                 self.adata_raw.obs_names_make_unique()
 
             if inplace:
@@ -102,15 +106,22 @@ class SAM(object):
             else:
                 self.adata = self.adata_raw.copy()
 
-            if 'X_disp' not in self.adata_raw.layers.keys():
-                  self.adata.layers['X_disp'] = self.adata.X
+            if "X_disp" not in self.adata_raw.layers.keys():
+                self.adata.layers["X_disp"] = self.adata.X
 
         self.run_args = {}
         self.preprocess_args = {}
 
-    def preprocess_data(self, div=1, downsample=0, sum_norm=None,
-                        norm='log', min_expression=1, thresh=0.01,
-                        filter_genes=True):
+    def preprocess_data(
+        self,
+        div=1,
+        downsample=0,
+        sum_norm=None,
+        norm="log",
+        min_expression=1,
+        thresh=0.01,
+        filter_genes=True,
+    ):
         """Log-normalizes and filters the expression data.
 
         Parameters
@@ -155,83 +166,82 @@ class SAM(object):
         """
 
         self.preprocess_args = {
-                'div':div,
-                'sum_norm':sum_norm,
-                'norm':norm,
-                'min_expression':min_expression,
-                'thresh':thresh,
-                'filter_genes':filter_genes
-                }
+            "div": div,
+            "sum_norm": sum_norm,
+            "norm": norm,
+            "min_expression": min_expression,
+            "thresh": thresh,
+            "filter_genes": filter_genes,
+        }
 
         # load data
         try:
-            D= self.adata_raw.X
+            D = self.adata_raw.X
             self.adata = self.adata_raw.copy()
 
         except AttributeError:
-            print('No data loaded')
+            print("No data loaded")
 
         D = self.adata.X
-        if isinstance(D,np.ndarray):
-            D=sp.csr_matrix(D,dtype='float32')
+        if isinstance(D, np.ndarray):
+            D = sp.csr_matrix(D, dtype="float32")
         else:
-            if str(D.dtype) != 'float32':
-                D=D.astype('float32')
+            if str(D.dtype) != "float32":
+                D = D.astype("float32")
             D.sort_indices()
 
-        if(D.getformat() == 'csc'):
-            D=D.tocsr();
+        if D.getformat() == "csc":
+            D = D.tocsr()
 
         # sum-normalize
-        if (sum_norm == 'cell_median' and norm != 'multinomial'):
+        if sum_norm == "cell_median" and norm != "multinomial":
             s = D.sum(1).A.flatten()
             sum_norm = np.median(s)
-            D = D.multiply(1 / s[:,None] * sum_norm).tocsr()
-        elif (sum_norm == 'gene_median' and norm != 'multinomial'):
+            D = D.multiply(1 / s[:, None] * sum_norm).tocsr()
+        elif sum_norm == "gene_median" and norm != "multinomial":
             s = D.sum(0).A.flatten()
-            sum_norm = np.median(s[s>0])
-            s[s==0]=1
-            D = D.multiply(1 / s[None,:] * sum_norm).tocsr()
+            sum_norm = np.median(s[s > 0])
+            s[s == 0] = 1
+            D = D.multiply(1 / s[None, :] * sum_norm).tocsr()
 
-        elif sum_norm is not None and norm != 'multinomial':
-            D = D.multiply(1 / D.sum(1).A.flatten()[:,
-                    None] * sum_norm).tocsr()
+        elif sum_norm is not None and norm != "multinomial":
+            D = D.multiply(1 / D.sum(1).A.flatten()[:, None] * sum_norm).tocsr()
 
         # normalize
         self.adata.X = D
         if norm is None:
-            D.data[:] = (D.data / div)
+            D.data[:] = D.data / div
 
-        elif(norm.lower() == 'log'):
+        elif norm.lower() == "log":
             D.data[:] = np.log2(D.data / div + 1)
 
-        elif(norm.lower() == 'ftt'):
-            D.data[:] = np.sqrt(D.data/div) + np.sqrt(D.data/div+1) - 1
+        elif norm.lower() == "ftt":
+            D.data[:] = np.sqrt(D.data / div) + np.sqrt(D.data / div + 1) - 1
 
-        elif(norm.lower() == 'asin'):
-            D.data[:] = np.arcsinh(D.data/div)
-        elif norm.lower() == 'multinomial':
-            ni = D.sum(1).A.flatten() #cells
-            pj = (D.sum(0) / D.sum()).A.flatten() #genes
+        elif norm.lower() == "asin":
+            D.data[:] = np.arcsinh(D.data / div)
+        elif norm.lower() == "multinomial":
+            ni = D.sum(1).A.flatten()  # cells
+            pj = (D.sum(0) / D.sum()).A.flatten()  # genes
             col = D.indices
-            row=[]
+            row = []
             for i in range(D.shape[0]):
-                row.append(i*np.ones(D.indptr[i+1]-D.indptr[i]))
-            row = np.concatenate(row).astype('int32')
-            mu = sp.coo_matrix((ni[row]*pj[col], (row,col))).tocsr()
+                row.append(i * np.ones(D.indptr[i + 1] - D.indptr[i]))
+            row = np.concatenate(row).astype("int32")
+            mu = sp.coo_matrix((ni[row] * pj[col], (row, col))).tocsr()
             mu2 = mu.copy()
-            mu2.data[:]=mu2.data**2
-            mu2 = mu2.multiply(1/ni[:,None])
+            mu2.data[:] = mu2.data ** 2
+            mu2 = mu2.multiply(1 / ni[:, None])
             mu.data[:] = (D.data - mu.data) / np.sqrt(mu.data - mu2.data)
 
             self.adata.X = mu
             if sum_norm is None:
                 sum_norm = np.median(ni)
-            D = D.multiply(1 / ni[:,None] * sum_norm).tocsr()
+            D = D.multiply(1 / ni[:, None] * sum_norm).tocsr()
             D.data[:] = np.log2(D.data / div + 1)
 
         else:
-            D.data[:] = (D.data / div)
+            D.data[:] = D.data / div
 
         # zero-out low-expressed genes
         idx = np.where(D.data <= min_expression)[0]
@@ -239,55 +249,55 @@ class SAM(object):
 
         # filter genes
         idx_genes = np.arange(D.shape[1])
-        if(filter_genes):
+        if filter_genes:
             a, ct = np.unique(D.indices, return_counts=True)
             c = np.zeros(D.shape[1])
             c[a] = ct
 
-            keep = np.where(np.logical_and(c / D.shape[0] > thresh,
-                                           c / D.shape[0] <= 1 - thresh))[0]
+            keep = np.where(
+                np.logical_and(c / D.shape[0] > thresh, c / D.shape[0] <= 1 - thresh)
+            )[0]
 
             idx_genes = np.array(list(set(keep) & set(idx_genes)))
 
-
-        mask_genes = np.zeros(D.shape[1], dtype='bool')
+        mask_genes = np.zeros(D.shape[1], dtype="bool")
         mask_genes[idx_genes] = True
 
         self.adata.X = self.adata.X.multiply(mask_genes[None, :]).tocsr()
         self.adata.X.eliminate_zeros()
-        self.adata.var['mask_genes']=mask_genes
+        self.adata.var["mask_genes"] = mask_genes
 
-        if norm == 'multinomial':
-            self.adata.layers['X_disp'] = D.multiply(mask_genes[None, :]).tocsr()
-            self.adata.layers['X_disp'].eliminate_zeros()
+        if norm == "multinomial":
+            self.adata.layers["X_disp"] = D.multiply(mask_genes[None, :]).tocsr()
+            self.adata.layers["X_disp"].eliminate_zeros()
         else:
-            self.adata.layers['X_disp'] = self.adata.X
-        self.adata.uns['preprocess_args'] = self.preprocess_args
+            self.adata.layers["X_disp"] = self.adata.X
+        self.adata.uns["preprocess_args"] = self.preprocess_args
 
-    def get_avg_obsm(self,keym,keyl):
+    def get_avg_obsm(self, keym, keyl):
         clu = self.get_labels_un(keyl)
         cl = self.get_labels(keyl)
         x = []
         for i in range(clu.size):
-            x.append(self.adata.obsm[keym][cl==clu[i]].mean(0))
+            x.append(self.adata.obsm[keym][cl == clu[i]].mean(0))
         x = np.vstack(x)
         return x
 
-    def get_labels_un(self,key):
+    def get_labels_un(self, key):
         if key not in list(self.adata.obs.keys()):
-            print('Key does not exist in `obs`.')
+            print("Key does not exist in `obs`.")
             return np.array([])
         else:
             return np.array(list(np.unique(self.adata.obs[key])))
 
-    def get_labels(self,key):
+    def get_labels(self, key):
         if key not in list(self.adata.obs.keys()):
-            print('Key does not exist in `obs`.')
+            print("Key does not exist in `obs`.")
             return np.array([])
         else:
             return np.array(list(self.adata.obs[key]))
 
-    def get_cells(self,label,key):
+    def get_cells(self, label, key):
         """Retrieves cells of a particular annotation.
 
         Parameters
@@ -297,14 +307,22 @@ class SAM(object):
 
         """
         if key not in list(self.adata.obs.keys()):
-            print('Key does not exist in `obs`.')
+            print("Key does not exist in `obs`.")
             return np.array([])
         else:
-            return np.array(list(self.adata.obs_names[
-                            np.array(list(self.adata.obs[key]))==label]))
+            return np.array(
+                list(self.adata.obs_names[np.array(list(self.adata.obs[key])) == label])
+            )
 
-    def load_data(self, filename, transpose=True,
-                  save_sparse_file=None, sep=',', calculate_avg=True,**kwargs):
+    def load_data(
+        self,
+        filename,
+        transpose=True,
+        save_sparse_file=None,
+        sep=",",
+        calculate_avg=True,
+        **kwargs
+    ):
         """Loads the specified data file. The file can be a table of
         read counts (i.e. '.csv' or '.txt'), with genes as rows and cells
         as columns by default. The file can also be a pickle file (output from
@@ -338,20 +356,19 @@ class SAM(object):
             expressions.
 
         """
-        if filename.split('.')[-1] == 'p':
-            raw_data, all_cell_names, all_gene_names = (
-                pickle.load(open(filename, 'rb')))
+        if filename.split(".")[-1] == "p":
+            raw_data, all_cell_names, all_gene_names = pickle.load(open(filename, "rb"))
 
-            if(transpose):
+            if transpose:
                 raw_data = raw_data.T
-                if raw_data.getformat()=='csc':
+                if raw_data.getformat() == "csc":
                     print("Converting sparse matrix to csr format...")
-                    raw_data=raw_data.tocsr()
+                    raw_data = raw_data.tocsr()
 
             save_sparse_file = None
-        elif filename.split('.')[-1] != 'h5ad':
+        elif filename.split(".")[-1] != "h5ad":
             df = pd.read_csv(filename, sep=sep, index_col=0, **kwargs)
-            if(transpose):
+            if transpose:
                 dataset = df.T
             else:
                 dataset = df
@@ -360,17 +377,20 @@ class SAM(object):
             all_cell_names = np.array(list(dataset.index.values))
             all_gene_names = np.array(list(dataset.columns.values))
 
-        if filename.split('.')[-1] != 'h5ad':
-            self.adata_raw = AnnData(X=raw_data, obs={'obs_names': all_cell_names},
-                                     var={'var_names': all_gene_names})
+        if filename.split(".")[-1] != "h5ad":
+            self.adata_raw = AnnData(
+                X=raw_data,
+                obs={"obs_names": all_cell_names},
+                var={"var_names": all_gene_names},
+            )
 
-            if(np.unique(all_gene_names).size != all_gene_names.size):
+            if np.unique(all_gene_names).size != all_gene_names.size:
                 self.adata_raw.var_names_make_unique()
-            if(np.unique(all_cell_names).size != all_cell_names.size):
+            if np.unique(all_cell_names).size != all_cell_names.size:
                 self.adata_raw.obs_names_make_unique()
 
             self.adata = self.adata_raw.copy()
-            self.adata.layers['X_disp'] = raw_data
+            self.adata.layers["X_disp"] = raw_data
 
         else:
             self.adata = anndata.read_h5ad(filename, **kwargs)
@@ -381,27 +401,28 @@ class SAM(object):
                 self.adata_raw.obs = self.adata.obs
 
                 if version.parse(str(anndata.__version__)) >= version.parse("0.7rc1"):
-                    del self.adata.raw;
+                    del self.adata.raw
                 else:
-                    self.adata.raw=None;
+                    self.adata.raw = None
 
-                if ('X_knn_avg' not in self.adata.layers.keys()
-                    and 'neighbors' in self.adata.uns.keys() and
-                    calculate_avg):
-                    self.dispersion_ranking_NN();
+                if (
+                    "X_knn_avg" not in self.adata.layers.keys()
+                    and "neighbors" in self.adata.uns.keys()
+                    and calculate_avg
+                ):
+                    self.dispersion_ranking_NN()
             else:
                 self.adata_raw = self.adata
 
-            if 'X_disp' not in list(self.adata.layers.keys()):
-                self.adata.layers['X_disp'] = self.adata.X
+            if "X_disp" not in list(self.adata.layers.keys()):
+                self.adata.layers["X_disp"] = self.adata.X
             save_sparse_file = None
 
         if save_sparse_file is not None:
-            if(save_sparse_file.split('.')[-1] == 'p'):
+            if save_sparse_file.split(".")[-1] == "p":
                 self.save_sparse_data(save_sparse_file)
-            elif(save_sparse_file.split('.')[-1] == 'h5ad'):
+            elif save_sparse_file.split(".")[-1] == "h5ad":
                 self.save_anndata(save_sparse_file)
-
 
     def save_anndata(self, fname, save_knn=False, **kwargs):
         """Saves `adata_raw` to a .h5ad file (AnnData's native file format).
@@ -419,25 +440,25 @@ class SAM(object):
         """
         if not save_knn:
             try:
-                Xknn = self.adata.layers['X_knn_avg']
-                del self.adata.layers['X_knn_avg']
+                Xknn = self.adata.layers["X_knn_avg"]
+                del self.adata.layers["X_knn_avg"]
             except:
-                0;
+                0
         x = self.adata
         x.raw = self.adata_raw
 
         x.write_h5ad(fname, **kwargs)
         if version.parse(str(anndata.__version__)) >= version.parse("0.7rc1"):
-            del x.raw;
+            del x.raw
         else:
-            x.raw=None;
+            x.raw = None
 
         try:
-            self.adata.layers['X_knn_avg'] = Xknn
+            self.adata.layers["X_knn_avg"] = Xknn
         except:
-            0;
+            0
 
-    def load_var_annotations(self, aname, sep=',', key_added = 'annotations'):
+    def load_var_annotations(self, aname, sep=",", key_added="annotations"):
         """Loads gene annotations.
 
         Loads the gene annotations into .adata_raw.var and .adata.var. The keys
@@ -456,16 +477,16 @@ class SAM(object):
             pandas.DataFrame.
 
         """
-        if isinstance(aname,pd.DataFrame):
-            ann = aname;
+        if isinstance(aname, pd.DataFrame):
+            ann = aname
         else:
-            ann = pd.read_csv(aname,sep=sep,index_col=0)
+            ann = pd.read_csv(aname, sep=sep, index_col=0)
 
         for i in range(ann.shape[1]):
             self.adata_raw.var[ann.columns[i]] = ann[ann.columns[i]]
             self.adata.var[ann.columns[i]] = ann[ann.columns[i]]
 
-    def load_obs_annotations(self, aname, sep=','):
+    def load_obs_annotations(self, aname, sep=","):
         """Loads cell annotations.
 
         Loads the cell annotations into .adata_raw.obs and .adata.obs. The keys
@@ -484,17 +505,27 @@ class SAM(object):
             pandas.DataFrame.
 
         """
-        if isinstance(aname,pd.DataFrame):
-            ann = aname;
+        if isinstance(aname, pd.DataFrame):
+            ann = aname
         else:
-            ann = pd.read_csv(aname,sep=sep,index_col=0)
+            ann = pd.read_csv(aname, sep=sep, index_col=0)
 
         for i in range(ann.shape[1]):
             self.adata_raw.obs[ann.columns[i]] = ann[ann.columns[i]]
             self.adata.obs[ann.columns[i]] = ann[ann.columns[i]]
 
-    def scatter(self, projection=None, c=None, cmap='rainbow', linewidth=0.0,
-                edgecolor='k', axes=None, colorbar=True, s=10, **kwargs):
+    def scatter(
+        self,
+        projection=None,
+        c=None,
+        cmap="rainbow",
+        linewidth=0.0,
+        edgecolor="k",
+        axes=None,
+        colorbar=True,
+        s=10,
+        **kwargs
+    ):
 
         """Display a scatter plot.
         Displays a scatter plot using the SAM projection or another input
@@ -520,33 +551,42 @@ class SAM(object):
 
         try:
             import matplotlib.pyplot as plt
-            if(isinstance(projection, str)):
+
+            if isinstance(projection, str):
                 try:
                     dt = self.adata.obsm[projection]
                 except KeyError:
-                    print('Please create a projection first using run_umap or'
-                          'run_tsne')
+                    print(
+                        "Please create a projection first using run_umap or" "run_tsne"
+                    )
 
-            elif(projection is None):
+            elif projection is None:
                 try:
-                    dt = self.adata.obsm['X_umap']
+                    dt = self.adata.obsm["X_umap"]
                 except KeyError:
                     try:
-                        dt = self.adata.obsm['X_tsne']
+                        dt = self.adata.obsm["X_tsne"]
                     except KeyError:
-                        print("Please create either a t-SNE or UMAP projection"
-                              "first.")
+                        print(
+                            "Please create either a t-SNE or UMAP projection" "first."
+                        )
                         return
             else:
                 dt = projection
 
-            if(axes is None):
+            if axes is None:
                 plt.figure()
                 axes = plt.gca()
 
-            if(c is None):
-                axes.scatter(dt[:, 0], dt[:, 1], s=s,
-                            linewidth=linewidth, edgecolor=edgecolor, **kwargs)
+            if c is None:
+                axes.scatter(
+                    dt[:, 0],
+                    dt[:, 1],
+                    s=s,
+                    linewidth=linewidth,
+                    edgecolor=edgecolor,
+                    **kwargs
+                )
             else:
 
                 if isinstance(c, str):
@@ -555,16 +595,23 @@ class SAM(object):
                     except KeyError:
                         0  # do nothing
 
-                if((isinstance(c[0], str) or isinstance(c[0], np.str_)) and
-                   (isinstance(c, np.ndarray) or isinstance(c, list))):
+                if (isinstance(c[0], str) or isinstance(c[0], np.str_)) and (
+                    isinstance(c, np.ndarray) or isinstance(c, list)
+                ):
                     i = ut.convert_annotations(c)
                     ui, ai = np.unique(i, return_index=True)
-                    cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
-                                       linewidth=linewidth,
-                                       edgecolor=edgecolor,
-                                       **kwargs)
+                    cax = axes.scatter(
+                        dt[:, 0],
+                        dt[:, 1],
+                        c=i,
+                        cmap=cmap,
+                        s=s,
+                        linewidth=linewidth,
+                        edgecolor=edgecolor,
+                        **kwargs
+                    )
 
-                    if(colorbar):
+                    if colorbar:
                         cbar = plt.colorbar(cax, ax=axes, ticks=ui)
                         cbar.ax.set_yticklabels(c[ai])
                 else:
@@ -572,12 +619,18 @@ class SAM(object):
                         colorbar = False
                     i = c
 
-                    cax = axes.scatter(dt[:,0], dt[:,1], c=i, cmap=cmap, s=s,
-                                       linewidth=linewidth,
-                                       edgecolor=edgecolor,
-                                       **kwargs)
+                    cax = axes.scatter(
+                        dt[:, 0],
+                        dt[:, 1],
+                        c=i,
+                        cmap=cmap,
+                        s=s,
+                        linewidth=linewidth,
+                        edgecolor=edgecolor,
+                        **kwargs
+                    )
 
-                    if(colorbar):
+                    if colorbar:
                         plt.colorbar(cax, ax=axes)
             return axes
         except ImportError:
@@ -604,53 +657,54 @@ class SAM(object):
         all_gene_names = np.array(list(self.adata.var_names))
         cell_names = np.array(list(self.adata.obs_names))
         all_cell_names = np.array(list(self.adata_raw.obs_names))
-        idx2 = np.where(np.in1d(all_cell_names,cell_names))[0]
+        idx2 = np.where(np.in1d(all_cell_names, cell_names))[0]
         idx = np.where(all_gene_names == gene)[0]
         name = gene
-        if(idx.size == 0):
+        if idx.size == 0:
             print(
                 "Gene note found in the filtered dataset. Note that genes "
-                "are case sensitive.")
+                "are case sensitive."
+            )
             return
 
-        if(avg):
-            a = self.adata.layers['X_knn_avg'][:, idx].toarray().flatten()
+        if avg:
+            a = self.adata.layers["X_knn_avg"][:, idx].toarray().flatten()
             if a.sum() == 0:
-                a = self.adata_raw.X[:,idx].toarray().flatten()[idx2]
+                a = self.adata_raw.X[:, idx].toarray().flatten()[idx2]
                 try:
-                    norm = self.preprocess_args['norm']
+                    norm = self.preprocess_args["norm"]
                 except KeyError:
-                    norm = 'log'
+                    norm = "log"
                 if norm is not None:
-                    if(norm.lower() == 'log'):
+                    if norm.lower() == "log":
                         a = np.log2(a + 1)
 
-                    elif(norm.lower() == 'ftt'):
-                        a = np.sqrt(a) + np.sqrt(a+1)
-                    elif(norm.lower() == 'asin'):
+                    elif norm.lower() == "ftt":
+                        a = np.sqrt(a) + np.sqrt(a + 1)
+                    elif norm.lower() == "asin":
                         a = np.arcsinh(a)
         else:
-            a = self.adata_raw.X[:,idx].toarray().flatten()[idx2]
+            a = self.adata_raw.X[:, idx].toarray().flatten()[idx2]
             try:
-                norm = self.preprocess_args['norm']
+                norm = self.preprocess_args["norm"]
             except KeyError:
-                norm = 'log'
+                norm = "log"
 
             if norm is not None:
-                if(norm.lower() == 'log'):
+                if norm.lower() == "log":
                     a = np.log2(a + 1)
 
-                elif(norm.lower() == 'ftt'):
-                    a = np.sqrt(a) + np.sqrt(a+1)
-                elif(norm.lower() == 'asin'):
+                elif norm.lower() == "ftt":
+                    a = np.sqrt(a) + np.sqrt(a + 1)
+                elif norm.lower() == "asin":
                     a = np.arcsinh(a)
 
-        axes = self.scatter(c=a, axes = axes, **kwargs)
+        axes = self.scatter(c=a, axes=axes, **kwargs)
         axes.set_title(name)
 
         return axes, a
 
-    def dispersion_ranking_NN(self, nnm = None, num_norm_avg=50):
+    def dispersion_ranking_NN(self, nnm=None, num_norm_avg=50):
         """Computes the spatial dispersion factors for each gene.
 
         Parameters
@@ -670,35 +724,35 @@ class SAM(object):
         weights - ndarray, float
             The vector of gene weights.
         """
-        if (nnm is None):
-            nnm = self.adata.uns['neighbors']['connectivities']
+        if nnm is None:
+            nnm = self.adata.uns["neighbors"]["connectivities"]
 
-        D_avg = (nnm.multiply(1/nnm.sum(1).A)).dot(self.adata.layers['X_disp'])
+        D_avg = (nnm.multiply(1 / nnm.sum(1).A)).dot(self.adata.layers["X_disp"])
 
-        self.adata.layers['X_knn_avg'] = D_avg
+        self.adata.layers["X_knn_avg"] = D_avg
 
         if sp.issparse(D_avg):
-              mu, var = sf.mean_variance_axis(D_avg, axis=0)
+            mu, var = sf.mean_variance_axis(D_avg, axis=0)
         else:
-              mu=D_avg.mean(0)
-              var=D_avg.var(0)
+            mu = D_avg.mean(0)
+            var = D_avg.var(0)
 
         dispersions = np.zeros(var.size)
         dispersions[mu > 0] = var[mu > 0] / mu[mu > 0]
 
-        self.adata.var['spatial_dispersions'] = dispersions.copy()
+        self.adata.var["spatial_dispersions"] = dispersions.copy()
 
         ma = np.sort(dispersions)[-num_norm_avg:].mean()
         dispersions[dispersions >= ma] = ma
 
-        weights = ((dispersions / dispersions.max())**0.5).flatten()
+        weights = ((dispersions / dispersions.max()) ** 0.5).flatten()
 
-        self.adata.var['weights'] = weights
+        self.adata.var["weights"] = weights
 
         all_gene_names = np.array(list(self.adata.var_names))
         indices = np.argsort(-weights)
         ranked_genes = all_gene_names[indices]
-        self.adata.uns['ranked_genes'] = ranked_genes
+        self.adata.uns["ranked_genes"] = ranked_genes
 
         return weights
 
@@ -741,7 +795,7 @@ class SAM(object):
         self.regression_pcs = pc
 
         gene_names = np.array(list(self.adata.var_names))
-        if(genes is not None):
+        if genes is not None:
             idx = np.where(np.in1d(gene_names, genes))[0]
             sx = pca.components_[:, idx]
             x = np.abs(sx).mean(1)
@@ -765,28 +819,32 @@ class SAM(object):
         ind = np.array(ind).flatten()
         try:
             y = self.adata.X.toarray() - self.regression_pcs[:, ind].dot(
-                self.regression_pca.components_[ind, :] * self.adata.var[
-                                                            'weights'].values)
+                self.regression_pca.components_[ind, :]
+                * self.adata.var["weights"].values
+            )
         except BaseException:
             y = self.adata.X.toarray() - self.regression_pcs[:, ind].dot(
-                self.regression_pca.components_[ind, :])
+                self.regression_pca.components_[ind, :]
+            )
 
         self.adata.X = sp.csr_matrix(y)
 
-    def run(self,
-            max_iter=10,
-            verbose=True,
-            projection='umap',
-            stopping_condition=5e-3,
-            num_norm_avg=50,
-            k=20,
-            distance='correlation',
-            preprocessing='Normalizer',
-            npcs=None,
-            n_genes=None,
-            weight_PCs = True,
-            sparse_pca = False,
-            proj_kwargs={}):
+    def run(
+        self,
+        max_iter=10,
+        verbose=True,
+        projection="umap",
+        stopping_condition=5e-3,
+        num_norm_avg=50,
+        k=20,
+        distance="correlation",
+        preprocessing="Normalizer",
+        npcs=None,
+        n_genes=None,
+        weight_PCs=True,
+        sparse_pca=False,
+        proj_kwargs={},
+    ):
         """Runs the Self-Assembling Manifold algorithm.
 
         Parameters
@@ -844,29 +902,31 @@ class SAM(object):
             functions.
         """
         D = self.adata.X
-        if(k < 5):
+        if k < 5:
             k = 5
-        if(k > D.shape[0] - 1):
+        if k > D.shape[0] - 1:
             k = D.shape[0] - 2
 
-        if preprocessing not in ['StandardScaler','Normalizer',None,'None']:
-            raise ValueError('preprocessing must be \'StandardScaler\', \'Normalizer\', or None')
+        if preprocessing not in ["StandardScaler", "Normalizer", None, "None"]:
+            raise ValueError(
+                "preprocessing must be 'StandardScaler', 'Normalizer', or None"
+            )
 
         self.run_args = {
-                'max_iter':max_iter,
-                'verbose':verbose,
-                'projection':projection,
-                'stopping_condition':stopping_condition,
-                'num_norm_avg':num_norm_avg,
-                'k':k,
-                'distance':distance,
-                'preprocessing':preprocessing,
-                'npcs':npcs,
-                'n_genes':n_genes,
-                'weight_PCs':weight_PCs,
-                'proj_kwargs':proj_kwargs,
-                'sparse_pca':sparse_pca
-                }
+            "max_iter": max_iter,
+            "verbose": verbose,
+            "projection": projection,
+            "stopping_condition": stopping_condition,
+            "num_norm_avg": num_norm_avg,
+            "k": k,
+            "distance": distance,
+            "preprocessing": preprocessing,
+            "npcs": npcs,
+            "n_genes": n_genes,
+            "weight_PCs": weight_PCs,
+            "proj_kwargs": proj_kwargs,
+            "sparse_pca": sparse_pca,
+        }
 
         numcells = D.shape[0]
 
@@ -881,8 +941,8 @@ class SAM(object):
             elif n_genes > 8000:
                 n_genes = 8000
 
-        n_genes = min(n_genes, (D.sum(0)>0).sum())
-        #npcs = None
+        n_genes = min(n_genes, (D.sum(0) > 0).sum())
+        # npcs = None
         if npcs is None and numcells > 3000:
             npcs = 150
         elif npcs is None and numcells > 2000:
@@ -894,109 +954,119 @@ class SAM(object):
 
         tinit = time.time()
 
-        edm = sp.coo_matrix((numcells, numcells), dtype='i').tolil()
+        edm = sp.coo_matrix((numcells, numcells), dtype="i").tolil()
         nums = np.arange(edm.shape[1])
-        RINDS = np.random.randint(
-            0, numcells, (k - 1) * numcells).reshape((numcells,(k - 1)))
+        RINDS = np.random.randint(0, numcells, (k - 1) * numcells).reshape(
+            (numcells, (k - 1))
+        )
         RINDS = np.hstack((nums[:, None], RINDS))
 
-        edm[np.tile(np.arange(RINDS.shape[0])[:, None],
-                    (1, RINDS.shape[1])).flatten(), RINDS.flatten()] = 1
+        edm[
+            np.tile(np.arange(RINDS.shape[0])[:, None], (1, RINDS.shape[1])).flatten(),
+            RINDS.flatten(),
+        ] = 1
         edm = edm.tocsr()
 
         if verbose:
-            print('RUNNING SAM')
+            print("RUNNING SAM")
 
-        W = self.dispersion_ranking_NN(
-            edm, num_norm_avg=1)
+        W = self.dispersion_ranking_NN(edm, num_norm_avg=1)
 
         old = np.zeros(W.size)
         new = W
 
         i = 0
-        err = ((new - old)**2).mean()**0.5
+        err = ((new - old) ** 2).mean() ** 0.5
 
         if max_iter < 5:
             max_iter = 5
 
         nnas = num_norm_avg
 
-        while (i < max_iter and err > stopping_condition):
+        while i < max_iter and err > stopping_condition:
 
             conv = err
-            if(verbose):
-                print('Iteration: ' + str(i) + ', Convergence: ' + str(conv))
+            if verbose:
+                print("Iteration: " + str(i) + ", Convergence: " + str(conv))
 
             i += 1
             old = new
 
             W, wPCA_data, EDM, = self.calculate_nnm(
-                D, W, n_genes, preprocessing, npcs, numcells, nnas, weight_PCs,
-                sparse_pca)
+                D,
+                W,
+                n_genes,
+                preprocessing,
+                npcs,
+                numcells,
+                nnas,
+                weight_PCs,
+                sparse_pca,
+            )
             new = W
-            err = ((new - old)**2).mean()**0.5
+            err = ((new - old) ** 2).mean() ** 0.5
 
         all_gene_names = np.array(list(self.adata.var_names))
         indices = np.argsort(-W)
         ranked_genes = all_gene_names[indices]
 
-        self.adata.uns['ranked_genes'] = ranked_genes
+        self.adata.uns["ranked_genes"] = ranked_genes
 
+        self.adata.obsm["X_pca"] = wPCA_data
+        self.adata.uns["neighbors"] = {}
+        self.adata.uns["neighbors"]["connectivities"] = EDM
 
-        self.adata.obsm['X_pca'] = wPCA_data
-        self.adata.uns['neighbors'] = {}
-        self.adata.uns['neighbors']['connectivities'] = EDM
-
-        if(projection == 'tsne'):
+        if projection == "tsne":
             if verbose:
-                print('Computing the t-SNE embedding...')
+                print("Computing the t-SNE embedding...")
             self.run_tsne(**proj_kwargs)
-        elif(projection == 'umap'):
+        elif projection == "umap":
             if verbose:
-                print('Computing the UMAP embedding...')
+                print("Computing the UMAP embedding...")
             self.run_umap(**proj_kwargs)
-        elif(projection == 'diff_umap'):
+        elif projection == "diff_umap":
             if verbose:
-                print('Computing the diffusion UMAP embedding...')
+                print("Computing the diffusion UMAP embedding...")
             self.run_diff_umap(**proj_kwargs)
 
-        self.adata.uns['run_args'] = self.run_args
+        self.adata.uns["run_args"] = self.run_args
         elapsed = time.time() - tinit
         if verbose:
-            print('Elapsed time: ' + str(elapsed) + ' seconds')
+            print("Elapsed time: " + str(elapsed) + " seconds")
 
     def calculate_nnm(
-            self,
-            D,
-            W,
-            n_genes,
-            preprocessing,
-            npcs,
-            numcells,
-            num_norm_avg,
-            weight_PCs,
-            sparse_pca):
+        self,
+        D,
+        W,
+        n_genes,
+        preprocessing,
+        npcs,
+        numcells,
+        num_norm_avg,
+        weight_PCs,
+        sparse_pca,
+    ):
 
-        k = self.run_args.get('k',20)
-        distance = self.run_args.get('distance','correlation')
+        k = self.run_args.get("k", 20)
+        distance = self.run_args.get("distance", "correlation")
 
-        if(n_genes is None):
+        if n_genes is None:
             gkeep = np.arange(W.size)
         else:
             gkeep = np.sort(np.argsort(-W)[:n_genes])
 
-        if preprocessing == 'Normalizer':
+        if preprocessing == "Normalizer":
             Ds = D[:, gkeep]
             if sp.issparse(Ds) and not sparse_pca:
-                  Ds=Ds.toarray()
+                Ds = Ds.toarray()
 
             Ds = Normalizer().fit_transform(Ds)
 
-        elif preprocessing == 'StandardScaler':
+        elif preprocessing == "StandardScaler":
             if not sparse_pca:
                 Ds = D[:, gkeep]
                 if sp.issparse(Ds):
-                      Ds=Ds.toarray()
+                    Ds = Ds.toarray()
 
                 Ds = StandardScaler(with_mean=True).fit_transform(Ds)
                 Ds[Ds > 10] = 10
@@ -1015,54 +1085,62 @@ class SAM(object):
 
         if not sparse_pca:
             if numcells > 500:
-                g_weighted, pca = ut.weighted_PCA(D_sub, npcs=min(
-                    npcs, min(D.shape)), do_weight=weight_PCs, solver='auto')
+                g_weighted, pca = ut.weighted_PCA(
+                    D_sub,
+                    npcs=min(npcs, min(D.shape)),
+                    do_weight=weight_PCs,
+                    solver="auto",
+                )
             else:
-                g_weighted, pca = ut.weighted_PCA(D_sub, npcs=min(
-                    npcs, min(D.shape)), do_weight=weight_PCs, solver='full')
+                g_weighted, pca = ut.weighted_PCA(
+                    D_sub,
+                    npcs=min(npcs, min(D.shape)),
+                    do_weight=weight_PCs,
+                    solver="full",
+                )
             self.pca_obj = pca
         else:
-            g_weighted, components = ut.sparse_pca(D_sub,npcs=min(
-                    npcs, min(D.shape)-1))
+            g_weighted, components = ut.sparse_pca(
+                D_sub, npcs=min(npcs, min(D.shape) - 1)
+            )
             if weight_PCs:
                 ev = g_weighted.var(0)
-                ev=ev/ev.max()
-                g_weighted = g_weighted*(ev**0.5)
+                ev = ev / ev.max()
+                g_weighted = g_weighted * (ev ** 0.5)
             self.components = components
 
-        if distance == 'euclidean':
+        if distance == "euclidean":
             g_weighted = Normalizer().fit_transform(g_weighted)
 
-        edm = ut.calc_nnm(g_weighted,k,distance)
-        self.adata.uns['nnm']=edm
+        edm = ut.calc_nnm(g_weighted, k, distance)
+        self.adata.uns["nnm"] = edm
         EDM = edm.copy()
-        EDM.data[:]=1
-        W = self.dispersion_ranking_NN(
-            EDM, num_norm_avg=num_norm_avg)
+        EDM.data[:] = 1
+        W = self.dispersion_ranking_NN(EDM, num_norm_avg=num_norm_avg)
 
-        self.X_processed = (D_sub,
-                              np.array(list(self.adata.var_names[gkeep])))
+        self.X_processed = (D_sub, np.array(list(self.adata.var_names[gkeep])))
 
         return W, g_weighted, EDM
 
-    def run_tsne(self, X=None, metric='correlation', **kwargs):
+    def run_tsne(self, X=None, metric="correlation", **kwargs):
         """Wrapper for sklearn's t-SNE implementation.
 
         See sklearn for the t-SNE documentation. All arguments are the same
         with the exception that 'metric' is set to 'correlation' by default.
         """
-        if(X is not None):
+        if X is not None:
             dt = man.TSNE(metric=metric, **kwargs).fit_transform(X)
             return dt
 
         else:
-            distance = self.run_args.get('distance','correlation')
-            dt = man.TSNE(metric=distance,
-                          **kwargs).fit_transform(self.adata.obsm['X_pca'])
+            distance = self.run_args.get("distance", "correlation")
+            dt = man.TSNE(metric=distance, **kwargs).fit_transform(
+                self.adata.obsm["X_pca"]
+            )
             tsne2d = dt
-            self.adata.obsm['X_tsne'] = tsne2d
+            self.adata.obsm["X_tsne"] = tsne2d
 
-    def run_umap(self, X='X_pca', metric=None, **kwargs):
+    def run_umap(self, X="X_pca", metric=None, **kwargs):
         """Wrapper for umap-learn.
 
         See https://github.com/lmcinnes/umap sklearn for the documentation
@@ -1072,89 +1150,99 @@ class SAM(object):
         import umap as umap
 
         if metric is None:
-            metric = self.run_args.get('distance','correlation')
-
+            metric = self.run_args.get("distance", "correlation")
 
         if type(X) is str:
-            if X == '':
+            if X == "":
                 X = self.adata.X
             else:
                 X = self.adata.obsm[X]
-            #print(X.shape)
+            # print(X.shape)
             umap_obj = umap.UMAP(metric=metric, **kwargs)
             umap2d = umap_obj.fit_transform(X)
-            self.adata.obsm['X_umap'] = umap2d
+            self.adata.obsm["X_umap"] = umap2d
             self.umap_obj = umap_obj
         else:
             umap_obj = umap.UMAP(metric=metric, **kwargs)
             dt = umap_obj.fit_transform(X)
-            return dt,umap_obj
+            return dt, umap_obj
 
-    def run_diff_umap(self,use_rep='X_pca', metric='euclidean', n_comps=15,
-                      method='gauss', **kwargs):
+    def run_diff_umap(
+        self, use_rep="X_pca", metric="euclidean", n_comps=15, method="gauss", **kwargs
+    ):
         """
         Experimental -- running UMAP on the diffusion components. Requires scanpy.
         """
         import scanpy.api as sc
-        k = self.run_args.get('k',20)
-        distance = self.run_args.get('distance','correlation')
-        sc.pp.neighbors(self.adata,use_rep=use_rep,n_neighbors=k,
-                                       metric=distance,method=method)
+
+        k = self.run_args.get("k", 20)
+        distance = self.run_args.get("distance", "correlation")
+        sc.pp.neighbors(
+            self.adata, use_rep=use_rep, n_neighbors=k, metric=distance, method=method
+        )
         sc.tl.diffmap(self.adata, n_comps=n_comps)
-        sc.pp.neighbors(self.adata,use_rep='X_diffmap',n_neighbors=k,
-                        metric='euclidean',method=method)
+        sc.pp.neighbors(
+            self.adata,
+            use_rep="X_diffmap",
+            n_neighbors=k,
+            metric="euclidean",
+            method=method,
+        )
 
-        if 'X_umap' in self.adata.obsm.keys():
-                temp = self.adata.obsm['X_umap'].copy()
+        if "X_umap" in self.adata.obsm.keys():
+            temp = self.adata.obsm["X_umap"].copy()
 
-        sc.tl.umap(self.adata,min_dist=0.1,copy=False)
-        temp2 = self.adata.obsm['X_umap']
-        self.adata.obsm['X_umap']=temp
-        self.adata.obsm['X_diff_umap'] = temp2
+        sc.tl.umap(self.adata, min_dist=0.1, copy=False)
+        temp2 = self.adata.obsm["X_umap"]
+        self.adata.obsm["X_umap"] = temp
+        self.adata.obsm["X_diff_umap"] = temp2
 
-    def run_diff_map(self,use_rep='X_pca', metric='euclidean', n_comps=15,
-                     method = 'gauss', **kwargs):
+    def run_diff_map(
+        self, use_rep="X_pca", metric="euclidean", n_comps=15, method="gauss", **kwargs
+    ):
         import scanpy.api as sc
-        k = self.run_args.get('k',20)
-        distance = self.run_args.get('distance','correlation')
-        sc.pp.neighbors(self.adata,use_rep=use_rep,n_neighbors=k,
-                                       metric=distance,method=method)
-        sc.tl.diffmap(self.adata, n_comps=n_comps+1)
-        self.adata.obsm['X_diffmap'] = self.adata.obsm['X_diffmap'][:,1:]
 
-    def density_clustering(self, X=None, eps=1, metric='euclidean', **kwargs):
+        k = self.run_args.get("k", 20)
+        distance = self.run_args.get("distance", "correlation")
+        sc.pp.neighbors(
+            self.adata, use_rep=use_rep, n_neighbors=k, metric=distance, method=method
+        )
+        sc.tl.diffmap(self.adata, n_comps=n_comps + 1)
+        self.adata.obsm["X_diffmap"] = self.adata.obsm["X_diffmap"][:, 1:]
+
+    def density_clustering(self, X=None, eps=1, metric="euclidean", **kwargs):
         from sklearn.cluster import DBSCAN
 
         if X is None:
-            X = self.adata.obsm['X_umap']
+            X = self.adata.obsm["X_umap"]
             save = True
         else:
             save = False
 
         cl = DBSCAN(eps=eps, metric=metric, **kwargs).fit_predict(X)
-        k = self.run_args.get('k',20)
+        k = self.run_args.get("k", 20)
         idx0 = np.where(cl != -1)[0]
         idx1 = np.where(cl == -1)[0]
         if idx1.size > 0 and idx0.size > 0:
             xcmap = ut.generate_euclidean_map(X[idx0, :], X[idx1, :])
             knn = np.argsort(xcmap.T, axis=1)[:, :k]
             nnm = np.zeros(xcmap.shape).T
-            nnm[np.tile(np.arange(knn.shape[0])[:, None],
-                        (1, knn.shape[1])).flatten(),
-                knn.flatten()] = 1
+            nnm[
+                np.tile(np.arange(knn.shape[0])[:, None], (1, knn.shape[1])).flatten(),
+                knn.flatten(),
+            ] = 1
             nnmc = np.zeros((nnm.shape[0], cl.max() + 1))
             for i in range(cl.max() + 1):
                 nnmc[:, i] = nnm[:, cl[idx0] == i].sum(1)
 
             cl[idx1] = np.argmax(nnmc, axis=1)
 
-
         if save:
-            self.adata.obs['dbscan_clusters'] = pd.Categorical(cl)
+            self.adata.obs["dbscan_clusters"] = pd.Categorical(cl)
         else:
             return cl
 
-    def clustering(self, X=None, param=None, method='leiden'):
+    def clustering(self, X=None, param=None, method="leiden"):
         """A wrapper for clustering the SAM output using various clustering
         algorithms
 
@@ -1187,39 +1275,39 @@ class SAM(object):
             If X is None, cluster assignments are saved in '.adata.obs' with
             key name equal to method + '_clusters'. Otherwise, they are returned.
         """
-        if method == 'leiden':
+        if method == "leiden":
             if param is None:
-                param = 1;
-            cl = self.leiden_clustering(X=X,res=param,method = 'modularity')
-        elif method == 'leiden_sig':
+                param = 1
+            cl = self.leiden_clustering(X=X, res=param, method="modularity")
+        elif method == "leiden_sig":
             if param is None:
-                param = 1;
-            cl = self.leiden_clustering(X=X,res=param,method = 'significance')
-        elif method == 'louvain':
+                param = 1
+            cl = self.leiden_clustering(X=X, res=param, method="significance")
+        elif method == "louvain":
             if param is None:
-                param = 1;
-            cl = self.louvain_clustering(X=X,res=param,method = 'modularity')
-        elif method == 'louvain_sig':
+                param = 1
+            cl = self.louvain_clustering(X=X, res=param, method="modularity")
+        elif method == "louvain_sig":
             if param is None:
-                param = 1;
-            cl = self.louvain_clustering(X=X,res=param,method = 'significance')
-        elif method == 'kmeans':
+                param = 1
+            cl = self.louvain_clustering(X=X, res=param, method="significance")
+        elif method == "kmeans":
             if param is None:
-                param = 6;
-            cl = self.kmeans_clustering(param,X=X)
-        elif method == 'hdbscan':
+                param = 6
+            cl = self.kmeans_clustering(param, X=X)
+        elif method == "hdbscan":
             if param is None:
-                param = 25;
-            cl = self.hdbknn_clustering(npcs = param)
-        elif method == 'dbscan':
+                param = 25
+            cl = self.hdbknn_clustering(npcs=param)
+        elif method == "dbscan":
             if param is None:
-                param = 0.5;
+                param = 0.5
             cl = self.density_clustering(eps=param)
         else:
-            cl=None;
+            cl = None
         return cl
 
-    def louvain_clustering(self, X=None, res=1, method='modularity'):
+    def louvain_clustering(self, X=None, res=1, method="modularity"):
         """Runs Louvain clustering using the vtraag implementation. Assumes
         that 'louvain' optional dependency is installed.
 
@@ -1236,7 +1324,7 @@ class SAM(object):
         """
 
         if X is None:
-            X = self.adata.uns['neighbors']['connectivities']
+            X = self.adata.uns["neighbors"]["connectivities"]
             save = True
         else:
             if not sp.isspmatrix_csr(X):
@@ -1255,23 +1343,26 @@ class SAM(object):
         g.add_vertices(adjacency.shape[0])
         g.add_edges(list(zip(sources, targets)))
         try:
-            g.es['weight'] = weights
+            g.es["weight"] = weights
         except BaseException:
             pass
 
-        if method == 'significance':
+        if method == "significance":
             cl = louvain.find_partition(g, louvain.SignificanceVertexPartition)
         else:
             cl = louvain.find_partition(
-                g,
-                louvain.RBConfigurationVertexPartition,
-                resolution_parameter=res)
+                g, louvain.RBConfigurationVertexPartition, resolution_parameter=res
+            )
 
         if save:
-            if method == 'modularity':
-                self.adata.obs['louvain_clusters'] = pd.Categorical(np.array(cl.membership))
-            elif method == 'significance':
-                self.adata.obs['louvain_sig_clusters'] = pd.Categorical(np.array(cl.membership))
+            if method == "modularity":
+                self.adata.obs["louvain_clusters"] = pd.Categorical(
+                    np.array(cl.membership)
+                )
+            elif method == "significance":
+                self.adata.obs["louvain_sig_clusters"] = pd.Categorical(
+                    np.array(cl.membership)
+                )
         else:
             return np.array(cl.membership)
 
@@ -1290,21 +1381,21 @@ class SAM(object):
         """
 
         from sklearn.cluster import KMeans
+
         if X is None:
             D_sub = self.X_processed[0]
-            X = ut.weighted_PCA(D_sub,npcs=npcs,do_weight=False)[0]
+            X = ut.weighted_PCA(D_sub, npcs=npcs, do_weight=False)[0]
 
-        km = KMeans(n_clusters = numc)
+        km = KMeans(n_clusters=numc)
         cl = km.fit_predict(Normalizer().fit_transform(X))
 
-        self.adata.obs['kmeans_clusters'] = pd.Categorical(cl)
-        return cl,km
+        self.adata.obs["kmeans_clusters"] = pd.Categorical(cl)
+        return cl, km
 
-
-    def leiden_clustering(self, X=None, res = 1, method = 'modularity'):
+    def leiden_clustering(self, X=None, res=1, method="modularity"):
 
         if X is None:
-            X = self.adata.uns['neighbors']['connectivities']
+            X = self.adata.uns["neighbors"]["connectivities"]
             save = True
         else:
             if not sp.isspmatrix_csr(X):
@@ -1323,41 +1414,45 @@ class SAM(object):
         g.add_vertices(adjacency.shape[0])
         g.add_edges(list(zip(sources, targets)))
         try:
-            g.es['weight'] = weights
+            g.es["weight"] = weights
         except BaseException:
             pass
 
-        if method == 'significance':
+        if method == "significance":
             cl = leidenalg.find_partition(g, leidenalg.SignificanceVertexPartition)
         else:
             cl = leidenalg.find_partition(
-                g,
-                leidenalg.RBConfigurationVertexPartition,
-                resolution_parameter=res)
+                g, leidenalg.RBConfigurationVertexPartition, resolution_parameter=res
+            )
 
         if save:
-            if method == 'modularity':
-                self.adata.obs['leiden_clusters'] = pd.Categorical(np.array(cl.membership))
-            elif method == 'significance':
-                self.adata.obs['leiden_sig_clusters'] = pd.Categorical(np.array(cl.membership))
+            if method == "modularity":
+                self.adata.obs["leiden_clusters"] = pd.Categorical(
+                    np.array(cl.membership)
+                )
+            elif method == "significance":
+                self.adata.obs["leiden_sig_clusters"] = pd.Categorical(
+                    np.array(cl.membership)
+                )
         else:
             return np.array(cl.membership)
 
-    def hdbknn_clustering(self, X=None, k=None, npcs = 15, **kwargs):
+    def hdbknn_clustering(self, X=None, k=None, npcs=15, **kwargs):
         import hdbscan
+
         if X is None:
-            #X = self.adata.obsm['X_pca']
+            # X = self.adata.obsm['X_pca']
             D = self.X_processed[0]
-            X = ut.weighted_PCA(D,npcs=npcs,do_weight=False)[0]
+            X = ut.weighted_PCA(D, npcs=npcs, do_weight=False)[0]
             X = Normalizer().fit_transform(X)
             save = True
         else:
             save = False
 
         if k is None:
-            k = self.run_args.get('k',20)
+            k = self.run_args.get("k", 20)
 
-        hdb = hdbscan.HDBSCAN(metric='euclidean', **kwargs)
+        hdb = hdbscan.HDBSCAN(metric="euclidean", **kwargs)
 
         cl = hdb.fit_predict(X)
 
@@ -1367,9 +1462,10 @@ class SAM(object):
             xcmap = ut.generate_euclidean_map(X[idx0, :], X[idx1, :])
             knn = np.argsort(xcmap.T, axis=1)[:, :k]
             nnm = np.zeros(xcmap.shape).T
-            nnm[np.tile(np.arange(knn.shape[0])[:, None],
-                        (1, knn.shape[1])).flatten(),
-                knn.flatten()] = 1
+            nnm[
+                np.tile(np.arange(knn.shape[0])[:, None], (1, knn.shape[1])).flatten(),
+                knn.flatten(),
+            ] = 1
             nnmc = np.zeros((nnm.shape[0], cl.max() + 1))
             for i in range(cl.max() + 1):
                 nnmc[:, i] = nnm[:, cl[idx0] == i].sum(1)
@@ -1377,12 +1473,11 @@ class SAM(object):
             cl[idx1] = np.argmax(nnmc, axis=1)
 
         if save:
-            self.adata.obs['hdbscan_clusters'] = pd.Categorical(cl)
+            self.adata.obs["hdbscan_clusters"] = pd.Categorical(cl)
         else:
             return cl
 
-    def identify_marker_genes_rf(self, labels=None, clusters=None,
-                                 n_genes=4000):
+    def identify_marker_genes_rf(self, labels=None, clusters=None, n_genes=4000):
         """
         Ranks marker genes for each cluster using a random forest
         classification approach.
@@ -1412,13 +1507,15 @@ class SAM(object):
         dictionary of marker scores for each cluster)
         """
 
-        if(labels is None):
+        if labels is None:
             try:
                 keys = np.array(list(self.adata.obs_keys()))
-                lbls = self.get_labels(ut.search_string(keys,'_clusters')[0][0])
+                lbls = self.get_labels(ut.search_string(keys, "_clusters")[0][0])
             except KeyError:
-                print("Please generate cluster labels first or set the "
-                      "'labels' keyword argument.")
+                print(
+                    "Please generate cluster labels first or set the "
+                    "'labels' keyword argument."
+                )
                 return
         elif isinstance(labels, str):
             lbls = self.get_labels(labels)
@@ -1434,34 +1531,34 @@ class SAM(object):
         else:
             lblsu = np.unique(clusters)
 
-        indices = np.argsort(-self.adata.var['weights'].values)
-        X = self.adata.layers['X_disp'][:, indices[:n_genes]].toarray()
+        indices = np.argsort(-self.adata.var["weights"].values)
+        X = self.adata.layers["X_disp"][:, indices[:n_genes]].toarray()
         for K in range(lblsu.size):
-            #print(K)
+            # print(K)
             y = np.zeros(lbls.size)
 
             y[lbls == lblsu[K]] = 1
 
-            clf = RandomForestClassifier(n_estimators=100, max_depth=None,
-                                         random_state=0)
+            clf = RandomForestClassifier(
+                n_estimators=100, max_depth=None, random_state=0
+            )
 
             clf.fit(X, y)
 
             idx = np.argsort(-clf.feature_importances_)
 
-            markers[lblsu[K]] = self.adata.uns['ranked_genes'][idx]
+            markers[lblsu[K]] = self.adata.uns["ranked_genes"][idx]
             markers_scores[lblsu[K]] = clf.feature_importances_[idx]
 
         if clusters is None:
-            if isinstance(labels , str):
-                self.adata.uns['rf_'+labels] = markers
+            if isinstance(labels, str):
+                self.adata.uns["rf_" + labels] = markers
             else:
-                self.adata.uns['rf'] = markers
+                self.adata.uns["rf"] = markers
 
         return markers, markers_scores
 
-    def identify_marker_genes_sw(self, labels=None, clusters=None,
-                                 inplace = True):
+    def identify_marker_genes_sw(self, labels=None, clusters=None, inplace=True):
         """
         Ranks marker genes for each cluster using partial sums of spatial
         dispersions.
@@ -1486,19 +1583,20 @@ class SAM(object):
 
         """
 
-        if(labels is None):
+        if labels is None:
             try:
                 keys = np.array(list(self.adata.obs_keys()))
-                lbls = self.get_labels(ut.search_string(keys,'_clusters')[0][0])
+                lbls = self.get_labels(ut.search_string(keys, "_clusters")[0][0])
             except KeyError:
-                print("Please generate cluster labels first or set the "
-                      "'labels' keyword argument.")
+                print(
+                    "Please generate cluster labels first or set the "
+                    "'labels' keyword argument."
+                )
                 return
         elif isinstance(labels, str):
             lbls = self.get_labels(labels)
         else:
             lbls = labels
-
 
         markers_scores = []
         if clusters == None:
@@ -1506,32 +1604,31 @@ class SAM(object):
         else:
             lblsu = np.unique(clusters)
 
-        if 'X_knn_avg' not in list(self.adata.layers.keys()):
-            print('Performing kNN-averaging...')
-            self.dispersion_ranking_NN();
-        l = self.adata.layers['X_knn_avg']
+        if "X_knn_avg" not in list(self.adata.layers.keys()):
+            print("Performing kNN-averaging...")
+            self.dispersion_ranking_NN()
+        l = self.adata.layers["X_knn_avg"]
         m = l.mean(0).A.flatten()
         cells = np.array(list(self.adata.obs_names))
         for K in range(lblsu.size):
             print(lblsu[K])
-            selected = np.where(np.in1d(cells,
-                                        self.get_cells(lblsu[K],labels)))[0]
-            ms = l[selected,:].mean(0).A.flatten()
-            lsub = l[selected,:]
-            lsub.data[:] = lsub.data**2
+            selected = np.where(np.in1d(cells, self.get_cells(lblsu[K], labels)))[0]
+            ms = l[selected, :].mean(0).A.flatten()
+            lsub = l[selected, :]
+            lsub.data[:] = lsub.data ** 2
             ms2 = lsub.mean(0).A.flatten()
-            v = ms2 - 2*ms*m + m**2
+            v = ms2 - 2 * ms * m + m ** 2
             wmu = np.zeros(v.size)
-            wmu[m>0] = v[m>0] / m[m>0]
+            wmu[m > 0] = v[m > 0] / m[m > 0]
             markers_scores.append(wmu)
-        A=pd.DataFrame(data=np.vstack(markers_scores),index=lblsu,
-                       columns=self.adata.var_names).T
+        A = pd.DataFrame(
+            data=np.vstack(markers_scores), index=lblsu, columns=self.adata.var_names
+        ).T
         if inplace:
-            A.columns = labels+';;'+A.columns
-            self.adata.var = pd.concat((self.adata.var,A),axis=1)
+            A.columns = labels + ";;" + A.columns
+            self.adata.var = pd.concat((self.adata.var, A), axis=1)
         else:
             return A
-
 
     def identify_marker_genes_ratio(self, labels=None):
         """
@@ -1548,13 +1645,15 @@ class SAM(object):
             specify specific cluster labels in adata.obs.
 
         """
-        if(labels is None):
+        if labels is None:
             try:
                 keys = np.array(list(self.adata.obs_keys()))
-                lbls = self.get_labels(ut.search_string(keys,'_clusters')[0][0])
+                lbls = self.get_labels(ut.search_string(keys, "_clusters")[0][0])
             except KeyError:
-                print("Please generate cluster labels first or set the "
-                      "'labels' keyword argument.")
+                print(
+                    "Please generate cluster labels first or set the "
+                    "'labels' keyword argument."
+                )
                 return
         elif isinstance(labels, str):
             lbls = self.get_labels(labels)
@@ -1563,20 +1662,20 @@ class SAM(object):
 
         all_gene_names = np.array(list(self.adata.var_names))
 
-        markers={}
+        markers = {}
 
-        s = np.array(self.adata.layers['X_disp'].sum(0)).flatten()
-        lblsu=np.unique(lbls)
+        s = np.array(self.adata.layers["X_disp"].sum(0)).flatten()
+        lblsu = np.unique(lbls)
         for i in lblsu:
-            d = np.array(self.adata.layers['X_disp']
-                         [lbls == i, :].sum(0)).flatten()
+            d = np.array(self.adata.layers["X_disp"][lbls == i, :].sum(0)).flatten()
             rat = np.zeros(d.size)
-            rat[s > 0] = d[s > 0]**2 / s[s > 0] * \
-                self.adata.var['weights'].values[s > 0]
+            rat[s > 0] = (
+                d[s > 0] ** 2 / s[s > 0] * self.adata.var["weights"].values[s > 0]
+            )
             x = np.argsort(-rat)
             markers[i] = all_gene_names[x[:]]
 
-        self.adata.uns['marker_genes_ratio'] = markers
+        self.adata.uns["marker_genes_ratio"] = markers
 
         return markers
 
@@ -1591,12 +1690,13 @@ class SAM(object):
         n - string
             The path of the Pickle file.
         """
-        f = open(n, 'rb')
+        f = open(n, "rb")
         pick_dict = pickle.load(f)
         for i in range(len(pick_dict)):
-            self.__dict__[list(pick_dict.keys())[i]
-                          ] = pick_dict[list(pick_dict.keys())[i]]
+            self.__dict__[list(pick_dict.keys())[i]] = pick_dict[
+                list(pick_dict.keys())[i]
+            ]
         f.close()
 
         if recalc_avg:
-            self.dispersion_ranking_NN();
+            self.dispersion_ranking_NN()
