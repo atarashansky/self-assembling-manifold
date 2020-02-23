@@ -1460,6 +1460,76 @@ class SAM(object):
 
         return markers, markers_scores
 
+    def identify_marker_genes_sw(self, labels=None, clusters=None,
+                                 inplace = True):
+        """
+        Ranks marker genes for each cluster using partial sums of spatial
+        dispersions.
+
+        Parameters
+        ----------
+
+        labels - numpy.array or str, optional, default None
+            Cluster labels to use for marker gene identification.
+            Can also be a string corresponding to any of the keys
+            in adata.obs.
+
+        clusters - int/string or array-like, default None
+            A cluster ID (int or string depending on the labels used)
+            or vector corresponding to the specific cluster ID(s) for
+            which marker genes will be calculated. If None, marker genes
+            will be computed for all clusters, and the result will be written
+            to adata.uns.
+
+        inplace - bool, default True
+            If True, returns nothing and places marker scores in `var`
+
+        """
+
+        if(labels is None):
+            try:
+                keys = np.array(list(self.adata.obs_keys()))
+                lbls = self.get_labels(ut.search_string(keys,'_clusters')[0][0])
+            except KeyError:
+                print("Please generate cluster labels first or set the "
+                      "'labels' keyword argument.")
+                return
+        elif isinstance(labels, str):
+            lbls = self.get_labels(labels)
+        else:
+            lbls = labels
+
+
+        markers_scores = []
+        if clusters == None:
+            lblsu = np.unique(lbls)
+        else:
+            lblsu = np.unique(clusters)
+
+        l = self.adata.layers['X_knn_avg']
+        m = l.mean(0).A.flatten()
+        cells = np.array(list(self.adata.obs_names))
+        for K in range(lblsu.size):
+            print(lblsu[K])
+            selected = np.where(np.in1d(cells,
+                                        self.get_cells(lblsu[K],labels)))[0]
+            ms = l[selected,:].mean(0).A.flatten()
+            lsub = l[selected,:]
+            lsub.data[:] = lsub.data**2
+            ms2 = lsub.mean(0).A.flatten()
+            v = ms2 - 2*ms*m + m**2
+            wmu = np.zeros(v.size)
+            wmu[m>0] = v[m>0] / m[m>0]
+            markers_scores.append(wmu)
+        A=pd.DataFrame(data=np.vstack(markers_scores),index=lblsu,
+                       columns=self.adata.var_names).T
+        if inplace:
+            A.columns = labels+';;'+A.columns
+            self.adata.var = pd.concat((self.adata.var,A),axis=1)
+        else:
+            return A
+
+
     def identify_marker_genes_ratio(self, labels=None):
         """
         Ranks marker genes for each cluster using a SAM-weighted
