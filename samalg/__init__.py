@@ -518,6 +518,7 @@ class SAM(object):
         self,
         projection=None,
         c=None,
+        colorspec=None,
         cmap="rainbow",
         linewidth=0.0,
         edgecolor="k",
@@ -539,8 +540,13 @@ class SAM(object):
             projection defaults to UMAP.
 
         c - string, numpy.ndarray, default None
-            Cell color values overlaid on the projection. Can be a string from adata.obs
-            to overlay cluster assignments / annotations or a 1D numpy array.
+            Categorical data to be mapped to a colormap and overlaid on top of
+            the projection. Can be a key from adata.obs or a 1D numpy array.
+
+        colorspec - string, numpy.ndarray, default None
+            A string specifying a color or an array specifying the color
+            for each point (can be strings, RGBA, RGB, etc). Colorbar will be
+            turned off if `colorspec` is not None.
 
         axes - matplotlib axis, optional, default None
             Plot output to the specified, existing axes. If None, create new
@@ -578,7 +584,17 @@ class SAM(object):
                 plt.figure()
                 axes = plt.gca()
 
-            if c is None:
+            if colorspec is not None:
+                axes.scatter(
+                    dt[:,0],
+                    dt[:,1],
+                    s=s,
+                    linewidth=linewidth,
+                    edgecolor=edgecolor,
+                    c=colorspec,
+                    **kwargs
+                )
+            elif c is None:
                 axes.scatter(
                     dt[:, 0],
                     dt[:, 1],
