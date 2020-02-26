@@ -586,8 +586,8 @@ class SAM(object):
 
             if colorspec is not None:
                 axes.scatter(
-                    dt[:,0],
-                    dt[:,1],
+                    dt[:, 0],
+                    dt[:, 1],
                     s=s,
                     linewidth=linewidth,
                     edgecolor=edgecolor,
