@@ -310,7 +310,7 @@ def transform_wPCA(mat, pca):
     return reduced_weighted
 
 
-def search_string(vec, s, case_sensitive=False):
+def search_string(vec, s, case_sensitive=False,invert=True):
     vec = np.array(vec)
 
     m = []
@@ -322,7 +322,7 @@ def search_string(vec, s, case_sensitive=False):
         else:
             st = vec[i].lower()
         b = st.find(s)
-        if b != -1:
+        if not invert and b != -1 or invert and b==-1:
             m.append(i)
     if len(m) > 0:
         return vec[np.array(m)], np.array(m)
