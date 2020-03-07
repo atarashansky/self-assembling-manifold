@@ -310,7 +310,7 @@ def transform_wPCA(mat, pca):
     return reduced_weighted
 
 
-def search_string(vec, s, case_sensitive=False,invert=True):
+def search_string(vec, s, case_sensitive=False,invert=False):
     vec = np.array(vec)
 
     m = []
