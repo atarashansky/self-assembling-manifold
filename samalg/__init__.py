@@ -10,6 +10,9 @@ from . import utilities as ut
 import sklearn.manifold as man
 import sklearn.utils.sparsefuncs as sf
 from packaging import version
+import warnings
+from numba.errors import NumbaPerformanceWarning
+warnings.filterwarnings("ignore", category=NumbaPerformanceWarning)
 
 __version__ = "0.7.0"
 
@@ -1029,6 +1032,10 @@ class SAM(object):
         self.adata.uns["ranked_genes"] = ranked_genes
 
         self.adata.obsm["X_pca"] = wPCA_data
+
+        self.adata.varm['PCs'] = np.zeros(shape=(self.adata.n_vars, npcs))
+        self.adata.varm['PCs'][self.X_processed[-1]] = self.components.T
+
         self.adata.uns["neighbors"] = {}
         self.adata.uns["neighbors"]["connectivities"] = EDM
 
@@ -1115,6 +1122,7 @@ class SAM(object):
                     solver="full",
                 )
             self.pca_obj = pca
+            self.components = pca.components_
         else:
             g_weighted, components = ut.sparse_pca(
                 D_sub, npcs=min(npcs, min(D.shape) - 1)
@@ -1133,8 +1141,8 @@ class SAM(object):
         EDM = edm.copy()
         EDM.data[:] = 1
         W = self.dispersion_ranking_NN(EDM, num_norm_avg=num_norm_avg)
-
-        self.X_processed = (D_sub, np.array(list(self.adata.var_names[gkeep])))
+        ge=np.array(list(self.adata.var_names[gkeep]))
+        self.X_processed = (D_sub, ge, gkeep)
 
         return W, g_weighted, EDM
 
