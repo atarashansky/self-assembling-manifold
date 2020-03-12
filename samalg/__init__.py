@@ -12,6 +12,7 @@ import sklearn.utils.sparsefuncs as sf
 from packaging import version
 import warnings
 from numba.errors import NumbaPerformanceWarning
+
 warnings.filterwarnings("ignore", category=NumbaPerformanceWarning)
 
 __version__ = "0.7.0"
@@ -1012,15 +1013,7 @@ class SAM(object):
             old = new
 
             W, wPCA_data, EDM, = self.calculate_nnm(
-                D,
-                W,
-                n_genes,
-                preprocessing,
-                npcs,
-                numcells,
-                nnas,
-                weight_PCs,
-                sparse_pca,
+                n_genes, preprocessing, npcs, nnas, weight_PCs, sparse_pca,
             )
             new = W
             err = ((new - old) ** 2).mean() ** 0.5
@@ -1033,8 +1026,8 @@ class SAM(object):
 
         self.adata.obsm["X_pca"] = wPCA_data
 
-        self.adata.varm['PCs'] = np.zeros(shape=(self.adata.n_vars, npcs))
-        self.adata.varm['PCs'][self.X_processed[-1]] = self.components.T
+        self.adata.varm["PCs"] = np.zeros(shape=(self.adata.n_vars, npcs))
+        self.adata.varm["PCs"][self.X_processed[-1]] = self.components.T
 
         self.adata.uns["neighbors"] = {}
         self.adata.uns["neighbors"]["connectivities"] = EDM
@@ -1058,17 +1051,11 @@ class SAM(object):
             print("Elapsed time: " + str(elapsed) + " seconds")
 
     def calculate_nnm(
-        self,
-        D,
-        W,
-        n_genes,
-        preprocessing,
-        npcs,
-        numcells,
-        num_norm_avg,
-        weight_PCs,
-        sparse_pca,
+        self, n_genes, preprocessing, npcs, num_norm_avg, weight_PCs, sparse_pca,
     ):
+        numcells = self.adata.shape[0]
+        D = self.adata.X
+        W = self.adata.var["weights"].values
 
         k = self.run_args.get("k", 20)
         distance = self.run_args.get("distance", "correlation")
@@ -1141,7 +1128,7 @@ class SAM(object):
         EDM = edm.copy()
         EDM.data[:] = 1
         W = self.dispersion_ranking_NN(EDM, num_norm_avg=num_norm_avg)
-        ge=np.array(list(self.adata.var_names[gkeep]))
+        ge = np.array(list(self.adata.var_names[gkeep]))
         self.X_processed = (D_sub, ge, gkeep)
 
         return W, g_weighted, EDM
