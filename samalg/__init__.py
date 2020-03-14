@@ -1024,14 +1024,6 @@ class SAM(object):
 
         self.adata.uns["ranked_genes"] = ranked_genes
 
-        self.adata.obsm["X_pca"] = wPCA_data
-
-        self.adata.varm["PCs"] = np.zeros(shape=(self.adata.n_vars, npcs))
-        self.adata.varm["PCs"][self.X_processed[-1]] = self.components.T
-
-        self.adata.uns["neighbors"] = {}
-        self.adata.uns["neighbors"]["connectivities"] = EDM
-
         if projection == "tsne":
             if verbose:
                 print("Computing the t-SNE embedding...")
@@ -1051,7 +1043,7 @@ class SAM(object):
             print("Elapsed time: " + str(elapsed) + " seconds")
 
     def calculate_nnm(
-        self, n_genes, preprocessing, npcs, num_norm_avg, weight_PCs, sparse_pca,
+        self, n_genes, preprocessing, npcs, num_norm_avg, weight_PCs, sparse_pca, update_manifold=True
     ):
         numcells = self.adata.shape[0]
         D = self.adata.X
@@ -1094,26 +1086,26 @@ class SAM(object):
             D_sub = Ds * (W[gkeep])
 
         if not sparse_pca:
+            npcs = min(npcs, min(D.shape))
             if numcells > 500:
                 g_weighted, pca = ut.weighted_PCA(
                     D_sub,
-                    npcs=min(npcs, min(D.shape)),
+                    npcs=npcs,
                     do_weight=weight_PCs,
                     solver="auto",
                 )
             else:
                 g_weighted, pca = ut.weighted_PCA(
                     D_sub,
-                    npcs=min(npcs, min(D.shape)),
+                    npcs=npcs,
                     do_weight=weight_PCs,
                     solver="full",
                 )
             self.pca_obj = pca
             self.components = pca.components_
         else:
-            g_weighted, components = ut.sparse_pca(
-                D_sub, npcs=min(npcs, min(D.shape) - 1)
-            )
+            npcs=min(npcs, min(D.shape) - 1)
+            g_weighted, components = ut.sparse_pca(D_sub, npcs=npcs)
             if weight_PCs:
                 ev = g_weighted.var(0)
                 ev = ev / ev.max()
@@ -1123,13 +1115,26 @@ class SAM(object):
         if distance == "euclidean":
             g_weighted = Normalizer().fit_transform(g_weighted)
 
-        edm = ut.calc_nnm(g_weighted, k, distance)
-        self.adata.uns["nnm"] = edm
-        EDM = edm.copy()
-        EDM.data[:] = 1
-        W = self.dispersion_ranking_NN(EDM, num_norm_avg=num_norm_avg)
+        if update_manifold:
+            edm = ut.calc_nnm(g_weighted, k, distance)
+            self.adata.uns["nnm"] = edm
+            EDM = edm.copy()
+            EDM.data[:] = 1
+            self.adata.uns["neighbors"] = {}
+            self.adata.uns["neighbors"]["connectivities"] = EDM
+            self.adata.uns['nnm'] = EDM
+            W = self.dispersion_ranking_NN(EDM, num_norm_avg=num_norm_avg)
+        else:
+            print('Not updating the manifold...')
+            EDM = None
+            W = None
+
+
         ge = np.array(list(self.adata.var_names[gkeep]))
         self.X_processed = (D_sub, ge, gkeep)
+        self.adata.obsm["X_pca"] = g_weighted
+        self.adata.varm["PCs"] = np.zeros(shape=(self.adata.n_vars, npcs))
+        self.adata.varm["PCs"][gkeep] = self.components.T
 
         return W, g_weighted, EDM
 
