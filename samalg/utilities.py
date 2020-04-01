@@ -19,7 +19,7 @@ except ImportError:
 INT32_MIN = np.iinfo(np.int32).min + 1
 INT32_MAX = np.iinfo(np.int32).max - 1
 
-__version__ = "0.7.0"
+__version__ = "0.7.1"
 
 
 def find_corr_genes(sam, input_gene):
@@ -314,21 +314,34 @@ def search_string(vec, s, case_sensitive=False, invert=False):
     vec = np.array(vec)
 
     m = []
-    if not case_sensitive:
-        s = s.lower()
-    for i in range(len(vec)):
-        if case_sensitive:
-            st = vec[i]
-        else:
-            st = vec[i].lower()
-        b = st.find(s)
-        if not invert and b != -1 or invert and b == -1:
-            m.append(i)
-    if len(m) > 0:
-        return vec[np.array(m)], np.array(m)
-    else:
-        return [-1, -1]
 
+    if isinstance(s,list):
+        S = s
+    else:
+        S = [s]
+    
+    V=[]; M=[]
+    for s in S:
+        if not case_sensitive:
+            s = s.lower()
+        for i in range(len(vec)):
+            if case_sensitive:
+                st = vec[i]
+            else:
+                st = vec[i].lower()
+            b = st.find(s)
+            if not invert and b != -1 or invert and b == -1:
+                m.append(i)
+        if len(m) > 0:
+            V.append(vec[np.array(m)]); M.append(np.array(m))
+    if len(V)>0:
+        V = np.concatenate(V); M = np.concatenate(M);
+        ix = np.sort(np.unique(V,return_index=True)[1])
+        V=V[ix]; M=M[ix];
+        return V,M
+    else:
+        return -1,-1
+        
 
 def distance_matrix_error(dist1, dist2):
     s = 0
