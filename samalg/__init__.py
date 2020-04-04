@@ -864,6 +864,7 @@ class SAM(object):
         weight_PCs=True,
         sparse_pca=False,
         proj_kwargs={},
+        project_weighted=True
     ):
         """Runs the Self-Assembling Manifold algorithm.
 
@@ -946,6 +947,7 @@ class SAM(object):
             "weight_PCs": weight_PCs,
             "proj_kwargs": proj_kwargs,
             "sparse_pca": sparse_pca,
+            "project_weighted": project_weighted
         }
 
         numcells = D.shape[0]
@@ -1013,7 +1015,7 @@ class SAM(object):
             old = new
 
             W, wPCA_data, EDM, = self.calculate_nnm(
-                n_genes, preprocessing, npcs, nnas, weight_PCs, sparse_pca,
+                n_genes, preprocessing, npcs, nnas, weight_PCs, sparse_pca,project_weighted=project_weighted
             )
             new = W
             err = ((new - old) ** 2).mean() ** 0.5
@@ -1043,7 +1045,7 @@ class SAM(object):
             print("Elapsed time: " + str(elapsed) + " seconds")
 
     def calculate_nnm(
-        self, n_genes, preprocessing, npcs, num_norm_avg, weight_PCs, sparse_pca, update_manifold=True
+        self, n_genes, preprocessing, npcs, num_norm_avg, weight_PCs, sparse_pca, update_manifold=True,project_weighted=True
     ):
         numcells = self.adata.shape[0]
         D = self.adata.X
@@ -1086,7 +1088,7 @@ class SAM(object):
             D_sub = Ds * (W[gkeep])
 
         if not sparse_pca:
-            npcs = min(npcs, min(D.shape))
+            npcs = min(npcs, min((D.shape[0],gkeep.size)))
             if numcells > 500:
                 g_weighted, pca = ut.weighted_PCA(
                     D_sub,
@@ -1103,16 +1105,20 @@ class SAM(object):
                 )
             self.pca_obj = pca
             self.components = pca.components_
-            g_weighted = Ds.dot(pca.components_.T)
-            if weight_PCs:
-                ev = pca.explained_variance_
-                ev = ev / ev.max()
-                g_weighted = g_weighted * (ev ** 0.5)
+
+            if not project_weighted:
+                g_weighted = (Ds-Ds.mean(0)).dot(pca.components_.T)
+                if weight_PCs:
+                    ev = pca.explained_variance_
+                    ev = ev / ev.max()
+                    g_weighted = g_weighted * (ev ** 0.5)           
         else:
-            npcs=min(npcs, min(D.shape) - 1)
+            npcs=min(npcs, min((D.shape[0],gkeep.size)) - 1)
             output = ut._pca_with_sparse(D_sub, npcs)
             self.components = output['components']
-            g_weighted = Ds.dot(self.components.T).A
+            g_weighted = output['X_pca']
+            if not project_weighted:
+                g_weighted = Ds.dot(self.components.T) - Ds.mean(0).A.flatten().dot(self.components.T)
 
             if weight_PCs:
                 ev = output['variance']
