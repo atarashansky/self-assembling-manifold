@@ -1103,14 +1103,21 @@ class SAM(object):
                 )
             self.pca_obj = pca
             self.components = pca.components_
-        else:
-            npcs=min(npcs, min(D.shape) - 1)
-            g_weighted, components = ut.sparse_pca(D_sub, npcs=npcs)
+            g_weighted = Ds.dot(pca.components_.T)
             if weight_PCs:
-                ev = g_weighted.var(0)
+                ev = pca.explained_variance_
                 ev = ev / ev.max()
                 g_weighted = g_weighted * (ev ** 0.5)
-            self.components = components
+        else:
+            npcs=min(npcs, min(D.shape) - 1)
+            output = ut._pca_with_sparse(D_sub, npcs)
+            self.components = output['components']
+            g_weighted = Ds.dot(self.components.T).A
+
+            if weight_PCs:
+                ev = output['variance']
+                ev = ev / ev.max()
+                g_weighted = g_weighted * (ev ** 0.5)
 
         if distance == "euclidean":
             g_weighted = Normalizer().fit_transform(g_weighted)

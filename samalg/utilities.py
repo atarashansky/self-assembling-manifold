@@ -4,7 +4,10 @@ import os
 import errno
 from sklearn.decomposition import PCA
 import umap.distances as dist
-
+from sklearn.utils.extmath import svd_flip
+from sklearn.utils import check_array, check_random_state
+from scipy import sparse
+import numba
 from umap.rp_tree import rptree_leaf_array, make_forest
 
 try:
@@ -70,8 +73,23 @@ def nearest_neighbors_hnsw(x,ef=200,M=48,n_neighbors = 100):
     return idx,dist
 """
 
+def _get_mean_var(X, *, axis=0):
+    if sparse.issparse(X):
+        mean, var = sparse_mean_variance_axis(X, axis=axis)
+    else:
+        mean = np.mean(X, axis=axis, dtype=np.float64)
+        mean_sq = np.multiply(X, X).mean(axis=axis, dtype=np.float64)
+        var = mean_sq - mean ** 2
+    # enforce R convention (unbiased estimator) for variance
+    var *= X.shape[axis] / (X.shape[axis] - 1)
+    return mean, var
 
-def sparse_pca(X, npcs, mu=None):
+def _pca_with_sparse(X, npcs, solver='arpack', mu=None, random_state=None):
+    random_state = check_random_state(random_state)
+    np.random.set_state(random_state.get_state())
+    random_init = np.random.rand(np.min(X.shape))
+    X = check_array(X, accept_sparse=['csr', 'csc'])
+
     if mu is None:
         mu = X.mean(0).A.flatten()[None, :]
     mdot = mu.dot
@@ -81,7 +99,7 @@ def sparse_pca(X, npcs, mu=None):
     Xdot = X.dot
     Xmat = Xdot
     XHdot = X.T.conj().dot
-    XHmat = X.T.conj().dot
+    XHmat = XHdot
     ones = np.ones(X.shape[0])[None, :].dot
 
     def matvec(x):
@@ -105,12 +123,24 @@ def sparse_pca(X, npcs, mu=None):
         rmatmat=rmatmat,
     )
 
-    u, s, v = sp.sparse.linalg.svds(XL, solver="arpack", k=npcs)
+    u, s, v = sp.sparse.linalg.svds(XL, solver=solver, k=npcs, v0=random_init)
+    u, v = svd_flip(u, v)
     idx = np.argsort(-s)
-    S = np.diag(s[idx])
-    wpca = u[:, idx].dot(S)
-    cpca = v[idx, :]
-    return wpca, cpca
+    v = v[idx, :]
+
+    X_pca = (u * s)[:, idx]
+    ev = s[idx] ** 2 / (X.shape[0] - 1)
+
+    total_var = _get_mean_var(X)[1].sum()
+    ev_ratio = ev / total_var
+
+    output = {
+        'X_pca': X_pca,
+        'variance': ev,
+        'variance_ratio': ev_ratio,
+        'components': v,
+    }
+    return output
 
 
 if UMAP4:
@@ -287,7 +317,7 @@ def weighted_PCA(mat, do_weight=True, npcs=None, solver="auto"):
 
         pca = PCA(svd_solver=solver, n_components=ncom)
         reduced = pca.fit_transform(mat)
-        scaled_eigenvalues = reduced.var(0)
+        scaled_eigenvalues = pca.explained_variance_
         scaled_eigenvalues = scaled_eigenvalues / scaled_eigenvalues.max()
         reduced_weighted = reduced * scaled_eigenvalues[None, :] ** 0.5
     else:
