@@ -428,7 +428,6 @@ def transform_wPCA(mat, pca):
     reduced_weighted = np.array(reduced) * scaled_eigenvalues[None, :] ** 0.5
     return reduced_weighted
 
-
 def search_string(vec, s, case_sensitive=False, invert=False):
     vec = np.array(vec)
 
@@ -454,9 +453,11 @@ def search_string(vec, s, case_sensitive=False, invert=False):
         if len(m) > 0:
             V.append(vec[np.array(m)]); M.append(np.array(m))
     if len(V)>0:
+        i = len(V)
         V = np.concatenate(V); M = np.concatenate(M);
-        ix = np.sort(np.unique(V,return_index=True)[1])
-        V=V[ix]; M=M[ix];
+        if i > 1:
+            ix = np.sort(np.unique(V,return_index=True)[1])
+            V=V[ix]; M=M[ix];
         return V,M
     else:
         return -1,-1
