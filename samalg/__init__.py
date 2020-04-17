@@ -11,11 +11,11 @@ import sklearn.manifold as man
 import sklearn.utils.sparsefuncs as sf
 from packaging import version
 import warnings
-from numba.errors import NumbaPerformanceWarning
+from numba.core.errors import NumbaPerformanceWarning
 
 warnings.filterwarnings("ignore", category=NumbaPerformanceWarning)
 
-__version__ = "0.7.1"
+__version__ = "0.7.2"
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.

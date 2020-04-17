@@ -8,21 +8,8 @@ from sklearn.utils.extmath import svd_flip
 from sklearn.utils import check_array, check_random_state
 from scipy import sparse
 import numba
-from umap.rp_tree import rptree_leaf_array, make_forest
-
-try:
-    from umap.nndescent import make_nn_descent
-
-    UMAP4 = False
-except ImportError:
-    from umap.nndescent import nn_descent
-
-    UMAP4 = True
-
-INT32_MIN = np.iinfo(np.int32).min + 1
-INT32_MAX = np.iinfo(np.int32).max - 1
-
-__version__ = "0.7.1"
+from umap.umap_ import nearest_neighbors
+__version__ = "0.7.2"
 
 
 def find_corr_genes(sam, input_gene):
@@ -232,106 +219,10 @@ def _pca_with_sparse(X, npcs, solver='arpack', mu=None, random_state=None):
     return output
 
 
-if UMAP4:
 
-    def nearest_neighbors(
-        X,
-        n_neighbors=15,
-        metric="correlation",
-        metric_kwds={},
-        angular=True,
-        seed=0,
-        low_memory=False,
-    ):
-        """Compute the ``n_neighbors`` nearest points for each data point in ``X``
-        under ``metric``. This may be exact, but more likely is approximated via
-        nearest neighbor descent. (Sourced from umap-learn==0.4.0)
-
-        Returns
-        -------
-        knn_indices: array of shape (n_samples, n_neighbors)
-            The indices on the ``n_neighbors`` closest points in the dataset.
-
-        knn_dists: array of shape (n_samples, n_neighbors)
-            The distances to the ``n_neighbors`` closest points in the dataset.
-        """
-        n_trees = 5 + int(round((X.shape[0]) ** 0.5 / 20.0))
-        n_iters = max(5, int(round(np.log2(X.shape[0]))))
-
-        # Otherwise fall back to nn descent in umap
-        if callable(metric):
-            distance_func = metric
-        elif metric in dist.named_distances:
-            distance_func = dist.named_distances[metric]
-        else:
-            raise ValueError("Metric is neither callable, " + "nor a recognised string")
-
-        if metric in (
-            "cosine",
-            "correlation",
-            "dice",
-            "jaccard",
-            "ll_dirichlet",
-            "hellinger",
-        ):
-            angular = True
-
-        random_state = np.random.RandomState(seed=seed)
-        rng_state = random_state.randint(INT32_MIN, INT32_MAX, 3).astype(np.int64)
-
-        rp_forest = make_forest(X, n_neighbors, n_trees, rng_state, angular)
-        leaf_array = rptree_leaf_array(rp_forest)
-
-        knn_indices, knn_dists = nn_descent(
-            X,
-            n_neighbors,
-            rng_state,
-            max_candidates=60,
-            dist=distance_func,
-            dist_args=tuple(metric_kwds.values()),
-            low_memory=low_memory,
-            rp_tree_init=True,
-            leaf_array=leaf_array,
-            n_iters=n_iters,
-            verbose=False,
-        )
-
-        return knn_indices, knn_dists
-
-
-else:
-
-    def nearest_neighbors(X, n_neighbors=15, seed=0, metric="correlation"):
-
-        distance_func = dist.named_distances[metric]
-
-        if metric in ("cosine", "correlation", "dice", "jaccard"):
-            angular = True
-        else:
-            angular = False
-
-        random_state = np.random.RandomState(seed=seed)
-        rng_state = random_state.randint(INT32_MIN, INT32_MAX, 3).astype(np.int64)
-
-        metric_nn_descent = make_nn_descent(distance_func, tuple({}.values()))
-
-        n_trees = 5 + int(round((X.shape[0]) ** 0.5 / 20.0))
-        n_iters = max(5, int(round(np.log2(X.shape[0]))))
-
-        rp_forest = make_forest(X, n_neighbors, n_trees, rng_state, angular)
-        leaf_array = rptree_leaf_array(rp_forest)
-        knn_indices, knn_dists = metric_nn_descent(
-            X,
-            n_neighbors,
-            rng_state,
-            max_candidates=60,
-            rp_tree_init=True,
-            leaf_array=leaf_array,
-            n_iters=n_iters,
-            verbose=False,
-        )
-        return knn_indices, knn_dists
-
+def nearest_neighbors_wrapper(X,n_neighbors=15,metric='correlation',metric_kwds={},angular=True,random_state=0):
+    random_state=np.random.RandomState(random_state)
+    return nearest_neighbors(X,n_neighbors,metric,metric_kwds,angular,random_state)[:2]
 
 def knndist(nnma):
     x, y = nnma.nonzero()
@@ -567,7 +458,7 @@ def convert_annotations(A):
 def calc_nnm(g_weighted, k, distance=None):
     if g_weighted.shape[0] > 8000:
         # only uses cosine
-        nnm, dists = nearest_neighbors(g_weighted, n_neighbors=k, metric=distance)
+        nnm, dists = nearest_neighbors_wrapper(g_weighted, n_neighbors=k, metric=distance)
         EDM = gen_sparse_knn(nnm, dists)
         EDM = EDM.tocsr()
     else:
