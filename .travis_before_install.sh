@@ -22,6 +22,8 @@ elif [ $TRAVIS_OS_NAME == 'osx' ]; then
   echo "$PATH"
   export PATH="$HOME/miniconda/bin:$PATH"
   echo "$PATH"
+  ls $HOME/
+  ls $HOME/miniconda/
   ls $HOME/miniconda/bin/
   source $HOME/miniconda/bin/activate
   # Use pip from conda
