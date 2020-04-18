@@ -18,11 +18,10 @@ elif [ $TRAVIS_OS_NAME == 'osx' ]; then
     echo "Miniconda only supports 2.7 and 3.7"
   fi
   curl "https://repo.continuum.io/miniconda/Miniconda${CONDA_VER}-latest-MacOSX-x86_64.sh" -o "miniconda.sh"
-  mkdir $HOME/miniconda
-  bash "miniconda.sh" -p $HOME/miniconda
+  cd $HOME
+  bash "miniconda.sh"
   echo "$PATH"
   export PATH="$HOME/miniconda/bin:$PATH"
-  echo "$PATH"
   ls $HOME/
   ls $HOME/miniconda/
   ls $HOME/miniconda/bin/
