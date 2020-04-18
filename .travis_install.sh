@@ -1,7 +1,7 @@
 #!/bin/bash
 if [ $TRAVIS_OS_NAME == 'osx' ]; then
   export PATH="$HOME/miniconda/bin:$PATH"
-  conda activate test
+  source activate
   ## Somehow we need this to execute the setup.py at all...
   #pip install numpy
 fi
