@@ -9,7 +9,7 @@ from sklearn.utils import check_array, check_random_state
 from scipy import sparse
 import numba
 from umap.umap_ import nearest_neighbors
-__version__ = "0.7.2"
+__version__ = "0.7.3"
 
 
 def find_corr_genes(sam, input_gene):
@@ -123,7 +123,7 @@ def sparse_mean_var_major_axis(data, indices, indptr, major_len, minor_len, dtyp
 
     return means, variances
 
-def _get_mean_var(X, *, axis=0):
+def _get_mean_var(X, axis=0):
     if sparse.issparse(X):
         mean, var = sparse_mean_variance_axis(X, axis=axis)
     else:
