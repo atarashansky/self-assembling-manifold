@@ -17,11 +17,11 @@ elif [ $TRAVIS_OS_NAME == 'osx' ]; then
   else
     echo "Miniconda only supports 2.7 and 3.7"
   fi
-  curl "https://repo.continuum.io/miniconda/Miniconda${CONDA_VER}-latest-MacOSX-x86_64.sh" -o "miniconda.sh"
-  bash "miniconda.sh" -b -p $HOME/miniconda
-  echo "$PATH"
+  wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+  bash miniconda.sh -b -p $HOME/miniconda
   export PATH="$HOME/miniconda/bin:$PATH"
-  conda activate# $HOME/miniconda/bin/activate
+  conda create -n test python=$PYTHON_VERSION
+  conda activate test
   # Use pip from conda
   #conda install -y python.app
   conda install -y pip
