@@ -724,7 +724,7 @@ class SAM(object):
 
         return axes, a
 
-    def dispersion_ranking_NN(self, nnm=None, num_norm_avg=50):
+    def dispersion_ranking_NN(self, nnm=None, num_norm_avg=50, weight_mode='dispersion'):
         """Computes the spatial dispersion factors for each gene.
 
         Parameters
@@ -757,10 +757,14 @@ class SAM(object):
             mu = D_avg.mean(0)
             var = D_avg.var(0)
 
-        dispersions = np.zeros(var.size)
-        dispersions[mu > 0] = var[mu > 0] / mu[mu > 0]
-
-        self.adata.var["spatial_dispersions"] = dispersions.copy()
+        if weight_mode == 'dispersion':
+            dispersions = np.zeros(var.size)
+            dispersions[mu > 0] = var[mu > 0] / mu[mu > 0]
+            self.adata.var["spatial_dispersions"] = dispersions.copy()
+        elif weight_mode == 'variance':
+            dispersions = var
+        else:
+            print('`weight_mode` ',weight_mode,' not recognized.')
 
         ma = np.sort(dispersions)[-num_norm_avg:].mean()
         dispersions[dispersions >= ma] = ma
@@ -864,7 +868,8 @@ class SAM(object):
         weight_PCs=True,
         sparse_pca=False,
         proj_kwargs={},
-        project_weighted=True
+        project_weighted=True,
+        weight_mode='dispersion'
     ):
         """Runs the Self-Assembling Manifold algorithm.
 
@@ -932,6 +937,14 @@ class SAM(object):
             raise ValueError(
                 "preprocessing must be 'StandardScaler', 'Normalizer', or None"
             )
+        if weight_mode not in ["dispersion", "variance"]:
+            raise ValueError(
+                "weight_mode must be 'dispersion' or 'variance'"
+            )
+
+        if self.adata.layers['X_disp'].min() < 0 and weight_mode == 'dispersion':
+            print("`X_disp` layer contains negative values. Setting `weight_mode` to 'variance'.")
+            weight_mode = 'variance'
 
         self.run_args = {
             "max_iter": max_iter,
@@ -947,7 +960,8 @@ class SAM(object):
             "weight_PCs": weight_PCs,
             "proj_kwargs": proj_kwargs,
             "sparse_pca": sparse_pca,
-            "project_weighted": project_weighted
+            "project_weighted": project_weighted,
+            "weight_mode": weight_mode,
         }
 
         numcells = D.shape[0]
@@ -992,7 +1006,7 @@ class SAM(object):
         if verbose:
             print("RUNNING SAM")
 
-        W = self.dispersion_ranking_NN(edm, num_norm_avg=1)
+        W = self.dispersion_ranking_NN(edm, weight_mode=weight_mode, num_norm_avg=1)
 
         old = np.zeros(W.size)
         new = W
@@ -1015,7 +1029,7 @@ class SAM(object):
             old = new
 
             W, wPCA_data, EDM, = self.calculate_nnm(
-                n_genes, preprocessing, npcs, nnas, weight_PCs, sparse_pca,project_weighted=project_weighted
+                n_genes, preprocessing, npcs, nnas, weight_PCs, sparse_pca,project_weighted=project_weighted,weight_mode=weight_mode
             )
             new = W
             err = ((new - old) ** 2).mean() ** 0.5
@@ -1045,7 +1059,8 @@ class SAM(object):
             print("Elapsed time: " + str(elapsed) + " seconds")
 
     def calculate_nnm(
-        self, n_genes, preprocessing, npcs, num_norm_avg, weight_PCs, sparse_pca, update_manifold=True,project_weighted=True
+        self, n_genes, preprocessing, npcs, num_norm_avg, weight_PCs, sparse_pca,
+        update_manifold=True,project_weighted=True,weight_mode='dispersion',
     ):
         numcells = self.adata.shape[0]
         D = self.adata.X
@@ -1136,7 +1151,7 @@ class SAM(object):
             self.adata.uns["neighbors"] = {}
             self.adata.uns["neighbors"]["connectivities"] = EDM
             self.adata.uns['nnm'] = EDM
-            W = self.dispersion_ranking_NN(EDM, num_norm_avg=num_norm_avg)
+            W = self.dispersion_ranking_NN(EDM, weight_mode=weight_mode, num_norm_avg=num_norm_avg)
         else:
             print('Not updating the manifold...')
             EDM = None
