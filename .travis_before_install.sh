@@ -19,7 +19,7 @@ elif [ $TRAVIS_OS_NAME == 'osx' ]; then
   fi
   cd $HOME
   curl "https://repo.continuum.io/miniconda/Miniconda${CONDA_VER}-latest-MacOSX-x86_64.sh" -o "$HOME/miniconda.sh"
-  bash miniconda.sh -b -p -f $HOME/miniconda
+  bash miniconda.sh -f -b -p $HOME/miniconda
   export PATH="$HOME/miniconda/bin:$PATH"
   ls $HOME/
   source $HOME/miniconda/bin/activate
