@@ -746,8 +746,9 @@ class SAM(object):
         """
         if nnm is None:
             nnm = self.adata.uns["neighbors"]["connectivities"]
-
-        D_avg = (nnm.multiply(1 / nnm.sum(1).A)).dot(self.adata.layers["X_disp"])
+        f = nnm.sum(1).A
+        f[f==0]=1
+        D_avg = (nnm.multiply(1 / f)).dot(self.adata.layers["X_disp"])
 
         self.adata.layers["X_knn_avg"] = D_avg
 
@@ -1111,7 +1112,7 @@ class SAM(object):
                 if weight_PCs:
                     ev = pca.explained_variance_
                     ev = ev / ev.max()
-                    g_weighted = g_weighted * (ev ** 0.5)           
+                    g_weighted = g_weighted * (ev ** 0.5)
         else:
             npcs=min(npcs, min((D.shape[0],gkeep.size)) - 1)
             output = ut._pca_with_sparse(D_sub, npcs)
@@ -1654,8 +1655,9 @@ class SAM(object):
             data=np.vstack(markers_scores), index=lblsu, columns=self.adata.var_names
         ).T
         if inplace:
-            A.columns = labels + ";;" + A.columns
-            self.adata.var = pd.concat((self.adata.var, A), axis=1)
+            A.columns = labels + ";;" + A.columns.astype('str').astype('object')
+            for Ac in A.columns:
+                self.adata.var[Ac]=A[Ac]
         else:
             return A
 
