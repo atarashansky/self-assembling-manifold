@@ -18,7 +18,7 @@ setup(
         "pandas",
         "scikit-learn",
         "packaging",
-        "numba",
+        "numba>=0.49.0",
         "umap-learn>=0.4.0",
         "anndata>=0.7rc1",
     ],
