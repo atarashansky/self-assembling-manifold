@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="sam-algorithm",
-    version="0.7.1",
+    version="0.7.3",
     description="The Self-Assembling-Manifold algorithm",
     long_description="The Self-Assembling-Manifold algorithm for analyzing single-cell RNA sequencing data.",
     long_description_content_type="text/markdown",
@@ -19,7 +19,7 @@ setup(
         "scikit-learn",
         "packaging",
         "numba",
-        "umap-learn",
+        "umap-learn>=0.4.0",
         "anndata>=0.7rc1",
     ],
     extras_require={

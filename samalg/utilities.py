@@ -7,22 +7,8 @@ import umap.distances as dist
 from sklearn.utils.extmath import svd_flip
 from sklearn.utils import check_array, check_random_state
 from scipy import sparse
-import numba
-from umap.rp_tree import rptree_leaf_array, make_forest
-
-try:
-    from umap.nndescent import make_nn_descent
-
-    UMAP4 = False
-except ImportError:
-    from umap.nndescent import nn_descent
-
-    UMAP4 = True
-
-INT32_MIN = np.iinfo(np.int32).min + 1
-INT32_MAX = np.iinfo(np.int32).max - 1
-
-__version__ = "0.7.1"
+from umap.umap_ import nearest_neighbors
+__version__ = "0.7.3"
 
 
 def find_corr_genes(sam, input_gene):
@@ -72,106 +58,7 @@ def nearest_neighbors_hnsw(x,ef=200,M=48,n_neighbors = 100):
     dist[dist<0]=0
     return idx,dist
 """
-@numba.njit(cache=True)
-def sparse_mean_var_minor_axis(data, indices, major_len, minor_len, dtype):
-    """
-    Computes mean and variance for a sparse matrix for the minor axis.
 
-    Given arrays for a csr matrix, returns the means and variances for each
-    column back.
-    """
-    non_zero = indices.shape[0]
-
-    means = np.zeros(minor_len, dtype=dtype)
-    variances = np.zeros_like(means, dtype=dtype)
-
-    counts = np.zeros(minor_len, dtype=np.int64)
-
-    for i in range(non_zero):
-        col_ind = indices[i]
-        means[col_ind] += data[i]
-
-    for i in range(minor_len):
-        means[i] /= major_len
-
-    for i in range(non_zero):
-        col_ind = indices[i]
-        diff = data[i] - means[col_ind]
-        variances[col_ind] += diff * diff
-        counts[col_ind] += 1
-
-    for i in range(minor_len):
-        variances[i] += (major_len - counts[i]) * means[i] ** 2
-        variances[i] /= major_len
-
-    return means, variances
-
-
-@numba.njit(cache=True)
-def sparse_mean_var_major_axis(data, indices, indptr, major_len, minor_len, dtype):
-    """
-    Computes mean and variance for a sparse array for the major axis.
-
-    Given arrays for a csr matrix, returns the means and variances for each
-    row back.
-    """
-    means = np.zeros(major_len, dtype=dtype)
-    variances = np.zeros_like(means, dtype=dtype)
-
-    for i in range(major_len):
-        startptr = indptr[i]
-        endptr = indptr[i + 1]
-        counts = endptr - startptr
-
-        for j in range(startptr, endptr):
-            means[i] += data[j]
-        means[i] /= minor_len
-
-        for j in range(startptr, endptr):
-            diff = data[j] - means[i]
-            variances[i] += diff * diff
-
-        variances[i] += (minor_len - counts) * means[i] ** 2
-        variances[i] /= minor_len
-
-    return means, variances
-
-def _get_mean_var(X, *, axis=0):
-    if sparse.issparse(X):
-        mean, var = sparse_mean_variance_axis(X, axis=axis)
-    else:
-        mean = np.mean(X, axis=axis, dtype=np.float64)
-        mean_sq = np.multiply(X, X).mean(axis=axis, dtype=np.float64)
-        var = mean_sq - mean ** 2
-    # enforce R convention (unbiased estimator) for variance
-    var *= X.shape[axis] / (X.shape[axis] - 1)
-    return mean, var
-
-def sparse_mean_variance_axis(mtx, axis):
-    """
-    This code and internal functions are based on sklearns
-    `sparsefuncs.mean_variance_axis`.
-
-    Modifications:
-    * allow deciding on the output type, which can increase accuracy when calculating the mean and variance of 32bit floats.
-    * This doesn't currently implement support for null values, but could.
-    * Uses numba not cython
-    """
-    assert axis in (0, 1)
-    if isinstance(mtx, sparse.csr_matrix):
-        ax_minor = 1
-        shape = mtx.shape
-    elif isinstance(mtx, sparse.csc_matrix):
-        ax_minor = 0
-        shape = mtx.shape[::-1]
-    else:
-        raise ValueError("This function only works on sparse csr and csc matrices")
-    if axis == ax_minor:
-        return sparse_mean_var_major_axis(
-            mtx.data, mtx.indices, mtx.indptr, *shape, np.float64
-        )
-    else:
-        return sparse_mean_var_minor_axis(mtx.data, mtx.indices, *shape, np.float64)
 
 def _pca_with_sparse(X, npcs, solver='arpack', mu=None, random_state=None):
     random_state = check_random_state(random_state)
@@ -232,106 +119,10 @@ def _pca_with_sparse(X, npcs, solver='arpack', mu=None, random_state=None):
     return output
 
 
-if UMAP4:
 
-    def nearest_neighbors(
-        X,
-        n_neighbors=15,
-        metric="correlation",
-        metric_kwds={},
-        angular=True,
-        seed=0,
-        low_memory=False,
-    ):
-        """Compute the ``n_neighbors`` nearest points for each data point in ``X``
-        under ``metric``. This may be exact, but more likely is approximated via
-        nearest neighbor descent. (Sourced from umap-learn==0.4.0)
-
-        Returns
-        -------
-        knn_indices: array of shape (n_samples, n_neighbors)
-            The indices on the ``n_neighbors`` closest points in the dataset.
-
-        knn_dists: array of shape (n_samples, n_neighbors)
-            The distances to the ``n_neighbors`` closest points in the dataset.
-        """
-        n_trees = 5 + int(round((X.shape[0]) ** 0.5 / 20.0))
-        n_iters = max(5, int(round(np.log2(X.shape[0]))))
-
-        # Otherwise fall back to nn descent in umap
-        if callable(metric):
-            distance_func = metric
-        elif metric in dist.named_distances:
-            distance_func = dist.named_distances[metric]
-        else:
-            raise ValueError("Metric is neither callable, " + "nor a recognised string")
-
-        if metric in (
-            "cosine",
-            "correlation",
-            "dice",
-            "jaccard",
-            "ll_dirichlet",
-            "hellinger",
-        ):
-            angular = True
-
-        random_state = np.random.RandomState(seed=seed)
-        rng_state = random_state.randint(INT32_MIN, INT32_MAX, 3).astype(np.int64)
-
-        rp_forest = make_forest(X, n_neighbors, n_trees, rng_state, angular)
-        leaf_array = rptree_leaf_array(rp_forest)
-
-        knn_indices, knn_dists = nn_descent(
-            X,
-            n_neighbors,
-            rng_state,
-            max_candidates=60,
-            dist=distance_func,
-            dist_args=tuple(metric_kwds.values()),
-            low_memory=low_memory,
-            rp_tree_init=True,
-            leaf_array=leaf_array,
-            n_iters=n_iters,
-            verbose=False,
-        )
-
-        return knn_indices, knn_dists
-
-
-else:
-
-    def nearest_neighbors(X, n_neighbors=15, seed=0, metric="correlation"):
-
-        distance_func = dist.named_distances[metric]
-
-        if metric in ("cosine", "correlation", "dice", "jaccard"):
-            angular = True
-        else:
-            angular = False
-
-        random_state = np.random.RandomState(seed=seed)
-        rng_state = random_state.randint(INT32_MIN, INT32_MAX, 3).astype(np.int64)
-
-        metric_nn_descent = make_nn_descent(distance_func, tuple({}.values()))
-
-        n_trees = 5 + int(round((X.shape[0]) ** 0.5 / 20.0))
-        n_iters = max(5, int(round(np.log2(X.shape[0]))))
-
-        rp_forest = make_forest(X, n_neighbors, n_trees, rng_state, angular)
-        leaf_array = rptree_leaf_array(rp_forest)
-        knn_indices, knn_dists = metric_nn_descent(
-            X,
-            n_neighbors,
-            rng_state,
-            max_candidates=60,
-            rp_tree_init=True,
-            leaf_array=leaf_array,
-            n_iters=n_iters,
-            verbose=False,
-        )
-        return knn_indices, knn_dists
-
+def nearest_neighbors_wrapper(X,n_neighbors=15,metric='correlation',metric_kwds={},angular=True,random_state=0):
+    random_state=np.random.RandomState(random_state)
+    return nearest_neighbors(X,n_neighbors,metric,metric_kwds,angular,random_state)[:2]
 
 def knndist(nnma):
     x, y = nnma.nonzero()
@@ -567,7 +358,7 @@ def convert_annotations(A):
 def calc_nnm(g_weighted, k, distance=None):
     if g_weighted.shape[0] > 8000:
         # only uses cosine
-        nnm, dists = nearest_neighbors(g_weighted, n_neighbors=k, metric=distance)
+        nnm, dists = nearest_neighbors_wrapper(g_weighted, n_neighbors=k, metric=distance)
         EDM = gen_sparse_knn(nnm, dists)
         EDM = EDM.tocsr()
     else:
