@@ -7,6 +7,7 @@ import umap.distances as dist
 from sklearn.utils.extmath import svd_flip
 from sklearn.utils import check_array, check_random_state
 from scipy import sparse
+import sklearn.utils.sparsefuncs as sf
 from umap.umap_ import nearest_neighbors
 __version__ = "0.7.3"
 
@@ -107,7 +108,7 @@ def _pca_with_sparse(X, npcs, solver='arpack', mu=None, random_state=None):
     X_pca = (u * s)[:, idx]
     ev = s[idx] ** 2 / (X.shape[0] - 1)
 
-    total_var = _get_mean_var(X)[1].sum()
+    total_var = sf.mean_variance_axis(X, axis=0)[1].sum()
     ev_ratio = ev / total_var
 
     output = {
@@ -228,7 +229,7 @@ def search_string(vec, s, case_sensitive=False, invert=False):
         S = s
     else:
         S = [s]
-    
+
     V=[]; M=[]
     for s in S:
         if not case_sensitive:
@@ -252,7 +253,7 @@ def search_string(vec, s, case_sensitive=False, invert=False):
         return V,M
     else:
         return -1,-1
-        
+
 
 def distance_matrix_error(dist1, dist2):
     s = 0
