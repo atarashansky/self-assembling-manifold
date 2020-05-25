@@ -573,7 +573,7 @@ class SAMGUI(object):
             init = 3000
         ngenes = widgets.FloatSlider(
             value=init,
-            min=100,
+            min=min(100,self.sams[0].adata.shape[1]),
             max=self.sams[0].adata.shape[1],
             step=100,
             disabled=False,
