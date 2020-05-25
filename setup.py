@@ -13,7 +13,7 @@ setup(
     python_requires=">=3.6",
     # py_modules=["SAM", "utilities", "SAMGUI"],
     install_requires=[
-        "numpy",
+        "numpy>=1.17.0",
         "scipy",
         "pandas",
         "scikit-learn",
