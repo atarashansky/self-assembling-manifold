@@ -248,7 +248,7 @@ def search_string(vec, s, case_sensitive=False, invert=False):
         i = len(V)
         V = np.concatenate(V); M = np.concatenate(M);
         if i > 1:
-            ix = np.sort(np.unique(V,return_index=True)[1])
+            ix = np.sort(np.unique(M,return_index=True)[1])
             V=V[ix]; M=M[ix];
         return V,M
     else:
