@@ -1148,10 +1148,12 @@ class SAM(object):
             edm = ut.calc_nnm(g_weighted, k, distance)
             EDM = edm.copy()
             EDM.data[:] = 1
+            EDM = EDM.tolil(); EDM.setdiag(1); EDM = EDM.tocsr();
             self.adata.uns["neighbors"] = {}
             self.adata.uns["neighbors"]["connectivities"] = EDM
             if distance in ['correlation','cosine']: #keep edge weights and store in nnm if distance is bounded
                 edm.data[:] = 1-edm.data
+                edm = edm.tolil(); edm.setdiag(1); edm = edm.tocsr();
                 edm.data[edm.data<0]=0.01 #if negative correlation, set close to zero but not zero to preserve kNN structure
                 self.adata.uns['nnm'] = edm
             else:
