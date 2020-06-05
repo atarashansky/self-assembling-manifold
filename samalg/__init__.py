@@ -1146,12 +1146,16 @@ class SAM(object):
 
         if update_manifold:
             edm = ut.calc_nnm(g_weighted, k, distance)
-            self.adata.uns["nnm"] = edm
             EDM = edm.copy()
             EDM.data[:] = 1
             self.adata.uns["neighbors"] = {}
             self.adata.uns["neighbors"]["connectivities"] = EDM
-            self.adata.uns['nnm'] = EDM
+            if distance in ['correlation','cosine']: #keep edge weights and store in nnm if distance is bounded
+                edm.data[:] = 1-edm.data
+                edm.data[edm.data<0]=0.01 #if negative correlation, set close to zero but not zero to preserve kNN structure
+                self.adata.uns['nnm'] = edm
+            else:
+                self.adata.uns['nnm'] = EDM
             W = self.dispersion_ranking_NN(EDM, weight_mode=weight_mode, num_norm_avg=num_norm_avg)
         else:
             print('Not updating the manifold...')

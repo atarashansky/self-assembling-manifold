@@ -357,12 +357,12 @@ def convert_annotations(A):
 
 
 def calc_nnm(g_weighted, k, distance=None):
-    if g_weighted.shape[0] > 8000:
+    if g_weighted.shape[0] > 0:
         # only uses cosine
         nnm, dists = nearest_neighbors_wrapper(g_weighted, n_neighbors=k, metric=distance)
         EDM = gen_sparse_knn(nnm, dists)
         EDM = EDM.tocsr()
-    else:
+    else: #try removing this and only use stochastic implementation
         if sp.sparse.issparse(g_weighted):
             g_weighted = g_weighted.A
         dist = compute_distances(g_weighted, distance)
