@@ -223,7 +223,6 @@ def transform_wPCA(mat, pca):
 def search_string(vec, s, case_sensitive=False, invert=False):
     vec = np.array(vec)
 
-    m = []
 
     if isinstance(s,list):
         S = s
@@ -232,6 +231,7 @@ def search_string(vec, s, case_sensitive=False, invert=False):
 
     V=[]; M=[]
     for s in S:
+        m = []
         if not case_sensitive:
             s = s.lower()
         for i in range(len(vec)):
@@ -246,10 +246,16 @@ def search_string(vec, s, case_sensitive=False, invert=False):
             V.append(vec[np.array(m)]); M.append(np.array(m))
     if len(V)>0:
         i = len(V)
-        V = np.concatenate(V); M = np.concatenate(M);
-        if i > 1:
-            ix = np.sort(np.unique(M,return_index=True)[1])
-            V=V[ix]; M=M[ix];
+        if not invert:
+            V = np.concatenate(V); M = np.concatenate(M);
+            if i > 1:
+                ix = np.sort(np.unique(M,return_index=True)[1])
+                V=V[ix]; M=M[ix];
+        else:
+            for i in range(len(V)):
+                V[i]=list(set(V[i]).intersection(*V))
+            V = vec[np.in1d(vec,np.unique(np.concatenate(V)))]
+            M=-1
         return V,M
     else:
         return -1,-1
