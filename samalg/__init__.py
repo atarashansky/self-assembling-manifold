@@ -123,7 +123,8 @@ class SAM(object):
         sum_norm=None,
         norm="log",
         min_expression=1,
-        thresh=0.01,
+        thresh_low=0.01,
+        thresh_high=0.99,
         filter_genes=True,
     ):
         """Log-normalizes and filters the expression data.
@@ -159,10 +160,15 @@ class SAM(object):
             expressed. Gene expression values less than 'min_expression' are
             set to zero.
 
-        thresh : float, optional, default 0.2
-            Keep genes expressed in greater than 'thresh'*100 % of cells and
-            less than (1-'thresh')*100 % of cells, where a gene is considered
-            expressed if its expression value exceeds 'min_expression'.
+        thresh_low : float, optional, default 0.01
+            Keep genes expressed in greater than 'thresh_low'*100 % of cells,
+            where a gene is considered expressed if its expression value
+            exceeds 'min_expression'.
+
+        thresh_high : float, optional, default 0.99
+            Keep genes expressed in less than 'thresh_high'*100 % of cells,
+            where a gene is considered expressed if its expression value
+            exceeds 'min_expression'.
 
         filter_genes : bool, optional, default True
             Setting this to False turns off filtering operations.
@@ -174,7 +180,8 @@ class SAM(object):
             "sum_norm": sum_norm,
             "norm": norm,
             "min_expression": min_expression,
-            "thresh": thresh,
+            "thresh_low": thresh_low,
+            "thresh_high":thresh_high,
             "filter_genes": filter_genes,
         }
 
@@ -259,7 +266,7 @@ class SAM(object):
             c[a] = ct
 
             keep = np.where(
-                np.logical_and(c / D.shape[0] > thresh, c / D.shape[0] <= 1 - thresh)
+                np.logical_and(c / D.shape[0] > thresh_low, c / D.shape[0] <= thresh_high)
             )[0]
 
             idx_genes = np.array(list(set(keep) & set(idx_genes)))
