@@ -125,6 +125,7 @@ class SAM(object):
         min_expression=1,
         thresh_low=0.01,
         thresh_high=0.99,
+        thresh = None,
         filter_genes=True,
     ):
         """Log-normalizes and filters the expression data.
@@ -174,6 +175,9 @@ class SAM(object):
             Setting this to False turns off filtering operations.
 
         """
+        if thresh is not None:
+            thresh_low = thresh
+            thresh_high = 1-thresh
 
         self.preprocess_args = {
             "div": div,
@@ -184,6 +188,7 @@ class SAM(object):
             "thresh_high":thresh_high,
             "filter_genes": filter_genes,
         }
+
 
         # load data
         try:
@@ -1166,19 +1171,19 @@ class SAM(object):
             else:
                 self.adata.uns['nnm'] = EDM
             W = self.dispersion_ranking_NN(EDM, weight_mode=weight_mode, num_norm_avg=num_norm_avg)
+            self.adata.obsm["X_pca"] = g_weighted
+            ge = np.array(list(self.adata.var_names[gkeep]))
+            self.X_processed = (D_sub, ge, gkeep)
+            self.adata.varm["PCs"] = np.zeros(shape=(self.adata.n_vars, npcs))
+            self.adata.varm["PCs"][gkeep] = self.components.T
+            return W,g_weighted,EDM
         else:
             print('Not updating the manifold...')
             EDM = None
             W = None
-
-
-        ge = np.array(list(self.adata.var_names[gkeep]))
-        self.X_processed = (D_sub, ge, gkeep)
-        self.adata.obsm["X_pca"] = g_weighted
-        self.adata.varm["PCs"] = np.zeros(shape=(self.adata.n_vars, npcs))
-        self.adata.varm["PCs"][gkeep] = self.components.T
-
-        return W, g_weighted, EDM
+            PCs = np.zeros(shape=(self.adata.n_vars, npcs))
+            PCs[gkeep] = self.components.T
+            return PCs
 
     def run_tsne(self, X=None, metric="correlation", **kwargs):
         """Wrapper for sklearn's t-SNE implementation.
