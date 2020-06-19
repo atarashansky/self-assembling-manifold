@@ -743,7 +743,7 @@ class SAM(object):
         ----------
         nnm - scipy.sparse, default None
             Square cell-to-cell nearest-neighbor matrix. If None, uses the
-            nearest neighbor matrix in .adata.uns['neighbors']['connectivities']
+            nearest neighbor matrix in .adata.obsp['connectivities']
 
         num_norm_avg - int, optional, default 50
             The top 'num_norm_avg' dispersions are averaged to determine the
@@ -757,7 +757,7 @@ class SAM(object):
             The vector of gene weights.
         """
         if nnm is None:
-            nnm = self.adata.uns["neighbors"]["connectivities"]
+            nnm = self.adata.obsp["connectivities"]
         f = nnm.sum(1).A
         f[f==0]=1
         D_avg = (nnm.multiply(1 / f)).dot(self.adata.layers["X_disp"])
@@ -1161,8 +1161,9 @@ class SAM(object):
             EDM = edm.copy()
             EDM.data[:] = 1
             EDM = EDM.tolil(); EDM.setdiag(1); EDM = EDM.tocsr();
-            self.adata.uns["neighbors"] = {}
-            self.adata.uns["neighbors"]["connectivities"] = EDM
+
+            self.adata.obsp['connectivities'] = EDM
+
             if distance in ['correlation','cosine']: #keep edge weights and store in nnm if distance is bounded
                 edm.data[:] = 1-edm.data
                 edm = edm.tolil(); edm.setdiag(1); edm = edm.tocsr();
@@ -1387,7 +1388,7 @@ class SAM(object):
         """
 
         if X is None:
-            X = self.adata.uns["neighbors"]["connectivities"]
+            X = self.adata.obsp["connectivities"]
             save = True
         else:
             if not sp.isspmatrix_csr(X):
@@ -1458,7 +1459,7 @@ class SAM(object):
     def leiden_clustering(self, X=None, res=1, method="modularity"):
 
         if X is None:
-            X = self.adata.uns["neighbors"]["connectivities"]
+            X = self.adata.obsp["connectivities"]
             save = True
         else:
             if not sp.isspmatrix_csr(X):

@@ -20,7 +20,7 @@ setup(
         "packaging",
         "numba>=0.49.0",
         "umap-learn>=0.4.0",
-        "anndata>=0.7rc1",
+        "anndata>=0.7.3",
     ],
     extras_require={
         "louvain": ["louvain", "cython", "python-igraph"],
