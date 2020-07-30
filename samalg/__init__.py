@@ -15,7 +15,7 @@ from numba.core.errors import NumbaPerformanceWarning
 
 warnings.filterwarnings("ignore", category=NumbaPerformanceWarning)
 
-__version__ = "0.7.3"
+__version__ = "0.7.4"
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
