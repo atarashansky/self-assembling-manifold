@@ -9,7 +9,7 @@ from sklearn.utils import check_array, check_random_state
 from scipy import sparse
 import sklearn.utils.sparsefuncs as sf
 from umap.umap_ import nearest_neighbors
-__version__ = "0.7.3"
+__version__ = "0.7.4"
 
 
 def find_corr_genes(sam, input_gene):
@@ -255,7 +255,7 @@ def search_string(vec, s, case_sensitive=False, invert=False):
             for i in range(len(V)):
                 V[i]=list(set(V[i]).intersection(*V))
             V = vec[np.in1d(vec,np.unique(np.concatenate(V)))]
-            M=-1
+            M = np.array([np.where(vec==x)[0][0] for x in V])
         return V,M
     else:
         return -1,-1

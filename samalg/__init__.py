@@ -15,7 +15,7 @@ from numba.core.errors import NumbaPerformanceWarning
 
 warnings.filterwarnings("ignore", category=NumbaPerformanceWarning)
 
-__version__ = "0.7.3"
+__version__ = "0.7.4"
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -1675,7 +1675,6 @@ class SAM(object):
         m = l.mean(0).A.flatten()
         cells = np.array(list(self.adata.obs_names))
         for K in range(lblsu.size):
-            print(lblsu[K])
             selected = np.where(np.in1d(cells, self.get_cells(lblsu[K], labels)))[0]
             ms = l[selected, :].mean(0).A.flatten()
             lsub = l[selected, :]

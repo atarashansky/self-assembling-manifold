@@ -8,17 +8,17 @@ from . import utilities as ut
 import pandas as pd
 
 from ipyevents import Event
-from ipywidgets import Widget
+from ipywidgets import Widget, Layout
 
-__version__ = "0.7.3"
+__version__ = "0.7.4"
 
 
 class SAMGUI(object):
-    def __init__(self, sam=None, close_all_widgets=False):
+    def __init__(self, sam=None, close_all_widgets=False,height=600):
         if close_all_widgets:
             Widget.close_all()
-
-        self.stab = widgets.Tab()
+        self.widget_height = height
+        self.stab = widgets.Tab(layout={"height": "95%", "width": "50%"})
         self.stab.observe(self.on_switch_tabs, "selected_index")
 
         if sam is not None:
@@ -26,7 +26,7 @@ class SAMGUI(object):
             self.create_plot(0, "Full dataset")
             items = [self.stab, self.tab]
         else:
-            tab = widgets.Tab()
+            tab = widgets.Tab(layout={"height": "95%", "width": "50%"})
             load_box = self.init_load()
             children = [load_box]
             self.SAM_LOADED = False
@@ -37,27 +37,31 @@ class SAMGUI(object):
 
         self.current_tab = 0
         self.current_sam = sam
-        self.SamPlot = widgets.HBox(items)
+
+        self.SamPlot = widgets.HBox(items,layout=Layout(width='auto',height=str(height)+'px'))
 
     def init_from_sam(self, sam):
         self.current_sam = sam
-        tab = widgets.Tab()
+        tab = widgets.Tab(layout={"height": "95%", "width": "50%"})
         self.load_vars_from_sam(sam)
         self.pp_box = self.init_preprocess()
         self.rs_box = self.init_run_sam()
         self.cs_box = self.init_cs()
         self.SAM_LOADED = True
         self.out = widgets.Output(
-            layout={"border": "1px solid black", "height": "600px", "width": "400px"}
+            layout={"border": "1px solid black", "height": "95%", "width": "100%"}
         )
         children = [self.cs_box, self.rs_box, self.pp_box, self.out]
-        names = ["Interact", "Run", "Preprocess", "Output"]
+        self.children = children
+        names = ["Interact (0)", "Analysis (0)", "Preprocess (0)", "Output (0)"]
+        self.names = ["Interact", "Analysis", "Preprocess", "Output"]
         tab.children = children
         tab.set_trait("selected_index", 0)
         for i in range(len(children)):
             tab.set_title(i, names[i])
         tab.set_trait("selected_index", 0)
         self.tab = tab
+
 
     def close_all_tabs(self):
         self.stab.set_trait("selected_index", 0)
@@ -85,7 +89,7 @@ class SAMGUI(object):
         self.selected = [np.zeros(sam.adata.shape[0], dtype="bool")]
         self.selected[0][:] = True
         self.active_labels = [np.zeros(self.selected[0].size, dtype="int")]
-        self.dd_opts = [[""]]
+        self.dd_opts = [["Toggle cluster"]]
         try:
             self.marker_genes = [
                 np.array(list(sam.adata.var_names))[
@@ -149,10 +153,9 @@ class SAMGUI(object):
                 margin_r=0,
                 margin_t=40,
                 margin_b=0,
-                width=600,
-                height=600,
                 xaxis_ticks="",
                 xaxis_showticklabels=False,
+                height=self.widget_height*0.85,
                 title="",
                 # xaxis_showgrid=False,
                 # xaxis_zeroline=False,
@@ -187,7 +190,7 @@ class SAMGUI(object):
                 self.ds[i] = d
                 d.on_dom_event(self.handle_events)
 
-            slider = self.cs_box.children[12].children[1]
+            slider = self.cs_dict['THR']
             slider.set_trait("min", slider.value)
             slider.set_trait("max", slider.value)
 
@@ -199,8 +202,7 @@ class SAMGUI(object):
                 margin_r=0,
                 margin_t=40,
                 margin_b=0,
-                width=600,
-                height=600,
+                height = self.widget_height*0.85,
                 xaxis_ticks="",
                 xaxis_showticklabels=False,
                 yaxis_ticks="",
@@ -221,18 +223,19 @@ class SAMGUI(object):
 
         self.stab.set_title(i, title)
 
+
     def handle_events(self, event):
         if event["type"] == "keydown":
             key = event["key"]
             if key == "ArrowRight":
-                self.cs_box.children[11].children[1].set_trait(
-                    "value", self.cs_box.children[11].children[1].value + 1
+                self.cs_dict['RGENES'].set_trait(
+                    "value", self.cs_dict['RGENES'].value + 1
                 )
             elif key == "ArrowLeft":
-                x = self.cs_box.children[11].children[1].value - 1
+                x = self.cs_dict['RGENES'].value - 1
                 if x < 0:
                     x = 0
-                self.cs_box.children[11].children[1].set_trait("value", x)
+                self.cs_dict['RGENES'].set_trait("value", x)
 
             elif key == "Shift":
                 self.irm_genes(None)
@@ -245,8 +248,8 @@ class SAMGUI(object):
             elif key == "v":
                 self.reset_view(None)
             elif key == "a":
-                self.cs_box.children[9].children[2].set_trait(
-                    "value", not self.cs_box.children[9].children[2].value
+                self.cs_dict['AVG'].set_trait(
+                    "value", not self.cs_dict['AVG'].value
                 )
 
     def close_tab(self, event):
@@ -388,6 +391,22 @@ class SAMGUI(object):
         loadv.on_click(self.load_vann)
         load_datav = widgets.Text(value="", layout={"width": "100%%"})
 
+        self.ps_dict={}
+        self.ps_dict['DFTS'] = dfts
+        self.ps_dict['FGENES'] = fgenes
+        self.ps_dict['NORM'] = norm
+        self.ps_dict['SUMNORM'] = sumnorm
+        self.ps_dict['L1'] = l1
+        self.ps_dict['EXPR_THR'] = expr_thr
+        self.ps_dict['L2'] = l2
+        self.ps_dict['MIN_EXPR'] = min_expr
+        self.ps_dict['LOAD'] = load
+        self.ps_dict['LOAD_DATA'] = load_data
+        self.ps_dict['LOADA'] = loada
+        self.ps_dict['LOAD_DATAA'] = load_dataa
+        self.ps_dict['LOADV'] = loadv
+        self.ps_dict['LOAD_DATAV'] = load_datav
+
         pp = widgets.VBox(
             [  # pdata,
                 widgets.HBox([dfts, fgenes]),
@@ -398,12 +417,13 @@ class SAMGUI(object):
                 widgets.HBox([load, load_data]),
                 widgets.HBox([loada, load_dataa]),
                 widgets.HBox([loadv, load_datav]),
-            ]
+            ],
+            layout={"height": "95%", "width": "100%"}
         )
         return pp
 
     def load_ann(self, event):
-        path = self.pp_box.children[6].children[1].value
+        path = self.ps_dict['LOAD_DATAA'].value
         try:
             for i in range(len(self.stab.children)):
                 self.sams[i].load_obs_annotations(path)
@@ -413,7 +433,7 @@ class SAMGUI(object):
                 print("Annotation file not found or was improperly formatted.")
 
     def load_vann(self, event):
-        path = self.pp_box.children[7].children[1].value
+        path = self.ps_dict['LOAD_DATAV'].value
         try:
             for i in range(len(self.stab.children)):
                 self.sams[i].load_var_annotations(path)
@@ -432,14 +452,14 @@ class SAMGUI(object):
         )
         load.on_click(self.load_data)
         load_data = widgets.Text(value="", layout={"width": "100%"})
-        return widgets.HBox([load, load_data], layout={"width": "500px"})
+        return widgets.HBox([load, load_data], layout={"width": "50%"})
 
     def load_data(self, event):
         try:
             if not self.SAM_LOADED:
                 path = self.SamPlot.children[1].children[0].children[1].value
             else:
-                path = self.pp_box.children[5].children[1].value
+                path = self.ps_dict['LOAD_DATA'].value
 
             filetype = path.split(".")[-1]
             if filetype == "gz":
@@ -488,11 +508,11 @@ class SAMGUI(object):
 
     def set_pp_defaults(self, event):
         self.preprocess_args = self.preprocess_args_init.copy()
-        fgenes = self.pp_box.children[0].children[1]  # checkbox
-        norm = self.pp_box.children[1]
-        sumnorm = self.pp_box.children[2]
-        expr_thr = self.pp_box.children[3].children[1]  # expr_threshold
-        min_expr = self.pp_box.children[4].children[1]  # min_expr
+        fgenes = self.ps_dict['FGENES']  # checkbox
+        norm = self.ps_dict['NORM']
+        sumnorm = self.ps_dict['SUMNORM']
+        expr_thr = self.ps_dict['EXPR_THR']  # expr_threshold
+        min_expr = self.ps_dict['MIN_EXPR']  # min_expr
 
         init = float(self.preprocess_args.get("min_expression", 1))
         min_expr.set_trait("value", init)
@@ -539,6 +559,56 @@ class SAMGUI(object):
     """ BEGIN RUN INIT"""
 
     def init_run_sam(self):
+        cpm = widgets.Dropdown(
+            options=["UMAP", "t-SNE", "Diffusion map", "Diffusion UMAP"],
+            value="UMAP",
+            description="",
+            layout={"width": "60%"},
+        )
+
+        cp = widgets.Button(
+            description="Compute projection",
+            tooltip="Compute a 2D projection using the selected method in the dropdown menu to the right.",
+            layout={"width": "40%"},
+        )
+        cp.on_click(self.compute_projection)
+
+        clm = widgets.Dropdown(
+            options=[
+                "Louvain cluster",
+                "Density cluster",
+                "Hdbscan cluster",
+                "Kmeans cluster",
+                "Leiden cluster",
+            ],
+            value="Leiden cluster",
+            description="",
+            layout={"width": "60%"},
+        )
+        clm.observe(self.rewire_cluster_slider, "value")
+        cl = widgets.Button(
+            description="Cluster",
+            tooltip="Cluster the data using the selected method in the dropdown menu to the right.",
+            layout={"width": "40%"},
+        )
+        cl.on_click(self.cluster_data)
+
+        l = widgets.Label("Leiden 'res'", layout={"width": "20%"})
+        cslider = widgets.FloatSlider(
+            value=1,
+            min=0.1,
+            max=10,
+            step=0.1,
+            disabled=False,
+            continuous_update=False,
+            orientation="horizontal",
+            readout=True,
+            readout_format="2f",
+            description="",
+            style={"description_width": "initial"},
+            layout={"width": "80%"},
+        )
+
         runb = widgets.Button(
             description="Run SAM",
             disabled=False,
@@ -705,6 +775,28 @@ class SAMGUI(object):
         )
         proj.observe(self.proj_update, "value")
 
+        self.rb_dict={}
+        self.rb_dict['RUNB']=runb
+        self.rb_dict['TITLE']=title
+        self.rb_dict['DFTS']=dfts
+        self.rb_dict['WPCA']=wpca
+        self.rb_dict['L3']=l3
+        self.rb_dict['L4']=l4
+        self.rb_dict['NNA']=nna
+        self.rb_dict['NORM']=norm
+        self.rb_dict['DISTANCE']=distance
+        self.rb_dict['PROJ']=proj
+        self.rb_dict['L1']=l1
+        self.rb_dict['L2']=l2
+        self.rb_dict['NGENES']=ngenes
+        self.rb_dict['NPCS']=npcs
+        self.rb_dict['CP']=cp
+        self.rb_dict['CPM']=cpm
+        self.rb_dict['CL']=cl
+        self.rb_dict['CLM']=clm
+        self.rb_dict['L']=l
+        self.rb_dict['CSLIDER']=cslider
+
         rs = widgets.VBox(
             [
                 widgets.HBox([runb, title]),
@@ -716,7 +808,11 @@ class SAMGUI(object):
                 proj,
                 widgets.HBox([l1, ngenes]),
                 widgets.HBox([l2, npcs]),
-            ]
+                widgets.HBox([cp, cpm]),
+                widgets.HBox([cl, clm]),
+                widgets.HBox([l, cslider]),
+            ],
+            layout={"height": "95%", "width": "100%"}
         )
 
         return rs
@@ -730,14 +826,14 @@ class SAMGUI(object):
         # ,knn
         # ,nna
         # norm,dist,proj
-        wpca = self.rs_box.children[1].children[1]
-        ngenes = self.rs_box.children[7].children[1]
-        npcs = self.rs_box.children[8].children[1]
-        knn = self.rs_box.children[2].children[1]
-        nna = self.rs_box.children[3].children[1]
-        rnorm = self.rs_box.children[4]
-        dist = self.rs_box.children[5]
-        proj = self.rs_box.children[6]
+        wpca = self.rb_dict['WPCA']
+        ngenes = self.rb_dict['NGENES']
+        npcs = self.rb_dict['NPCS']
+        knn = self.rb_dict['KNN']
+        nna = self.rb_dict['NNA']
+        rnorm = self.rb_dict['NORM']
+        dist = self.rb_dict['DISTANCE']
+        proj = self.rb_dict['PROJ']
 
         init = self.run_args.get("num_norm_avg", 50)
         nna.set_trait("value", init)
@@ -773,12 +869,12 @@ class SAMGUI(object):
             list(s.adata.var_names[np.argsort(-s.adata.var["weights"].values)])
         )
         self.marker_genes_tt[self.stab.selected_index] = "Genes ranked by SAM weights."
-        self.cs_box.children[11].children[0].set_trait(
+        self.cs_dict['LGENES'].set_trait(
             "tooltip", self.marker_genes_tt[self.stab.selected_index]
         )
 
-        if self.cs_box.children[11].children[1].value != 0:
-            self.cs_box.children[11].children[1].set_trait("value", 0)
+        if self.cs_dict['RGENES'].value != 0:
+            self.cs_dict['RGENES'].set_trait("value", 0)
         else:
             self.show_expression(str(self.marker_genes[self.stab.selected_index][0]))
 
@@ -836,7 +932,7 @@ class SAMGUI(object):
             self.selected.append(np.ones(sam_subcluster.adata.shape[0]).astype("bool"))
             self.selected_cells.append(np.array(list(sam_subcluster.adata.obs_names)))
             self.active_labels.append(np.zeros(sam_subcluster.adata.shape[0]))
-            self.dd_opts.append([""])
+            self.dd_opts.append(["Toggle cluster"])
             self.gene_expressions.append(np.zeros(sam_subcluster.adata.shape[0]))
             self.marker_genes.append(
                 np.array(list(sam_subcluster.adata.var_names))[
@@ -862,7 +958,7 @@ class SAMGUI(object):
             self.current_sam = sam
 
         if execute:
-            title = self.rs_box.children[0].children[1].value
+            title = self.rb_dict['TITLE'].value
             if title == "" and i == 0:
                 title = "Full dataset"
             elif title == "":
@@ -870,25 +966,13 @@ class SAMGUI(object):
             self.create_plot(i, title)
             self.update_dropdowns(i)
 
+
+
     """ END RUN INIT"""
 
     """ BEGIN CS INIT"""
 
     def init_cs(self):
-        cpm = widgets.Dropdown(
-            options=["UMAP", "t-SNE", "Diffusion map", "Diffusion UMAP"],
-            value="UMAP",
-            description="",
-            layout={"width": "60%"},
-        )
-
-        cp = widgets.Button(
-            description="Compute projection",
-            tooltip="Compute a 2D projection using the selected method in the dropdown menu to the right.",
-            layout={"width": "40%"},
-        )
-        cp.on_click(self.compute_projection)
-
         initl = list(self.sams[0].adata.obsm.keys())
         initl = [""] + initl
         if "X_umap" in initl:
@@ -906,56 +990,20 @@ class SAMGUI(object):
         )
         dp.on_click(self.display_projection)
 
-        clm = widgets.Dropdown(
-            options=[
-                "Louvain cluster",
-                "Density cluster",
-                "Hdbscan cluster",
-                "Kmeans cluster",
-                "Leiden cluster",
-            ],
-            value="Leiden cluster",
-            description="",
-            layout={"width": "60%"},
-        )
-        clm.observe(self.rewire_cluster_slider, "value")
-        cl = widgets.Button(
-            description="Cluster",
-            tooltip="Cluster the data using the selected method in the dropdown menu to the right.",
-            layout={"width": "40%"},
-        )
-        cl.on_click(self.cluster_data)
-
-        l = widgets.Label("Leiden 'res'", layout={"width": "20%"})
-        cslider = widgets.FloatSlider(
-            value=1,
-            min=0.1,
-            max=10,
-            step=0.1,
-            disabled=False,
-            continuous_update=False,
-            orientation="horizontal",
-            readout=True,
-            readout_format="2f",
-            description="",
-            style={"description_width": "initial"},
-            layout={"width": "80%"},
-        )
-
         initl = list(self.sams[0].adata.obs.keys())
         initl = [""] + initl
         dam = widgets.Dropdown(
             options=initl, value=initl[0], description="", layout={"width": "60%"}
         )
         da = widgets.Button(
-            description="Disp obs ann",
+            description="Display cell ann.",
             tooltip="Overlay the annotations selected in the dropdown menu to the right.",
             layout={"width": "40%"},
         )
         da.on_click(self.display_annotation)
 
         dv = widgets.Button(
-            description="Disp var ann",
+            description="Display gene ann.",
             tooltip="Include the 'var' annotation for the corresponding gene in the title of the gene expression plots.",
             layout={"width": "40%"},
         )
@@ -1015,7 +1063,7 @@ class SAMGUI(object):
             indent=False, value=False, description="Log cbar", layout={"width": "20%"}
         )
         show_colorbar = widgets.Checkbox(
-            indent=False, value=True, description="Show cbar", layout={"width": "20%"}
+            indent=False, value=False, description="Show cbar", layout={"width": "20%"}
         )
         lann = widgets.Button(
             description="Annotate",
@@ -1027,8 +1075,12 @@ class SAMGUI(object):
             disabled=True,
             layout={"width": "20%"},
         )
-        anno_name = widgets.Text(value="", layout={"width": "40%"})
-        anno = widgets.Text(value="", layout={"width": "40%"})
+        anno_name = widgets.Text(value="",
+                                 placeholder='Annotation column name',
+                                 layout={"width": "40%"})
+        anno = widgets.Text(value="",
+                            placeholder='Annotation',
+                            layout={"width": "40%"})
         anno.on_submit(self.annotate_pop)
 
         lgsm = widgets.Button(
@@ -1037,7 +1089,8 @@ class SAMGUI(object):
             disabled=True,
             layout={"width": "30%"},
         )
-        gsm = widgets.Text(value="", layout={"width": "50%"})
+        gsm = widgets.Text(value="", placeholder=self.sams[0].adata.var_names[0],
+                           layout={"width": "50%"})
         gsm.on_submit(self.get_similar_genes)
         lshg = widgets.Button(
             description="Show expressions",
@@ -1045,7 +1098,8 @@ class SAMGUI(object):
             disabled=True,
             layout={"width": "30%"},
         )
-        shg = widgets.Text(value="", layout={"width": "50%"})
+        shg = widgets.Text(value="", placeholder=self.sams[0].adata.var_names[0],
+                           layout={"width": "50%"})
         shg.on_submit(self.show_expression)
 
         lgenes = widgets.Button(
@@ -1092,7 +1146,7 @@ class SAMGUI(object):
 
         lsf = widgets.Button(
             description="Save",
-            tooltip="Save the current SAM object. Filenames should end with .h5ad or .p.",
+            tooltip="Save the current SAM object. Filenames should end with .h5ad.",
             disabled=True,
             layout={"width": "30%"},
         )
@@ -1166,29 +1220,65 @@ class SAMGUI(object):
         )
         mslider.observe(self.change_msize, "value")
 
-        acc = widgets.Dropdown(value="", options=[""])
+        acc = widgets.Dropdown(value="Toggle cluster", options=["Toggle cluster"])
         acc.observe(self.pick_cells_dd, "value")
+
+        self.cs_dict={}
+        self.cs_dict['DP']=dp
+        self.cs_dict['DPM']=dpm
+        self.cs_dict['DA']=da
+        self.cs_dict['DAM']=dam
+        self.cs_dict['ACC']=acc
+        self.cs_dict['DV']=dv
+        self.cs_dict['DVM']=dvm
+        self.cs_dict['IRM']=irm
+        self.cs_dict['ISM']=ism
+        self.cs_dict['SWS']=sws
+        self.cs_dict['US']=us
+        self.cs_dict['USA']=usa
+        self.cs_dict['RES']=res
+        self.cs_dict['LANN']=lann
+        self.cs_dict['ANNO_NAME']=anno_name
+        self.cs_dict['ANNO']=anno
+        self.cs_dict['SHOW_COLORBAR']=show_colorbar
+        self.cs_dict['LGSM']=lgsm
+        self.cs_dict['GSM']=gsm
+        self.cs_dict['AVG']=avg
+        self.cs_dict['LSHG']=lshg
+        self.cs_dict['SHG']=shg
+        self.cs_dict['LOG']=log
+        self.cs_dict['LGENES']=lgenes
+        self.cs_dict['RGENES']=rgenes
+        self.cs_dict['LTHR']=lthr
+        self.cs_dict['THR']=thr
+        self.cs_dict['LSF']=lsf
+        self.cs_dict['SF']=sf
+        self.cs_dict['AMSLIDER']=amslider
+        self.cs_dict['ASLIDER']=aslider
+        self.cs_dict['LMSLIDER']=lmslider
+        self.cs_dict['MSLIDER']=mslider
+        self.cs_dict['CLOSE']=close
+        self.cs_dict['HOTKEYS']=hotkeys
 
         return widgets.VBox(
             [
-                widgets.HBox([cp, cpm]),
                 widgets.HBox([dp, dpm]),
-                widgets.HBox([cl, clm]),
-                widgets.HBox([l, cslider]),
                 widgets.HBox([da, dam, acc]),
                 widgets.HBox([dv, dvm]),
                 widgets.HBox([irm, ism, sws]),
                 widgets.HBox([us, usa, res]),
-                widgets.HBox([lann, anno_name, anno, show_colorbar]),
-                widgets.HBox([lgsm, gsm, avg]),
-                widgets.HBox([lshg, shg, log]),
+                widgets.HBox([lann, anno_name, anno, ]),
+                widgets.HBox([lgsm, gsm, ]),
+                widgets.HBox([lshg, shg, ]),
                 widgets.HBox([lgenes, rgenes]),
                 widgets.HBox([lthr, thr]),
-                widgets.HBox([lsf, sf]),
                 widgets.HBox([amslider, aslider]),
+                widgets.HBox([show_colorbar, avg, log]),
                 widgets.HBox([lmslider, mslider]),
+                widgets.HBox([lsf, sf]),
                 widgets.HBox([close, hotkeys]),
-            ]
+            ],
+            layout={"height": "95%", "width": "100%"}
         )
 
     def reset_view(self, event):
@@ -1198,7 +1288,7 @@ class SAMGUI(object):
             np.argsort(-self.sams[i].adata.var["weights"].values)
         ]
         self.marker_genes_tt[i] = "Genes ranked by SAM weights."
-        self.cs_box.children[11].children[0].set_trait(
+        self.cs_dict['LGENES'].set_trait(
             "tooltip", self.marker_genes_tt[i]
         )
 
@@ -1235,7 +1325,10 @@ class SAMGUI(object):
                     if genes is not -1:
                         gene = genes[0]
 
-                if self.cs_box.children[9].children[2].value:
+                if self.cs_dict['AVG'].value:
+                    if 'X_knn_avg' not in s.adata.layers.keys():
+                        s.dispersion_ranking_NN();
+
                     x = s.adata[:, gene].layers["X_knn_avg"]
                     if sp.issparse(x):
                         a = x.A.flatten()
@@ -1248,7 +1341,7 @@ class SAMGUI(object):
                     else:
                         a = x.flatten()
 
-                if self.cs_box.children[9].children[2].value:
+                if self.cs_dict['AVG'].value:
                     if a.sum() == 0:
                         x = s.adata_raw[:, gene][s.adata.obs_names, :].X
                         if sp.issparse(x):
@@ -1282,7 +1375,7 @@ class SAMGUI(object):
                 # self.select_all(None)
                 self.update_colors_expr(a, title)
             except:
-                if self.cs_box.children[9].children[2].value:
+                if self.cs_dict['AVG'].value:
                     if not (gene in s.adata.var_names):
                         with self.out:
                             print(
@@ -1298,42 +1391,43 @@ class SAMGUI(object):
 
     def get_similar_genes(self, txt):
         gene = txt.value
+        if gene != "":
+            s = self.sams[self.stab.selected_index]
+            if 'X_knn_avg' not in s.adata.layers.keys():
+                s.dispersion_ranking_NN();
 
-        s = self.sams[self.stab.selected_index]
+            genes = ut.search_string(
+                np.array(list(s.adata.var_names)), gene, case_sensitive=True
+            )[0]
+            if genes is not -1:
+                gene = genes[0]
+            else:
+                return
+                # quit
 
-        genes = ut.search_string(
-            np.array(list(s.adata.var_names)), gene, case_sensitive=True
-        )[0]
-        if genes is not -1:
-            gene = genes[0]
-        else:
-            return
-            # quit
+            markers = ut.find_corr_genes(s, gene).flatten()
+            _, i = np.unique(markers, return_index=True)
+            markers = markers[np.sort(i)]
+            self.marker_genes[self.stab.selected_index] = markers
 
-        markers = ut.find_corr_genes(s, gene).flatten()
-        _, i = np.unique(markers, return_index=True)
-        markers = markers[np.sort(i)]
-        self.marker_genes[self.stab.selected_index] = markers
-
-        self.cs_box.children[11].children[1].set_trait("value", 0)
-        self.marker_genes_tt[self.stab.selected_index] = (
-            "Ranked genes from most to least spatially correlated with " + gene + "."
-        )
-        self.cs_box.children[11].children[0].set_trait(
-            "tooltip", self.marker_genes_tt[self.stab.selected_index]
-        )
-        self.show_expression(str(gene))
+            self.cs_dict['RGENES'].set_trait("value", 0)
+            self.marker_genes_tt[self.stab.selected_index] = (
+                "Ranked genes from most to least spatially correlated with " + gene + "."
+            )
+            self.cs_dict['LGENES'].set_trait(
+                "tooltip", self.marker_genes_tt[self.stab.selected_index]
+            )
+            self.show_expression(str(gene))
 
     def annotate_pop(self, text):
         text = text.value
-        text_name = self.cs_box.children[8].children[1].value
+        text_name = self.cs_dict['ANNO_NAME'].value
         selected = self.selected[self.stab.selected_index]
         selected_cells = self.selected_cells[self.stab.selected_index]
+        if text != "" and text_name != "" and selected.sum()!=selected.size:
+            for it, s in enumerate(self.sams):
+                x1 = np.array(list(s.adata.obs_names))
 
-        for it, s in enumerate(self.sams):
-            x1 = np.array(list(s.adata.obs_names))
-
-            if text != "" and text_name != "" and selected.sum() != selected.size:
                 if text_name in list(s.adata.obs.keys()):
                     a = s.get_labels(text_name).copy().astype("<U100")
                     a[np.in1d(x1, selected_cells)] = text
@@ -1345,7 +1439,7 @@ class SAMGUI(object):
                     a[np.in1d(x1, selected_cells)] = text
                     s.adata.obs[text_name] = pd.Categorical(a)
 
-            self.update_dropdowns(it)
+                self.update_dropdowns(it)
 
     def unselect_all(self, event):
         self.selected[self.stab.selected_index][:] = False
@@ -1354,7 +1448,7 @@ class SAMGUI(object):
             []
         )
         self.stab.children[self.stab.selected_index].data[0].unselected = {
-            "marker": {"opacity": self.cs_box.children[14].children[1].value}
+            "marker": {"opacity": self.cs_dict['ASLIDER'].value}
         }
 
     def select_all(self, event):
@@ -1384,8 +1478,8 @@ class SAMGUI(object):
             self.marker_genes[self.stab.selected_index] = np.array(
                 list(s.adata.var_names[np.argsort(-wmu)])
             )
-            if self.cs_box.children[11].children[1].value != 0:
-                self.cs_box.children[11].children[1].set_trait("value", 0)
+            if self.cs_dict['RGENES'].value != 0:
+                self.cs_dict['RGENES'].set_trait("value", 0)
             else:
                 self.show_expression(
                     str(self.marker_genes[self.stab.selected_index][0])
@@ -1393,7 +1487,7 @@ class SAMGUI(object):
             self.marker_genes_tt[
                 self.stab.selected_index
             ] = "Ranked genes according to spatial SAM weights among selected cells."
-            self.cs_box.children[11].children[0].set_trait(
+            self.cs_dict['LGENES'].set_trait(
                 "tooltip", self.marker_genes_tt[self.stab.selected_index]
             )
 
@@ -1405,8 +1499,8 @@ class SAMGUI(object):
             a[selected] = 1
             markers, _ = s.identify_marker_genes_rf(labels=a, clusters=1)
             self.marker_genes[self.stab.selected_index] = markers[1]
-            if self.cs_box.children[11].children[1].value != 0:
-                self.cs_box.children[11].children[1].set_trait("value", 0)
+            if self.cs_dict['RGENES'].value != 0:
+                self.cs_dict['RGENES'].set_trait("value", 0)
             else:
                 self.show_expression(
                     str(self.marker_genes[self.stab.selected_index][0])
@@ -1414,7 +1508,7 @@ class SAMGUI(object):
             self.marker_genes_tt[
                 self.stab.selected_index
             ] = "Ranked genes according to random forest classification."
-            self.cs_box.children[11].children[0].set_trait(
+            self.cs_dict['LGENES'].set_trait(
                 "tooltip", self.marker_genes_tt[self.stab.selected_index]
             )
 
@@ -1426,29 +1520,31 @@ class SAMGUI(object):
             gene = markers[int(val)]
         else:
             gene = markers[-1]
-        self.cs_box.children[10].children[1].set_trait("value", gene)
+        self.cs_dict['SHG'].set_trait("value", gene)
         self.show_expression(str(gene))
 
     def update_dropdowns(self, i):
         s = self.sams[i]
-        self.cs_box.children[1].children[1].options = list(s.adata.obsm.keys())
-        self.cs_box.children[4].children[1].options = [""] + list(s.adata.obs.keys())
-        self.cs_box.children[5].children[1].options = [""] + list(s.adata.var.keys())
-        self.cs_box.children[4].children[2].options = self.dd_opts[i]
+        self.cs_dict['DPM'].options = [""] + list(s.adata.obsm.keys())
+        self.cs_dict['DAM'].options = [""] + list(s.adata.obs.keys())
+        self.cs_dict['DVM'].options = [""] + list(s.adata.var.keys())
+        self.cs_dict['ACC'].options = self.dd_opts[i]
 
     def on_switch_tabs(self, event):
         self.update_dropdowns(self.stab.selected_index)
-        self.cs_box.children[11].children[0].set_trait(
+        self.cs_dict['LGENES'].set_trait(
             "tooltip", self.marker_genes_tt[self.stab.selected_index]
         )
         self.current_tab = self.stab.selected_index
         self.current_sam = self.sams[self.current_tab]
+        for i in range(len(self.children)):
+            self.tab.set_title(i, self.names[i]+' ('+str(self.stab.selected_index)+')')
 
     def display_var_annotation(self, event):
-        self.GENE_KEY = self.cs_box.children[5].children[1].value
+        self.GENE_KEY = self.cs_dict['DVM'].value
 
     def display_annotation(self, event):
-        key = self.cs_box.children[4].children[1].value
+        key = self.cs_dict['DAM'].value
         if key != "":
             labels = np.array(list(self.sams[self.stab.selected_index].get_labels(key)))
 
@@ -1456,9 +1552,9 @@ class SAMGUI(object):
             self.update_colors_anno(labels)
 
     def update_colors_expr(self, a, title):
-        if self.cs_box.children[10].children[-1].value:
+        if self.cs_dict['LOG'].value:
             a = np.log2(a + 1)
-        if self.cs_box.children[8].children[-1].value:
+        if self.cs_dict['SHOW_COLORBAR'].value:
             showscale = True
         else:
             showscale = False
@@ -1482,7 +1578,7 @@ class SAMGUI(object):
         self.stab.children[self.stab.selected_index].data[0].text = list(a)
         self.stab.children[self.stab.selected_index].data[0].hoverinfo = "text"
 
-        slider = self.cs_box.children[12].children[1]
+        slider = self.cs_dict['THR']
         slider.set_trait("min", 0)
         slider.set_trait("max", a.max() + (a.max() - a.min()) / 100)
         slider.set_trait("step", (a.max() - a.min()) / 100)
@@ -1490,7 +1586,7 @@ class SAMGUI(object):
 
     def update_colors_anno(self, labels):
         nlabels = np.unique(labels).size
-        title = self.cs_box.children[4].children[1].value.split("_clusters")[0]
+        title = self.cs_dict['DAM'].value.split("_clusters")[0]
 
         if issubclass(labels.dtype.type, np.number):
             if issubclass(labels.dtype.type, np.float) or nlabels > 300:
@@ -1511,8 +1607,8 @@ class SAMGUI(object):
 
         lbls, inv = np.unique(labels, return_inverse=True)
 
-        dd = self.cs_box.children[4].children[2]
-        self.dd_opts[self.stab.selected_index] = [""] + list(lbls)
+        dd = self.cs_dict['ACC']
+        self.dd_opts[self.stab.selected_index] = ["Toggle cluster"] + list(lbls)
         dd.options = self.dd_opts[self.stab.selected_index]
 
         if issubclass(labels.dtype.type, np.character):
@@ -1523,7 +1619,7 @@ class SAMGUI(object):
             tickvals = list(idx)
             ticktext = lbls[tickvals]
 
-        if self.cs_box.children[8].children[-1].value:
+        if self.cs_dict['SHOW_COLORBAR'].value:
             showscale = True
         else:
             showscale = False
@@ -1547,7 +1643,7 @@ class SAMGUI(object):
         self.stab.children[self.stab.selected_index].data[0].hoverinfo = "text"
         self.stab.children[self.stab.selected_index].layout.hovermode = "closest"
 
-        slider = self.cs_box.children[12].children[1]
+        slider = self.cs_dict['THR']
         slider.set_trait("min", slider.value)
         slider.set_trait("max", slider.value)
 
@@ -1567,8 +1663,8 @@ class SAMGUI(object):
         )[0]
 
     def rewire_cluster_slider(self, event):
-        x = self.cs_box.children[3].children[1]
-        l = self.cs_box.children[3].children[0]
+        x = self.rb_dict['CSLIDER']
+        l = self.rb_dict['L']
         val = event["new"]
         if val == "Kmeans cluster":
             x.set_trait("min", 2)
@@ -1603,8 +1699,8 @@ class SAMGUI(object):
 
     def cluster_data(self, event):
         s = self.sams[self.stab.selected_index]
-        val = self.cs_box.children[2].children[1].value
-        eps = self.cs_box.children[3].children[1].value
+        val = self.rb_dict['CLM'].value
+        eps = self.rb_dict['CSLIDER'].value
         if val == "Kmeans cluster":
             s.kmeans_clustering(int(eps))
 
@@ -1620,11 +1716,11 @@ class SAMGUI(object):
         elif val == "Leiden cluster":
             s.leiden_clustering(res=eps)
 
-        self.cs_box.children[4].children[1].options = [""] + list(s.adata.obs.keys())
+        self.cs_dict['DAM'].options = [""] + list(s.adata.obs.keys())
 
     def display_projection(self, event):
         s = self.sams[self.stab.selected_index]
-        key = self.cs_box.children[1].children[1].value
+        key = self.cs_dict['DPM'].value
         if key != "":
             X = s.adata.obsm[key][:, :2]
             self.stab.children[self.stab.selected_index].data[0]["x"] = X[:, 0]
@@ -1633,7 +1729,7 @@ class SAMGUI(object):
     def compute_projection(self, event):
         i = self.stab.selected_index
         s = self.sams[i]
-        val = self.cs_box.children[0].children[1].value
+        val = self.rb_dict['CPM'].value
         if val == "UMAP":
             s.run_umap()
         elif val == "t-SNE":
@@ -1660,7 +1756,7 @@ class SAMGUI(object):
             np.where(self.selected[self.stab.selected_index])[0]
         )
         trace.unselected = {
-            "marker": {"opacity": self.cs_box.children[14].children[1].value}
+            "marker": {"opacity": self.cs_dict['ASLIDER'].value}
         }
 
     def pick_cells_dd(self, txt):
@@ -1683,7 +1779,7 @@ class SAMGUI(object):
                 np.where(sel)[0]
             )
 
-            self.cs_box.children[4].children[2].value = ""
+            self.cs_dict['ACC'].value = "Toggle cluster"
 
     def pick_cells(self, trace, points, selector):
         tf = self.selected[self.stab.selected_index][points.point_inds[0]]
