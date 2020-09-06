@@ -1062,7 +1062,7 @@ class SAM(object):
         elif projection == "umap":
             if verbose:
                 print("Computing the UMAP embedding...")
-            self.run_umap(**proj_kwargs)
+            self.run_umap(seed=seed,**proj_kwargs)
         elif projection == "diff_umap":
             if verbose:
                 print("Computing the diffusion UMAP embedding...")
@@ -1206,7 +1206,7 @@ class SAM(object):
             tsne2d = dt
             self.adata.obsm["X_tsne"] = tsne2d
 
-    def run_umap(self, X="X_pca", metric=None, **kwargs):
+    def run_umap(self, X="X_pca", metric=None,seed = 0, **kwargs):
         """Wrapper for umap-learn.
 
         See https://github.com/lmcinnes/umap sklearn for the documentation
@@ -1224,12 +1224,12 @@ class SAM(object):
             else:
                 X = self.adata.obsm[X]
             # print(X.shape)
-            umap_obj = umap.UMAP(metric=metric, **kwargs)
+            umap_obj = umap.UMAP(metric=metric,random_state=seed, **kwargs)
             umap2d = umap_obj.fit_transform(X)
             self.adata.obsm["X_umap"] = umap2d
             self.umap_obj = umap_obj
         else:
-            umap_obj = umap.UMAP(metric=metric, **kwargs)
+            umap_obj = umap.UMAP(metric=metric,random_state=seed, **kwargs)
             dt = umap_obj.fit_transform(X)
             return dt, umap_obj
 
