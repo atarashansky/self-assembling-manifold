@@ -1004,7 +1004,7 @@ class SAM(object):
             npcs = 500
 
         tinit = time.time()
-        np.random.rand(seed)
+        np.random.seed(seed)
         edm = sp.coo_matrix((numcells, numcells), dtype="i").tolil()
         nums = np.arange(edm.shape[1])
         RINDS = np.random.randint(0, numcells, (k - 1) * numcells).reshape(
@@ -1131,7 +1131,7 @@ class SAM(object):
                     D_sub,
                     npcs=npcs,
                     do_weight=weight_PCs,
-                    solver="full"
+                    solver="full",seed=seed
                 )
             self.pca_obj = pca
             self.components = pca.components_
