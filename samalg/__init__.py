@@ -15,7 +15,7 @@ from numba.core.errors import NumbaPerformanceWarning
 
 warnings.filterwarnings("ignore", category=NumbaPerformanceWarning)
 
-__version__ = "0.7.4"
+__version__ = "0.7.5"
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -882,6 +882,7 @@ class SAM(object):
         sparse_pca=False,
         proj_kwargs={},
         project_weighted=True,
+        seed = 0,
         weight_mode='dispersion'
     ):
         """Runs the Self-Assembling Manifold algorithm.
@@ -975,6 +976,7 @@ class SAM(object):
             "sparse_pca": sparse_pca,
             "project_weighted": project_weighted,
             "weight_mode": weight_mode,
+            "seed": seed,
         }
 
         numcells = D.shape[0]
@@ -1002,7 +1004,7 @@ class SAM(object):
             npcs = 500
 
         tinit = time.time()
-
+        np.random.rand(seed)
         edm = sp.coo_matrix((numcells, numcells), dtype="i").tolil()
         nums = np.arange(edm.shape[1])
         RINDS = np.random.randint(0, numcells, (k - 1) * numcells).reshape(
@@ -1042,7 +1044,7 @@ class SAM(object):
             old = new
 
             W, wPCA_data, EDM, = self.calculate_nnm(
-                n_genes, preprocessing, npcs, nnas, weight_PCs, sparse_pca,project_weighted=project_weighted,weight_mode=weight_mode
+                n_genes, preprocessing, npcs, nnas, weight_PCs, sparse_pca,project_weighted=project_weighted,weight_mode=weight_mode,seed=seed
             )
             new = W
             err = ((new - old) ** 2).mean() ** 0.5
@@ -1073,7 +1075,7 @@ class SAM(object):
 
     def calculate_nnm(
         self, n_genes, preprocessing, npcs, num_norm_avg, weight_PCs, sparse_pca,
-        update_manifold=True,project_weighted=True,weight_mode='dispersion',
+        update_manifold=True,project_weighted=True,weight_mode='dispersion',seed=0
     ):
         numcells = self.adata.shape[0]
         D = self.adata.X
@@ -1122,14 +1124,14 @@ class SAM(object):
                     D_sub,
                     npcs=npcs,
                     do_weight=weight_PCs,
-                    solver="auto",
+                    solver="auto",seed=seed
                 )
             else:
                 g_weighted, pca = ut.weighted_PCA(
                     D_sub,
                     npcs=npcs,
                     do_weight=weight_PCs,
-                    solver="full",
+                    solver="full"
                 )
             self.pca_obj = pca
             self.components = pca.components_
@@ -1142,7 +1144,7 @@ class SAM(object):
                     g_weighted = g_weighted * (ev ** 0.5)
         else:
             npcs=min(npcs, min((D.shape[0],gkeep.size)) - 1)
-            output = ut._pca_with_sparse(D_sub, npcs)
+            output = ut._pca_with_sparse(D_sub, npcs,seed = seed)
             self.components = output['components']
             g_weighted = output['X_pca']
             if not project_weighted:

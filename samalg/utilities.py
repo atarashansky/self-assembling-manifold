@@ -9,7 +9,7 @@ from sklearn.utils import check_array, check_random_state
 from scipy import sparse
 import sklearn.utils.sparsefuncs as sf
 from umap.umap_ import nearest_neighbors
-__version__ = "0.7.4"
+__version__ = "0.7.5"
 
 
 def find_corr_genes(sam, input_gene):
@@ -61,8 +61,8 @@ def nearest_neighbors_hnsw(x,ef=200,M=48,n_neighbors = 100):
 """
 
 
-def _pca_with_sparse(X, npcs, solver='arpack', mu=None, random_state=None):
-    random_state = check_random_state(random_state)
+def _pca_with_sparse(X, npcs, solver='arpack', mu=None, seed=0):
+    random_state = check_random_state(seed)
     np.random.set_state(random_state.get_state())
     random_init = np.random.rand(np.min(X.shape))
     X = check_array(X, accept_sparse=['csr', 'csc'])
@@ -182,7 +182,7 @@ def save_figures(filename, fig_IDs=None, **kwargs):
         plt.figure(fig_IDs).savefig(filename, **kwargs)
 
 
-def weighted_PCA(mat, do_weight=True, npcs=None, solver="auto"):
+def weighted_PCA(mat, do_weight=True, npcs=None, solver="auto",seed = 0):
     # mat = (mat - np.mean(mat, axis=0))
     if do_weight:
         if min(mat.shape) >= 10000 and npcs is None:
@@ -195,17 +195,17 @@ def weighted_PCA(mat, do_weight=True, npcs=None, solver="auto"):
             ncom = min(mat.shape)
         else:
             ncom = min((min(mat.shape), npcs))
-
-        pca = PCA(svd_solver=solver, n_components=ncom)
+            
+        pca = PCA(svd_solver=solver, n_components=ncom,random_state=check_random_state(seed))
         reduced = pca.fit_transform(mat)
         scaled_eigenvalues = pca.explained_variance_
         scaled_eigenvalues = scaled_eigenvalues / scaled_eigenvalues.max()
         reduced_weighted = reduced * scaled_eigenvalues[None, :] ** 0.5
     else:
-        pca = PCA(n_components=npcs, svd_solver=solver)
+        pca = PCA(n_components=npcs, svd_solver=solver,random_state=check_random_state(seed))
         reduced = pca.fit_transform(mat)
         if reduced.shape[1] == 1:
-            pca = PCA(n_components=2, svd_solver=solver)
+            pca = PCA(n_components=2, svd_solver=solver,random_state=check_random_state(seed))
             reduced = pca.fit_transform(mat)
         reduced_weighted = reduced
 
