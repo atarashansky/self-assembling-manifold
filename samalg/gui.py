@@ -783,6 +783,7 @@ class SAMGUI(object):
         self.rb_dict['L3']=l3
         self.rb_dict['L4']=l4
         self.rb_dict['NNA']=nna
+        self.rb_dict['KNN']=knn
         self.rb_dict['NORM']=norm
         self.rb_dict['DISTANCE']=distance
         self.rb_dict['PROJ']=proj
