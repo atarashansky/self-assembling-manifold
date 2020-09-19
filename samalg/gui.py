@@ -1335,37 +1335,12 @@ class SAMGUI(object):
                     else:
                         a = x.flatten()
                 else:
-                    x = s.adata_raw[:, gene][s.adata.obs_names, :].X
+                    x = s.adata[:, gene][s.adata.obs_names, :].X
                     if sp.issparse(x):
                         a = x.A.flatten()
                     else:
                         a = x.flatten()
-
-                if self.cs_dict['AVG'].value:
-                    if a.sum() == 0:
-                        x = s.adata_raw[:, gene][s.adata.obs_names, :].X
-                        if sp.issparse(x):
-                            a = x.A.flatten()
-                        else:
-                            a = x.flatten()
-
-                        norm = self.preprocess_args.get("norm", "log")
-                        if norm is not None:
-                            if norm.lower() == "log":
-                                a = np.log2(a + 1)
-                            elif norm.lower() == "ftt":
-                                a = np.sqrt(a) + np.sqrt(a + 1) - 1
-                            elif norm.lower() == "asin":
-                                a = np.arcsinh(a)
-                else:
-                    norm = self.preprocess_args.get("norm", "log")
-                    if norm is not None:
-                        if norm.lower() == "log":
-                            a = np.log2(a + 1)
-                        elif norm.lower() == "ftt":
-                            a = np.sqrt(a) + np.sqrt(a + 1) - 1
-                        elif norm.lower() == "asin":
-                            a = np.arcsinh(a)
+                
 
                 if self.GENE_KEY != "":
                     title = gene + "; " + str(s.adata.var[self.GENE_KEY].T[gene])
