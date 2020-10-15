@@ -10,7 +10,7 @@ import pandas as pd
 from ipyevents import Event
 from ipywidgets import Widget, Layout
 
-__version__ = "0.7.5"
+__version__ = "0.7.6"
 
 
 class SAMGUI(object):
