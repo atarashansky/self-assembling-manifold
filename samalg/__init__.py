@@ -1034,6 +1034,7 @@ class SAM(object):
             )
             new = W
             err = ((new - old) ** 2).mean() ** 0.5
+            self.adata.var['weights']=W
 
         all_gene_names = np.array(list(self.adata.var_names))
         indices = np.argsort(-W)
