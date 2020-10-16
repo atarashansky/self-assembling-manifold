@@ -781,6 +781,7 @@ class SAM(object):
             self.adata.var["spatial_dispersions"] = dispersions.copy()
         elif weight_mode == 'variance':
             dispersions = var
+            self.adata.var["spatial_variances"] = dispersions.copy()
         else:
             print('`weight_mode` ',weight_mode,' not recognized.')
 
