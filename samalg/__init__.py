@@ -1008,6 +1008,7 @@ class SAM(object):
             print("RUNNING SAM")
 
         W = np.ones(D.shape[1])
+        self.adata.var['weights'] = W
 
         old = np.zeros(W.size)
         new = W
