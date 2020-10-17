@@ -1,3 +1,4 @@
+import gc
 import numpy as np
 from anndata import AnnData
 import anndata
@@ -1030,10 +1031,11 @@ class SAM(object):
             i += 1
             old = new
 
-            W, wPCA_data, EDM, = self.calculate_nnm(
+            W = self.calculate_nnm(
                 n_genes=n_genes, preprocessing=preprocessing, npcs=npcs, num_norm_avg=nnas,
                 weight_PCs=weight_PCs, sparse_pca=sparse_pca,weight_mode=weight_mode,seed=seed,components=components
             )
+            gc.collect()
             new = W
             err = ((new - old) ** 2).mean() ** 0.5
             self.adata.var['weights']=W
@@ -1190,7 +1192,7 @@ class SAM(object):
             self.X_processed = (D_sub, ge, gkeep)
             self.adata.varm["PCs"] = np.zeros(shape=(self.adata.n_vars, npcs))
             self.adata.varm["PCs"][gkeep] = self.components.T
-            return W,g_weighted,EDM
+            return W
         else:
             print('Not updating the manifold...')
             PCs = np.zeros(shape=(self.adata.n_vars, npcs))
