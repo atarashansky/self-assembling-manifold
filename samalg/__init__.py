@@ -742,7 +742,7 @@ class SAM(object):
 
         return axes, a
 
-    def dispersion_ranking_NN(self, nnm=None, num_norm_avg=50, weight_mode='dispersion'):
+    def dispersion_ranking_NN(self, nnm=None, num_norm_avg=50, weight_mode='dispersion',save_avgs=False):
         """Computes the spatial dispersion factors for each gene.
 
         Parameters
@@ -768,13 +768,17 @@ class SAM(object):
         f[f==0]=1
         D_avg = (nnm.multiply(1 / f)).dot(self.adata.layers["X_disp"])
 
-        self.adata.layers["X_knn_avg"] = D_avg
-
         if sp.issparse(D_avg):
             mu, var = sf.mean_variance_axis(D_avg, axis=0)
         else:
             mu = D_avg.mean(0)
             var = D_avg.var(0)
+
+        if save_avgs:
+            self.adata.layers["X_knn_avg"] = D_avg
+        else:
+            del D_avg
+            gc.collect()
 
         if weight_mode == 'dispersion':
             dispersions = np.zeros(var.size)
