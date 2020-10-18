@@ -1762,5 +1762,5 @@ class SAM(object):
 
     def SamPlot(self):
         from samalg.gui import SAMGUI
-        self.SamPlot = SAMGUI(self).SamPlot
-        return self.SamPlot
+        self.SamGui = SAMGUI(self)
+        return self.SamGui.SamPlot
