@@ -1063,6 +1063,7 @@ class SAMGUI(object):
         log = widgets.Checkbox(
             indent=False, value=False, description="Log cbar", layout={"width": "20%"}
         )
+
         show_colorbar = widgets.Checkbox(
             indent=False, value=False, description="Show cbar", layout={"width": "20%"}
         )
@@ -1328,7 +1329,7 @@ class SAMGUI(object):
 
                 if self.cs_dict['AVG'].value:
                     if 'X_knn_avg' not in s.adata.layers.keys():
-                        s.dispersion_ranking_NN();
+                        s.dispersion_ranking_NN(save_avgs=True);
 
                     x = s.adata[:, gene].layers["X_knn_avg"]
                     if sp.issparse(x):
@@ -1341,7 +1342,7 @@ class SAMGUI(object):
                         a = x.A.flatten()
                     else:
                         a = x.flatten()
-                
+
 
                 if self.GENE_KEY != "":
                     title = gene + "; " + str(s.adata.var[self.GENE_KEY].T[gene])
