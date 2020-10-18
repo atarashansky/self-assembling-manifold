@@ -1760,24 +1760,7 @@ class SAM(object):
 
         return markers
 
-    def load(self, n, recalc_avg=True):
-        """Loads SAM attributes from a Pickle file.
-
-        Loads all SAM attributes from the specified Pickle file into the SAM
-        object.
-
-        Parameters
-        ----------
-        n - string
-            The path of the Pickle file.
-        """
-        f = open(n, "rb")
-        pick_dict = pickle.load(f)
-        for i in range(len(pick_dict)):
-            self.__dict__[list(pick_dict.keys())[i]] = pick_dict[
-                list(pick_dict.keys())[i]
-            ]
-        f.close()
-
-        if recalc_avg:
-            self.dispersion_ranking_NN()
+    def SamPlot(self):
+        from samalg.gui import SAMGUI
+        self.SamPlot = SAMGUI(self).SamPlot
+        return self.SamPlot
