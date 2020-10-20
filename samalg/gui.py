@@ -1566,7 +1566,7 @@ class SAMGUI(object):
         title = self.cs_dict['DAM'].value.split("_clusters")[0]
 
         if issubclass(labels.dtype.type, np.number):
-            if issubclass(labels.dtype.type, np.float) or nlabels > 300:
+            if issubclass(labels.dtype.type, np.float):
                 self.update_colors_expr(labels, title)
                 return
 
@@ -1583,10 +1583,8 @@ class SAMGUI(object):
             x = cl.interp(x, int(nlabels))
 
         lbls, inv = np.unique(labels, return_inverse=True)
-
-        dd = self.cs_dict['ACC']
         self.dd_opts[self.stab.selected_index] = ["Toggle cluster"] + list(lbls)
-        dd.options = self.dd_opts[self.stab.selected_index]
+        self.cs_dict['ACC'].options = self.dd_opts[self.stab.selected_index]
 
         if issubclass(labels.dtype.type, np.character):
             tickvals = np.arange(lbls.size)
@@ -1738,10 +1736,10 @@ class SAMGUI(object):
 
     def pick_cells_dd(self, txt):
         if txt["new"] != "":
-            al = txt["new"]
+            al = str(txt["new"])
 
             sel = self.selected[self.stab.selected_index]
-            als = self.active_labels[self.stab.selected_index]
+            als = self.active_labels[self.stab.selected_index].astype('str')
             ratio = sel[als == al].sum() / sel[als == al].size
             if ratio >= 0.5:
                 sel[als == al] = False
