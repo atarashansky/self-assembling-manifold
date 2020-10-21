@@ -1760,7 +1760,7 @@ class SAM(object):
 
         return markers
 
-    def SamGui(self):
+    def gui(self):
         if 'SamGui' in self.__dict__.keys():
             return self.SamGui.SamPlot
         else:
