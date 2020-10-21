@@ -1735,9 +1735,8 @@ class SAMGUI(object):
         }
 
     def pick_cells_dd(self, txt):
-        if txt["new"] != "":
+        if txt["new"] != "Toggle cluster":
             al = str(txt["new"])
-
             sel = self.selected[self.stab.selected_index]
             als = self.active_labels[self.stab.selected_index].astype('str')
             ratio = sel[als == al].sum() / sel[als == al].size
