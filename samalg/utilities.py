@@ -9,6 +9,7 @@ from sklearn.utils import check_array, check_random_state
 from scipy import sparse
 import sklearn.utils.sparsefuncs as sf
 from umap.umap_ import nearest_neighbors
+
 __version__ = "0.7.6"
 
 
@@ -61,11 +62,11 @@ def nearest_neighbors_hnsw(x,ef=200,M=48,n_neighbors = 100):
 """
 
 
-def _pca_with_sparse(X, npcs, solver='arpack', mu=None, seed=0):
+def _pca_with_sparse(X, npcs, solver="arpack", mu=None, seed=0):
     random_state = check_random_state(seed)
     np.random.set_state(random_state.get_state())
     random_init = np.random.rand(np.min(X.shape))
-    X = check_array(X, accept_sparse=['csr', 'csc'])
+    X = check_array(X, accept_sparse=["csr", "csc"])
 
     if mu is None:
         mu = X.mean(0).A.flatten()[None, :]
@@ -112,18 +113,27 @@ def _pca_with_sparse(X, npcs, solver='arpack', mu=None, seed=0):
     ev_ratio = ev / total_var
 
     output = {
-        'X_pca': X_pca,
-        'variance': ev,
-        'variance_ratio': ev_ratio,
-        'components': v,
+        "X_pca": X_pca,
+        "variance": ev,
+        "variance_ratio": ev_ratio,
+        "components": v,
     }
     return output
 
 
+def nearest_neighbors_wrapper(
+    X,
+    n_neighbors=15,
+    metric="correlation",
+    metric_kwds={},
+    angular=True,
+    random_state=0,
+):
+    random_state = np.random.RandomState(random_state)
+    return nearest_neighbors(
+        X, n_neighbors, metric, metric_kwds, angular, random_state
+    )[:2]
 
-def nearest_neighbors_wrapper(X,n_neighbors=15,metric='correlation',metric_kwds={},angular=True,random_state=0):
-    random_state=np.random.RandomState(random_state)
-    return nearest_neighbors(X,n_neighbors,metric,metric_kwds,angular,random_state)[:2]
 
 def knndist(nnma):
     x, y = nnma.nonzero()
@@ -182,7 +192,7 @@ def save_figures(filename, fig_IDs=None, **kwargs):
         plt.figure(fig_IDs).savefig(filename, **kwargs)
 
 
-def weighted_PCA(mat, do_weight=True, npcs=None, solver="auto",seed = 0):
+def weighted_PCA(mat, do_weight=True, npcs=None, solver="auto", seed=0):
     # mat = (mat - np.mean(mat, axis=0))
     if do_weight:
         if min(mat.shape) >= 10000 and npcs is None:
@@ -195,17 +205,23 @@ def weighted_PCA(mat, do_weight=True, npcs=None, solver="auto",seed = 0):
             ncom = min(mat.shape)
         else:
             ncom = min((min(mat.shape), npcs))
-            
-        pca = PCA(svd_solver=solver, n_components=ncom,random_state=check_random_state(seed))
+
+        pca = PCA(
+            svd_solver=solver, n_components=ncom, random_state=check_random_state(seed)
+        )
         reduced = pca.fit_transform(mat)
         scaled_eigenvalues = pca.explained_variance_
         scaled_eigenvalues = scaled_eigenvalues / scaled_eigenvalues.max()
         reduced_weighted = reduced * scaled_eigenvalues[None, :] ** 0.5
     else:
-        pca = PCA(n_components=npcs, svd_solver=solver,random_state=check_random_state(seed))
+        pca = PCA(
+            n_components=npcs, svd_solver=solver, random_state=check_random_state(seed)
+        )
         reduced = pca.fit_transform(mat)
         if reduced.shape[1] == 1:
-            pca = PCA(n_components=2, svd_solver=solver,random_state=check_random_state(seed))
+            pca = PCA(
+                n_components=2, svd_solver=solver, random_state=check_random_state(seed)
+            )
             reduced = pca.fit_transform(mat)
         reduced_weighted = reduced
 
@@ -220,16 +236,17 @@ def transform_wPCA(mat, pca):
     reduced_weighted = np.array(reduced) * scaled_eigenvalues[None, :] ** 0.5
     return reduced_weighted
 
+
 def search_string(vec, s, case_sensitive=False, invert=False):
     vec = np.array(vec)
 
-
-    if isinstance(s,list):
+    if isinstance(s, list):
         S = s
     else:
         S = [s]
 
-    V=[]; M=[]
+    V = []
+    M = []
     for s in S:
         m = []
         if not case_sensitive:
@@ -243,22 +260,25 @@ def search_string(vec, s, case_sensitive=False, invert=False):
             if not invert and b != -1 or invert and b == -1:
                 m.append(i)
         if len(m) > 0:
-            V.append(vec[np.array(m)]); M.append(np.array(m))
-    if len(V)>0:
+            V.append(vec[np.array(m)])
+            M.append(np.array(m))
+    if len(V) > 0:
         i = len(V)
         if not invert:
-            V = np.concatenate(V); M = np.concatenate(M);
+            V = np.concatenate(V)
+            M = np.concatenate(M)
             if i > 1:
-                ix = np.sort(np.unique(M,return_index=True)[1])
-                V=V[ix]; M=M[ix];
+                ix = np.sort(np.unique(M, return_index=True)[1])
+                V = V[ix]
+                M = M[ix]
         else:
             for i in range(len(V)):
-                V[i]=list(set(V[i]).intersection(*V))
-            V = vec[np.in1d(vec,np.unique(np.concatenate(V)))]
-            M = np.array([np.where(vec==x)[0][0] for x in V])
-        return V,M
+                V[i] = list(set(V[i]).intersection(*V))
+            V = vec[np.in1d(vec, np.unique(np.concatenate(V)))]
+            M = np.array([np.where(vec == x)[0][0] for x in V])
+        return V, M
     else:
-        return -1,-1
+        return -1, -1
 
 
 def distance_matrix_error(dist1, dist2):
@@ -362,28 +382,30 @@ def convert_annotations(A):
     return y.astype("int")
 
 
-def nearest_neighbors_hnsw(x,ef=200,M=48,n_neighbors = 100):
-	import hnswlib
+def nearest_neighbors_hnsw(x, ef=200, M=48, n_neighbors=100):
+    import hnswlib
+
     labels = np.arange(x.shape[0])
-    p = hnswlib.Index(space = 'cosine', dim = x.shape[1])
-    p.init_index(max_elements = x.shape[0], ef_construction = ef, M = M)
+    p = hnswlib.Index(space="cosine", dim=x.shape[1])
+    p.init_index(max_elements=x.shape[0], ef_construction=ef, M=M)
     p.add_items(x, labels)
     p.set_ef(ef)
-    idx, dist = p.knn_query(x, k = n_neighbors)
-    dist = (2-dist)/2
-    return idx,dist
+    idx, dist = p.knn_query(x, k=n_neighbors)
+    dist = (2 - dist) / 2
+    return idx, dist
 
-	
+
 def calc_nnm(g_weighted, k, distance=None):
     if g_weighted.shape[0] > 0:
-        # only uses cosine
-		if distance == 'cosine':
-		    nnm, dists = nearest_neighbors_hnsw(g_weighted, n_neighbors=k)
-		else:
-	        nnm, dists = nearest_neighbors_wrapper(g_weighted, n_neighbors=k, metric=distance)
+        if distance == "cosine":
+            nnm, dists = nearest_neighbors_hnsw(g_weighted, n_neighbors=k)
+        else:
+            nnm, dists = nearest_neighbors_wrapper(
+                g_weighted, n_neighbors=k, metric=distance
+            )
         EDM = gen_sparse_knn(nnm, dists)
         EDM = EDM.tocsr()
-    else: #try removing this and only use stochastic implementation
+    else:  # try removing this and only use stochastic
         if sp.sparse.issparse(g_weighted):
             g_weighted = g_weighted.A
         dist = compute_distances(g_weighted, distance)
