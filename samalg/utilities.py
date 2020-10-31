@@ -362,10 +362,25 @@ def convert_annotations(A):
     return y.astype("int")
 
 
+def nearest_neighbors_hnsw(x,ef=200,M=48,n_neighbors = 100):
+	import hnswlib
+    labels = np.arange(x.shape[0])
+    p = hnswlib.Index(space = 'cosine', dim = x.shape[1])
+    p.init_index(max_elements = x.shape[0], ef_construction = ef, M = M)
+    p.add_items(x, labels)
+    p.set_ef(ef)
+    idx, dist = p.knn_query(x, k = n_neighbors)
+    dist = (2-dist)/2
+    return idx,dist
+
+	
 def calc_nnm(g_weighted, k, distance=None):
     if g_weighted.shape[0] > 0:
         # only uses cosine
-        nnm, dists = nearest_neighbors_wrapper(g_weighted, n_neighbors=k, metric=distance)
+		if distance == 'cosine':
+		    nnm, dists = nearest_neighbors_hnsw(g_weighted, n_neighbors=k)
+		else:
+	        nnm, dists = nearest_neighbors_wrapper(g_weighted, n_neighbors=k, metric=distance)
         EDM = gen_sparse_knn(nnm, dists)
         EDM = EDM.tocsr()
     else: #try removing this and only use stochastic implementation
