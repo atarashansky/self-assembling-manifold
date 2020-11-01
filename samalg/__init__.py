@@ -439,7 +439,8 @@ class SAM(object):
             if "X_disp" not in list(self.adata.layers.keys()):
                 self.adata.layers["X_disp"] = self.adata.X
             save_sparse_file = None
-
+        self.adata.uns['path_to_file'] = filename
+        self.adata_raw.uns['path_to_file'] = filename        
         if save_sparse_file is not None:
             if save_sparse_file.split(".")[-1] == "p":
                 self.save_sparse_data(save_sparse_file)
@@ -1034,11 +1035,22 @@ class SAM(object):
 
             i += 1
             old = new
-
-            W = self.calculate_nnm(
-                n_genes=n_genes, preprocessing=preprocessing, npcs=npcs, num_norm_avg=nnas,
-                weight_PCs=weight_PCs, sparse_pca=sparse_pca,weight_mode=weight_mode,seed=seed,components=components
-            )
+            if i == 1:
+                
+                print('Running first iteration using all genes.')
+                if sp.issparse(self.adata.X):
+                    spca=True
+                else:
+                    spca=False
+                W = self.calculate_nnm(
+                    n_genes=self.adata.X.shape[1], preprocessing=preprocessing, npcs=npcs, num_norm_avg=nnas,
+                    weight_PCs=weight_PCs, sparse_pca=spca,weight_mode=weight_mode,seed=seed,components=components
+                )
+            else:
+                W = self.calculate_nnm(
+                    n_genes=n_genes, preprocessing=preprocessing, npcs=npcs, num_norm_avg=nnas,
+                    weight_PCs=weight_PCs, sparse_pca=sparse_pca,weight_mode=weight_mode,seed=seed,components=components
+                    )                
             gc.collect()
             new = W
             err = ((new - old) ** 2).mean() ** 0.5
@@ -1689,7 +1701,7 @@ class SAM(object):
 
         if "X_knn_avg" not in list(self.adata.layers.keys()):
             print("Performing kNN-averaging...")
-            self.dispersion_ranking_NN()
+            self.dispersion_ranking_NN(save_avgs=True)
         l = self.adata.layers["X_knn_avg"]
         m = l.mean(0).A.flatten()
         cells = np.array(list(self.adata.obs_names))
