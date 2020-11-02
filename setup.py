@@ -21,6 +21,7 @@ setup(
         "numba>=0.49.0",
         "umap-learn>=0.4.6",
         "anndata>=0.7.3",
+        "scikit-misc>=0.1.3"
     ],
     extras_require={
         "louvain": ["louvain", "cython", "python-igraph"],

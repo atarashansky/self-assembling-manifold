@@ -1035,22 +1035,15 @@ class SAM(object):
 
             i += 1
             old = new
-            if i == 1:
-                
-                print('Running first iteration using all genes.')
-                if sp.issparse(self.adata.X):
-                    spca=True
-                else:
-                    spca=False
-                W = self.calculate_nnm(
-                    n_genes=self.adata.X.shape[1], preprocessing=preprocessing, npcs=npcs, num_norm_avg=nnas,
-                    weight_PCs=weight_PCs, sparse_pca=spca,weight_mode=weight_mode,seed=seed,components=components
-                )
+            if i == 1:                
+                print('Running first iteration with HVG selection.')
+                hvg=True
             else:
-                W = self.calculate_nnm(
-                    n_genes=n_genes, preprocessing=preprocessing, npcs=npcs, num_norm_avg=nnas,
-                    weight_PCs=weight_PCs, sparse_pca=sparse_pca,weight_mode=weight_mode,seed=seed,components=components
-                    )                
+                hvg=False
+            W = self.calculate_nnm(
+                n_genes=n_genes, preprocessing=preprocessing, npcs=npcs, num_norm_avg=nnas,
+                weight_PCs=weight_PCs, sparse_pca=sparse_pca,weight_mode=weight_mode,seed=seed,components=components,hvg=False
+                )                
             gc.collect()
             new = W
             err = ((new - old) ** 2).mean() ** 0.5
@@ -1081,7 +1074,7 @@ class SAM(object):
 
     def calculate_nnm(
         self, n_genes=3000, preprocessing='StandardScaler', npcs=150, num_norm_avg=50, weight_PCs=False, sparse_pca=False,
-        update_manifold=True,weight_mode='dispersion',seed=0,components=None
+        update_manifold=True,weight_mode='dispersion',seed=0,components=None,hvg=False
     ):
         if 'means' not in self.adata.var.keys() or 'variances' not in self.adata.var.keys():
             print('Recomputing means and variances.')
@@ -1099,7 +1092,13 @@ class SAM(object):
         if n_genes is None:
             gkeep = np.arange(W.size)
         else:
-            gkeep = np.sort(np.argsort(-W)[:n_genes])
+            if hvg:
+                df = ut._hvg(self.adata,n_top_genes=n_genes)
+                ge=np.array(list(self.adata.var_names))
+                tg=np.array(list(df[df['highly_variable']].index))
+                gkeep = np.sort(np.where(np.in1d(ge,tg))[0])
+            else:    
+                gkeep = np.sort(np.argsort(-W)[:n_genes])
 
         if preprocessing == "Normalizer":
             Ds = D[:, gkeep]
