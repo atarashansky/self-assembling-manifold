@@ -1042,7 +1042,7 @@ class SAM(object):
                 hvg=False
             W = self.calculate_nnm(
                 n_genes=n_genes, preprocessing=preprocessing, npcs=npcs, num_norm_avg=nnas,
-                weight_PCs=weight_PCs, sparse_pca=sparse_pca,weight_mode=weight_mode,seed=seed,components=components,hvg=False
+                weight_PCs=weight_PCs, sparse_pca=sparse_pca,weight_mode=weight_mode,seed=seed,components=components,hvg=hvg
                 )                
             gc.collect()
             new = W
