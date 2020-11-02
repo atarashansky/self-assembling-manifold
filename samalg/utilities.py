@@ -463,7 +463,10 @@ def _hvg(adata,n_top_genes=3000,span=0.3):
 
     
     norm_gene_vars = []
-    mean,var = sf.mean_variance_axis(X, axis=0)
+    if sp.sparse.issparse(X):
+        mean,var = sf.mean_variance_axis(X, axis=0)
+    else:
+        mean,var = X.mean(0),X.var(0)
 
     not_const = var > 0
     estimat_var = np.zeros(adata.shape[1], dtype=np.float64)
