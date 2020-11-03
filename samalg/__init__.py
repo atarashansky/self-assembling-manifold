@@ -1093,7 +1093,7 @@ class SAM(object):
             gkeep = np.arange(W.size)
         else:
             if hvg:
-                df = ut._hvg(self.adata,n_top_genes=n_genes)
+                df = ut._hvg(self.adata_raw,n_top_genes=n_genes)
                 ge=np.array(list(self.adata.var_names))
                 tg=np.array(list(df[df['highly_variable']].index))
                 gkeep = np.sort(np.where(np.in1d(ge,tg))[0])
