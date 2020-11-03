@@ -474,10 +474,16 @@ def _hvg(adata,n_top_genes=3000,span=0.3):
     y = np.log10(var[not_const])
     x = np.log10(mean[not_const])
     model = loess(x, y, span=span, degree=2)
-    model.fit()
-    estimat_var[not_const] = model.outputs.fitted_values
-    reg_std = np.sqrt(10 ** estimat_var)
-
+    try:
+        model.fit()
+        estimat_var[not_const] = model.outputs.fitted_values
+        reg_std = np.sqrt(10 ** estimat_var)    
+    except ValueError:
+        print('`loess` failed. Falling back to using original variances.')
+        estimat_var[not_const] = y[not_const]
+        reg_std = np.sqrt(10**estimat_var)
+        
+        
     X = X.astype(np.float64).copy()
     N = X.shape[0]
     vmax = np.sqrt(N)
