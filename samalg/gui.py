@@ -1851,26 +1851,47 @@ class SAMGUI(object):
         trace.on_selection(self.select)
         trace.on_click(self.pick_cells)
 
+
 def save_gui(x,path):
-    d = x.__dict__
-    for i in range(len(d['sams'])):
-        X = d['sams'][i].adata
-        X.raw = d['sams'][i].adata_raw
-        d['sams'][i] = X
-    
-    keys = list(d.keys())
-    for k in keys:
-        if 'ipywidgets' in str(type(d[k])):
-            del d[k]
+    xd = x.__dict__
+    d = {}
+    for k in xd.keys():
+        if 'ipywidgets' not in str(type(xd[k])) and k != 'sams' and k != 'current_sam':
+            try:
+                d[k] = xd[k].copy()
+            except AttributeError:
+                d[k] = xd[k]
+    d['sams'] = []
+    for i in range(len(xd['sams'])):
+        X = xd['sams'][i].adata
+        X.raw = xd['sams'][i].adata_raw
+        d['sams'].append(X)
+        
+    del d['ds']
+    del d['ps_dict']
+    del d['rb_dict']
+    del d['cs_dict']
+    del d['children']
             
     pickle.dump(d,open(path,'wb'))        
     
 def load_gui(path):
     d = pickle.load(open(path,'rb'))
-    x = SAMGUI()
     for i in range(len(d['sams'])):
         d['sams'][i] = SAM(counts = d['sams'][i])
+    x = SAMGUI(d['sams'][0])        
     for k in d.keys():
         x.__dict__[k] = d[k]
-
     
+    for i in range(1,len(d['sams'])):
+        if i == 0:
+            title = "Full dataset"
+        else:
+            title = "Subcluster " + str(i)
+        x.create_plot(i, title)
+    
+    x.update_dropdowns(0)
+        
+    x.run_args = x.run_args_init.copy()
+    x.preprocess_args = x.preprocess_args_init.copy()
+    return x
