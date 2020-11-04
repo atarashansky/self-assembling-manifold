@@ -1894,11 +1894,33 @@ def load_gui(path):
     for k in d.keys():
         x.__dict__[k] = d[k]
     
-    for i in range(1,len(d['sams'])):
+    x.selected = []
+    x.selected_cells = []
+    x.active_labels=[]
+    x.dd_opts=[]
+    x.gene_expressions=[]
+    x.marker_genes=[]
+    x.marker_genes_tt=[]
+    x.ds=[]
+    
+    for i in range(len(d['sams'])):
         if i == 0:
             title = "Full dataset"
         else:
             title = "Subcluster " + str(i)
+            
+        x.selected.append(np.ones(x.sams[i].adata.shape[0]).astype('bool'))
+        x.selected_cells.append(np.array(list(x.sams[i].adata.obs_names)))
+        x.active_labels.append(np.zeros(x.sams[i].adata.shape[0]))
+        x.dd_opts.append(['Toggle cluster'])
+        x.gene_expressions.append(np.zeros(x.sams[i].adata.shape[0]))
+        x.marker_genes.append(
+                np.array(list(x.sams[i].adata.var_names))[
+                    np.argsort(-x.sams[i].adata.var["weights"].values)
+                ]
+        )
+        x.marker_genes_tt.append("Genes ranked by SAM weights.")
+        x.ds.append(0)
         x.create_plot(i, title)
     
     x.update_dropdowns(0)
