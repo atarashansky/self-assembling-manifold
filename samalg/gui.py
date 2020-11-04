@@ -1909,5 +1909,5 @@ def load_gui(path):
     
 def invalidArgs(func, argdict):
     import inspect
-    args = inspect.getfullargspec(func.run).args
+    args = inspect.getfullargspec(func).args
     return set(argdict) - set(args)
