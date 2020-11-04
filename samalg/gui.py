@@ -123,7 +123,12 @@ class SAMGUI(object):
                     self.preprocess_args[i] = self.preprocess_args[i][0]
         except:
             self.preprocess_args = {}
+
+        rm = list(invalidArgs(self.sams[0].preprocess_data,self.preprocess_args))
+        for k in rm:
+            del self.preprocess_args[k]            
         self.preprocess_args_init = self.preprocess_args.copy()
+
         try:
             self.run_args = sam.adata.uns["run_args"].copy()
             for i in list(self.run_args.keys()):
@@ -131,7 +136,13 @@ class SAMGUI(object):
                     self.run_args[i] = self.run_args[i][0]
         except:
             self.run_args = {}
+        
+        rm = list(invalidArgs(self.sams[0].run,self.run_args))
+        for k in rm:
+            del self.run_args[k]
         self.run_args_init = self.run_args.copy()
+        
+
 
     def create_plot(self, i, title):
         if self.SAM_LOADED:
@@ -1895,3 +1906,8 @@ def load_gui(path):
     x.run_args = x.run_args_init.copy()
     x.preprocess_args = x.preprocess_args_init.copy()
     return x
+    
+def invalidArgs(func, argdict):
+    import inspect
+    args = inspect.getfullargspec(sam_subcluster.run).args
+    return set(argdict) - set(args)
