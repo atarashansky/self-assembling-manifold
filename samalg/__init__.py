@@ -1036,13 +1036,12 @@ class SAM(object):
             i += 1
             old = new
             if i == 1:                
-                print('Running first iteration with HVG selection.')
-                hvg=True
+                first=True
             else:
-                hvg=False
+                first=False
             W = self.calculate_nnm(
                 n_genes=n_genes, preprocessing=preprocessing, npcs=npcs, num_norm_avg=nnas,
-                weight_PCs=weight_PCs, sparse_pca=sparse_pca,weight_mode=weight_mode,seed=seed,components=components,hvg=hvg
+                weight_PCs=weight_PCs, sparse_pca=sparse_pca,weight_mode=weight_mode,seed=seed,components=components,first=first
                 )                
             gc.collect()
             new = W
@@ -1074,7 +1073,7 @@ class SAM(object):
 
     def calculate_nnm(
         self, n_genes=3000, preprocessing='StandardScaler', npcs=150, num_norm_avg=50, weight_PCs=False, sparse_pca=False,
-        update_manifold=True,weight_mode='dispersion',seed=0,components=None,hvg=False
+        update_manifold=True,weight_mode='dispersion',seed=0,components=None,first=False
     ):
         if 'means' not in self.adata.var.keys() or 'variances' not in self.adata.var.keys():
             print('Recomputing means and variances.')
@@ -1092,11 +1091,12 @@ class SAM(object):
         if n_genes is None:
             gkeep = np.arange(W.size)
         else:
-            if hvg:
-                df = ut._hvg(self.adata_raw,n_top_genes=n_genes)
-                ge=np.array(list(self.adata.var_names))
-                tg=np.array(list(df[df['highly_variable']].index))
-                gkeep = np.sort(np.where(np.in1d(ge,tg))[0])
+            if first:
+                mu = np.array(list(self.adata.var['means']))
+                var = np.array(list(self.adata.var['variances']))
+                mu[mu==0]=1
+                dispersions = var/mu
+                gkeep = np.sort(np.argsort(-dispersions)[:n_genes])
             else:    
                 gkeep = np.sort(np.argsort(-W)[:n_genes])
 
