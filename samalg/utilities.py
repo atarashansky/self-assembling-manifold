@@ -480,7 +480,7 @@ def _hvg(adata,n_top_genes=3000,span=0.3):
         reg_std = np.sqrt(10 ** estimat_var)    
     except ValueError:
         print('`loess` failed. Falling back to using original variances.')
-        estimat_var[not_const] = y[not_const]
+        estimat_var[not_const] = y
         reg_std = np.sqrt(10**estimat_var)
         
         
