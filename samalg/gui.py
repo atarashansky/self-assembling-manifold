@@ -1901,7 +1901,6 @@ def load_gui(path):
     x.gene_expressions=[]
     x.marker_genes=[]
     x.marker_genes_tt=[]
-    x.ds=[]
     
     for i in range(len(d['sams'])):
         if i == 0:
@@ -1920,10 +1919,9 @@ def load_gui(path):
                 ]
         )
         x.marker_genes_tt.append("Genes ranked by SAM weights.")
-        x.ds.append(0)
-        x.create_plot(i, title)
-    
-    x.update_dropdowns(0)
+        if i > 0:
+            x.ds.append(0)
+            x.create_plot(i, title)
         
     x.run_args = x.run_args_init.copy()
     x.preprocess_args = x.preprocess_args_init.copy()
