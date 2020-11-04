@@ -1486,7 +1486,7 @@ class SAM(object):
         self.adata.obs["kmeans_clusters"] = pd.Categorical(cl)
         return cl, km
 
-    def leiden_clustering(self, X=None, res=1, method="modularity"):
+    def leiden_clustering(self, X=None, res=1, method="modularity", seed = 0):
 
         if X is None:
             X = self.adata.obsp["connectivities"]
@@ -1513,10 +1513,10 @@ class SAM(object):
             pass
 
         if method == "significance":
-            cl = leidenalg.find_partition(g, leidenalg.SignificanceVertexPartition)
+            cl = leidenalg.find_partition(g, leidenalg.SignificanceVertexPartition,seed=seed)
         else:
             cl = leidenalg.find_partition(
-                g, leidenalg.RBConfigurationVertexPartition, resolution_parameter=res
+                g, leidenalg.RBConfigurationVertexPartition, resolution_parameter=res,seed=seed
             )
 
         if save:
