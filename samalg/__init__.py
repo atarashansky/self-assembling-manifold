@@ -91,7 +91,13 @@ class SAM(object):
         elif isinstance(counts, AnnData):
             all_cell_names = np.array(list(counts.obs_names))
             all_gene_names = np.array(list(counts.var_names))
-            self.adata_raw = counts
+            if counts.raw is not None:
+                self.adata_raw = AnnData(X=counts.raw.X)
+                self.adata_raw.var_names = counts.raw.var_names
+                self.adata_raw.obs_names = counts.obs_names
+                self.adata_raw.obs = counts.obs                
+            else:
+                self.adata_raw = counts.copy()                  
 
         elif counts is not None:
             raise Exception(
@@ -1096,7 +1102,7 @@ class SAM(object):
                 df = ut._hvg(self.adata_raw,n_top_genes=n_genes)
                 ge=np.array(list(self.adata.var_names))
                 tg=np.array(list(df[df['highly_variable']].index))
-                gkeep = np.sort(np.where(np.in1d(ge,tg))[0])
+                gkeep = np.sort(np.where(np.in1d(ge,tg))[0])                
             else:    
                 gkeep = np.sort(np.argsort(-W)[:n_genes])
 

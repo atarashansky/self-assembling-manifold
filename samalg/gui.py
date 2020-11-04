@@ -15,17 +15,23 @@ __version__ = "0.7.6"
 
 class SAMGUI(object):
     def __init__(self, sam=None, close_all_widgets=False, height=600):
+        self.ACTION_LOG = []
+        
         if close_all_widgets:
             Widget.close_all()
         self.widget_height = height
+        self.log('Setting widget height to {}'.format(height))
+        
         self.stab = widgets.Tab(layout={"height": "95%", "width": "50%"})
         self.stab.observe(self.on_switch_tabs, "selected_index")
 
         if sam is not None:
+            self.log('Initializing GUI from input SAM object.')
             self.init_from_sam(sam)
             self.create_plot(0, "Full dataset")
             items = [self.stab, self.tab]
         else:
+            self.log('Initializing blank GUI.')
             tab = widgets.Tab(layout={"height": "95%", "width": "50%"})
             load_box = self.init_load()
             children = [load_box]
@@ -41,7 +47,10 @@ class SAMGUI(object):
         self.SamPlot = widgets.HBox(
             items, layout=Layout(width="auto", height=str(height) + "px")
         )
-
+    
+    def log(self,s):
+        self.ACTION_LOG.append(s)
+        
     def init_from_sam(self, sam):
         self.current_sam = sam
         tab = widgets.Tab(layout={"height": "95%", "width": "50%"})
@@ -65,6 +74,7 @@ class SAMGUI(object):
         self.tab = tab
 
     def close_all_tabs(self):
+        self.log('Closing all tabs except tab 0.')
         self.stab.set_trait("selected_index", 0)
         I = 1
         while len(self.sams) > 1:
@@ -228,10 +238,12 @@ class SAMGUI(object):
         if event["type"] == "keydown":
             key = event["key"]
             if key == "ArrowRight":
+                self.log('Scrolling ranked genes slider one to the right.')
                 self.cs_dict["RGENES"].set_trait(
                     "value", self.cs_dict["RGENES"].value + 1
                 )
             elif key == "ArrowLeft":
+                self.log('Scrolling ranked genes slider one to the left.')
                 x = self.cs_dict["RGENES"].value - 1
                 if x < 0:
                     x = 0
@@ -248,11 +260,13 @@ class SAMGUI(object):
             elif key == "v":
                 self.reset_view(None)
             elif key == "a":
+                self.log('Turning off k-nn averaging of gene expression values.')
                 self.cs_dict["AVG"].set_trait("value", not self.cs_dict["AVG"].value)
 
     def close_tab(self, event):
         I = self.stab.selected_index
         if I > 0:
+            self.log('Closing tab {}'.format(I))
             self.stab.set_trait("selected_index", I - 1)
 
             titles = []
@@ -422,6 +436,7 @@ class SAMGUI(object):
 
     def load_ann(self, event):
         path = self.ps_dict["LOAD_DATAA"].value
+        self.log('Loading cell annotation file from {}'.format(path))        
         try:
             for i in range(len(self.stab.children)):
                 self.sams[i].load_obs_annotations(path)
@@ -432,6 +447,7 @@ class SAMGUI(object):
 
     def load_vann(self, event):
         path = self.ps_dict["LOAD_DATAV"].value
+        self.log('Loading gene annotation file from {}'.format(path))
         try:
             for i in range(len(self.stab.children)):
                 self.sams[i].load_var_annotations(path)
@@ -458,7 +474,7 @@ class SAMGUI(object):
                 path = self.SamPlot.children[1].children[0].children[1].value
             else:
                 path = self.ps_dict["LOAD_DATA"].value
-
+            self.log('Loading data file from {}'.format(path))
             filetype = path.split(".")[-1]
             if filetype == "gz":
                 filetype = path.split(".")[-2]
@@ -493,18 +509,22 @@ class SAMGUI(object):
             # do nothing
 
     def me_update(self, val):
+        self.log('Setting min_expression to be {}'.format(val['new']))
         self.preprocess_args["min_expression"] = val["new"]
 
     def et_update(self, val):
+        self.log('Setting the threshold value to be {}'.format(val['new']))
         self.preprocess_args["thresh"] = val["new"]
 
     def sumnorm_submit(self, txt):
+        self.log('Setting sum_norm value to be {}'.format(txt['new']))
         if txt["new"] == "None":
             self.preprocess_args["sum_norm"] = None
         else:
             self.preprocess_args["sum_norm"] = txt["new"]
 
     def set_pp_defaults(self, event):
+        self.log('Setting preprocessing parameters to defaults.')
         self.preprocess_args = self.preprocess_args_init.copy()
         fgenes = self.ps_dict["FGENES"]  # checkbox
         norm = self.ps_dict["NORM"]
@@ -539,6 +559,7 @@ class SAMGUI(object):
         self.preprocess_args["filter_genes"] = init
 
     def norm_submit(self, txt):
+        self.log('Setting norm parameter to be {}'.format(txt['new']))
         if txt["new"] == "None":
             self.preprocess_args["norm"] = None
         else:
@@ -546,10 +567,12 @@ class SAMGUI(object):
 
     def pp_filtergenes(self, event):
         t = bool(self.preprocess_args.get("filter_genes", True))
+        self.log('Setting filter_genes parameter to be {}'.format(not t))
         self.preprocess_args["filter_genes"] = not t
 
     def preprocess_sam(self, event):
         i = self.stab.selected_index
+        self.log('Preprocessing SAM object in tab {}'.format(i))
         self.sams[i].preprocess_data(**self.preprocess_args)
 
     """ END PREPROCESS INIT"""
@@ -817,6 +840,7 @@ class SAMGUI(object):
         return rs
 
     def set_run_defaults(self, event):
+        self.log('Setting run parameters to defaults.')
         self.run_args = self.run_args_init.copy()
         # run
         # defaults,wpca
@@ -863,6 +887,7 @@ class SAMGUI(object):
         self.run_args["weight_PCs"] = init
 
     def sam_weights(self, event):
+        self.log('Setting gene rankings to be ordered by the SAM weights.')
         s = self.sams[self.stab.selected_index]
         self.marker_genes[self.stab.selected_index] = np.array(
             list(s.adata.var_names[np.argsort(-s.adata.var["weights"].values)])
@@ -879,30 +904,38 @@ class SAMGUI(object):
 
     def weightpcs(self, event):
         t = self.run_args.get("weight_PCs", True)
+        self.log('Setting weight_PCs to be {}'.format(not t))
         self.run_args["weight_PCs"] = not t
 
     def npcs_update(self, val):
+        self.log('Setting npcs to be {}'.format(int(val['new'])))
         self.run_args["npcs"] = int(val["new"])
 
     def nna_update(self, val):
+        self.log('Setting num_norm_avg to be {}'.format(int(val['new'])))
         self.run_args["num_norm_avg"] = int(val["new"])
 
     def knn_update(self, val):
+        self.log('Setting k to be {}'.format(int(val['new'])))
         self.run_args["k"] = int(val["new"])
 
     def ngenes_update(self, val):
+        self.log('Setting n_genes to be {}'.format(int(val['new'])))
         self.run_args["n_genes"] = int(val["new"])
 
     def rnorm_update(self, txt):
+        self.log('Setting preprocessing to be {}'.format(txt['new']))
         if txt["new"] == "None":
             self.run_args["preprocessing"] = None
         else:
             self.run_args["preprocessing"] = txt["new"]
 
     def proj_update(self, txt):
+        self.log('Setting projection to be {}'.format(txt['new']))
         self.run_args["projection"] = txt["new"]
 
     def dist_update(self, txt):
+        self.log('Setting distance to be {}'.format(txt['new']))
         self.run_args["distance"] = txt["new"]
 
     def subcluster(self, event):
@@ -957,6 +990,7 @@ class SAMGUI(object):
             self.current_sam = sam
 
         if execute:
+            self.log(('Subclustering SAM object in tab {}'.format(i),selected_cells))
             title = self.rb_dict["TITLE"].value
             if title == "" and i == 0:
                 title = "Full dataset"
@@ -1285,6 +1319,7 @@ class SAMGUI(object):
 
     def reset_view(self, event):
         i = self.stab.selected_index
+        self.log('Resetting view for tab {}'.format(i))        
         self.create_plot(i, self.stab.get_title(i))
         self.marker_genes[i] = np.array(list(self.sams[i].adata.var_names))[
             np.argsort(-self.sams[i].adata.var["weights"].values)
@@ -1294,6 +1329,7 @@ class SAMGUI(object):
 
     def save_data(self, path):
         path = path.value
+        self.log('Saving data from tab {} to {}'.format(self.stab.selected_index,path))
         if path != "":
             if path.split(".")[-1] == "h5ad":
                 s = self.sams[self.stab.selected_index]
@@ -1348,6 +1384,7 @@ class SAMGUI(object):
 
                 # self.select_all(None)
                 self.update_colors_expr(a, title)
+                self.log('Showing gene expression values for {} in tab {}'.format(title,self.stab.selected_index))
             except:
                 if self.cs_dict["AVG"].value:
                     if not (gene in s.adata.var_names):
@@ -1393,7 +1430,9 @@ class SAMGUI(object):
             self.cs_dict["LGENES"].set_trait(
                 "tooltip", self.marker_genes_tt[self.stab.selected_index]
             )
+            self.log('Getting genes with similar expression patterns to {}'.format(gene))
             self.show_expression(str(gene))
+            
 
     def annotate_pop(self, text):
         text = text.value
@@ -1401,6 +1440,7 @@ class SAMGUI(object):
         selected = self.selected[self.stab.selected_index]
         selected_cells = self.selected_cells[self.stab.selected_index]
         if text != "" and text_name != "" and selected.sum() != selected.size:
+            self.log(('Annotating cells with the {} label in the {} key.'.format(text,text_name),selected_cells))
             for it, s in enumerate(self.sams):
                 x1 = np.array(list(s.adata.obs_names))
 
@@ -1414,10 +1454,11 @@ class SAMGUI(object):
                     a[:] = ""
                     a[np.in1d(x1, selected_cells)] = text
                     s.adata.obs[text_name] = pd.Categorical(a)
-
+                
                 self.update_dropdowns(it)
 
     def unselect_all(self, event):
+        self.log('Unselecting all cells.')
         self.selected[self.stab.selected_index][:] = False
         self.selected_cells[self.stab.selected_index] = []
         self.stab.children[self.stab.selected_index].data[0].selectedpoints = np.array(
@@ -1428,6 +1469,7 @@ class SAMGUI(object):
         }
 
     def select_all(self, event):
+        self.log('Selecting all cells.')
         self.selected[self.stab.selected_index][:] = True
         self.selected_cells[self.stab.selected_index] = np.array(
             list(self.sams[self.stab.selected_index].adata.obs_names)
@@ -1441,6 +1483,7 @@ class SAMGUI(object):
         selected = self.selected[self.stab.selected_index]
         s = self.sams[self.stab.selected_index]
         if not np.all(selected) and selected.sum() > 0:
+            self.log(('Calculating marker genes using SW method in tab {}'.format(self.stab.selected_index)),self.selected_cells[self.stab.selected_index])            
             l = s.adata.layers["X_knn_avg"]
             m = l.mean(0).A.flatten()
             ms = l[selected, :].mean(0).A.flatten()
@@ -1471,6 +1514,7 @@ class SAMGUI(object):
         selected = self.selected[self.stab.selected_index]
         s = self.sams[self.stab.selected_index]
         if not np.all(selected) and selected.sum() > 0:
+            self.log(('Calculating marker genes using RF method in tab {}'.format(self.stab.selected_index)),self.selected_cells[self.stab.selected_index])            
             a = np.zeros(s.adata.shape[0])
             a[selected] = 1
             markers, _ = s.identify_marker_genes_rf(labels=a, clusters=1)
@@ -1499,7 +1543,7 @@ class SAMGUI(object):
         self.cs_dict["SHG"].set_trait("value", gene)
         self.show_expression(str(gene))
 
-    def update_dropdowns(self, i):
+    def update_dropdowns(self, i):        
         s = self.sams[i]
         self.cs_dict["DPM"].options = [""] + list(s.adata.obsm.keys())
         self.cs_dict["DAM"].options = [""] + list(s.adata.obs.keys())
@@ -1507,6 +1551,7 @@ class SAMGUI(object):
         self.cs_dict["ACC"].options = self.dd_opts[i]
 
     def on_switch_tabs(self, event):
+        self.log('Switching to tab {}'.format(self.stab.selected_index))
         self.update_dropdowns(self.stab.selected_index)
         self.cs_dict["LGENES"].set_trait(
             "tooltip", self.marker_genes_tt[self.stab.selected_index]
@@ -1520,9 +1565,11 @@ class SAMGUI(object):
 
     def display_var_annotation(self, event):
         self.GENE_KEY = self.cs_dict["DVM"].value
+        self.log('Setting the var annotations to be from key {}'.format(self.GENE_KEY))
 
     def display_annotation(self, event):
         key = self.cs_dict["DAM"].value
+        self.log('Displaying cell annotations from obs key {}'.format(key))
         if key != "":
             labels = np.array(list(self.sams[self.stab.selected_index].get_labels(key)))
 
@@ -1625,6 +1672,7 @@ class SAMGUI(object):
 
     def threshold_selection(self, val):
         val = val["new"]
+        self.log('Setting gene expression selection threshold to be {}'.format(val))
         s = self.sams[self.stab.selected_index]
 
         self.selected[self.stab.selected_index][:] = False
@@ -1677,6 +1725,7 @@ class SAMGUI(object):
         s = self.sams[self.stab.selected_index]
         val = self.rb_dict["CLM"].value
         eps = self.rb_dict["CSLIDER"].value
+        self.log('Clustering data using the {} method with parameter {} in tab {}'.format(val,eps,self.stab.selected_index))
         if val == "Kmeans cluster":
             s.kmeans_clustering(int(eps))
 
@@ -1697,6 +1746,7 @@ class SAMGUI(object):
     def display_projection(self, event):
         s = self.sams[self.stab.selected_index]
         key = self.cs_dict["DPM"].value
+        self.log('Displaying projection from obsm key {} in tab {}'.format(key,self.stab.selected_index))
         if key != "":
             X = s.adata.obsm[key][:, :2]
             self.stab.children[self.stab.selected_index].data[0]["x"] = X[:, 0]
@@ -1714,6 +1764,7 @@ class SAMGUI(object):
             s.run_diff_map()
         elif val == "Diffusion UMAP":
             s.run_diff_umap()
+        self.log('Computing 2D projection using the {} method'.format(val))
         self.update_dropdowns(i)
 
     """ END CS INIT"""
@@ -1751,6 +1802,7 @@ class SAMGUI(object):
             self.stab.children[self.stab.selected_index].data[0].selectedpoints = list(
                 np.where(sel)[0]
             )
+            self.log('Toggling cluster {} in tab {}'.format(al,self.stab.selected_index))
 
             self.cs_dict["ACC"].value = "Toggle cluster"
 
@@ -1781,14 +1833,32 @@ class SAMGUI(object):
         self.stab.children[self.stab.selected_index].data[0].unselected = {
             "marker": {"opacity": val["new"]}
         }
+        self.log('Changing alpha (opacity) to be {}'.format(val['new']))
 
     def change_msize(self, val):
         val = val["new"]
         markers = self.stab.children[self.stab.selected_index].data[0].marker
         markers.size = val
+        self.log('Changing marker size to be {}'.format(val))
 
     def init_graph(self, trace):
         trace.mode = "markers"
         trace.marker.size = 5
         trace.on_selection(self.select)
         trace.on_click(self.pick_cells)
+
+def save_gui(x,path):
+    d = x.__dict__
+    for i in range(len(d['sams'])):
+        d['sams'][i] = d['sams'][i].adata
+        d['sams'][i].raw = d['sams'][i].adata_raw.X
+    pickle.dump(d,open(path,'wb'))        
+    
+def load_gui(path):
+    d = pickle.load(open(path,'rb'))
+    x = SAMGUI()
+    for i in range(len(d['sams'])):
+        d['sams'][i] = SAM(counts = d['sams'][i])
+    x.__dict__ = d
+
+    
