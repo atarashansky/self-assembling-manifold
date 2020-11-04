@@ -1850,8 +1850,9 @@ class SAMGUI(object):
 def save_gui(x,path):
     d = x.__dict__
     for i in range(len(d['sams'])):
-        d['sams'][i] = d['sams'][i].adata
-        d['sams'][i].raw = d['sams'][i].adata_raw.X
+        X = d['sams'][i].adata
+        X.raw = d['sams'][i].adata_raw.X
+        d['sams'][i] = X
     pickle.dump(d,open(path,'wb'))        
     
 def load_gui(path):
