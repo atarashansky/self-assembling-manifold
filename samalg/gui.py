@@ -1857,6 +1857,12 @@ def save_gui(x,path):
         X = d['sams'][i].adata
         X.raw = d['sams'][i].adata_raw
         d['sams'][i] = X
+    
+    keys = list(d.keys())
+    for k in keys:
+        if 'ipywidgets' in str(type(d[k])):
+            del d[k]
+            
     pickle.dump(d,open(path,'wb'))        
     
 def load_gui(path):
@@ -1864,6 +1870,7 @@ def load_gui(path):
     x = SAMGUI()
     for i in range(len(d['sams'])):
         d['sams'][i] = SAM(counts = d['sams'][i])
-    x.__dict__ = d
+    for k in d.keys():
+        x.__dict__[k] = d[k]
 
     

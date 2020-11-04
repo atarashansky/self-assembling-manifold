@@ -91,13 +91,7 @@ class SAM(object):
         elif isinstance(counts, AnnData):
             all_cell_names = np.array(list(counts.obs_names))
             all_gene_names = np.array(list(counts.var_names))
-            if counts.raw is not None:
-                self.adata_raw = AnnData(X=counts.raw.X)
-                self.adata_raw.var_names = counts.raw.var_names
-                self.adata_raw.obs_names = counts.obs_names
-                self.adata_raw.obs = counts.obs                
-            else:
-                self.adata_raw = counts.copy()                  
+            self.adata_raw = counts
 
         elif counts is not None:
             raise Exception(
@@ -360,8 +354,8 @@ class SAM(object):
 
         Parameters
         ----------
-        filename - string
-            The path to the tabular raw expression counts file.
+        filename - string or AnnData
+            The path to the tabular raw expression counts file or an AnnData object.
 
         sep - string, optional, default ','
             The delimeter used to read the input data table. By default
@@ -384,44 +378,70 @@ class SAM(object):
             expressions.
 
         """
-        if filename.split(".")[-1] == "p":
-            raw_data, all_cell_names, all_gene_names = pickle.load(open(filename, "rb"))
-
-            if transpose:
-                raw_data = raw_data.T
-                if raw_data.getformat() == "csc":
-                    print("Converting sparse matrix to csr format...")
-                    raw_data = raw_data.tocsr()
-
-            save_sparse_file = None
-        elif filename.split(".")[-1] != "h5ad":
-            df = pd.read_csv(filename, sep=sep, index_col=0, **kwargs)
-            if transpose:
-                dataset = df.T
+        if type(filename) is str:
+            if filename.split(".")[-1] == "p":
+                raw_data, all_cell_names, all_gene_names = pickle.load(open(filename, "rb"))
+    
+                if transpose:
+                    raw_data = raw_data.T
+                    if raw_data.getformat() == "csc":
+                        print("Converting sparse matrix to csr format...")
+                        raw_data = raw_data.tocsr()
+    
+                save_sparse_file = None
+            elif filename.split(".")[-1] != "h5ad":
+                df = pd.read_csv(filename, sep=sep, index_col=0, **kwargs)
+                if transpose:
+                    dataset = df.T
+                else:
+                    dataset = df
+    
+                raw_data = sp.csr_matrix(dataset.values)
+                all_cell_names = np.array(list(dataset.index.values))
+                all_gene_names = np.array(list(dataset.columns.values))
+    
+            if filename.split(".")[-1] != "h5ad":
+                self.adata_raw = AnnData(
+                    X=raw_data,
+                    obs={"obs_names": all_cell_names},
+                    var={"var_names": all_gene_names},
+                )
+    
+                if np.unique(all_gene_names).size != all_gene_names.size:
+                    self.adata_raw.var_names_make_unique()
+                if np.unique(all_cell_names).size != all_cell_names.size:
+                    self.adata_raw.obs_names_make_unique()
+    
+                self.adata = self.adata_raw.copy()
+                self.adata.layers["X_disp"] = raw_data
+    
             else:
-                dataset = df
-
-            raw_data = sp.csr_matrix(dataset.values)
-            all_cell_names = np.array(list(dataset.index.values))
-            all_gene_names = np.array(list(dataset.columns.values))
-
-        if filename.split(".")[-1] != "h5ad":
-            self.adata_raw = AnnData(
-                X=raw_data,
-                obs={"obs_names": all_cell_names},
-                var={"var_names": all_gene_names},
-            )
-
-            if np.unique(all_gene_names).size != all_gene_names.size:
-                self.adata_raw.var_names_make_unique()
-            if np.unique(all_cell_names).size != all_cell_names.size:
-                self.adata_raw.obs_names_make_unique()
-
-            self.adata = self.adata_raw.copy()
-            self.adata.layers["X_disp"] = raw_data
-
-        else:
-            self.adata = anndata.read_h5ad(filename, **kwargs)
+                self.adata = anndata.read_h5ad(filename, **kwargs)
+                if self.adata.raw is not None:
+                    self.adata_raw = AnnData(X=self.adata.raw.X)
+                    self.adata_raw.var_names = self.adata.raw.var_names
+                    self.adata_raw.obs_names = self.adata.obs_names
+                    self.adata_raw.obs = self.adata.obs
+    
+                    if version.parse(str(anndata.__version__)) >= version.parse("0.7rc1"):
+                        del self.adata.raw
+                    else:
+                        self.adata.raw = None
+    
+                    if (
+                        "X_knn_avg" not in self.adata.layers.keys()
+                        and "neighbors" in self.adata.uns.keys()
+                        and calculate_avg
+                    ):
+                        self.dispersion_ranking_NN()
+                else:
+                    self.adata_raw = self.adata
+    
+                if "X_disp" not in list(self.adata.layers.keys()):
+                    self.adata.layers["X_disp"] = self.adata.X
+                save_sparse_file = None
+        elif isinstance(filename,AnnData):
+            self.adata = filename
             if self.adata.raw is not None:
                 self.adata_raw = AnnData(X=self.adata.raw.X)
                 self.adata_raw.var_names = self.adata.raw.var_names
@@ -444,7 +464,10 @@ class SAM(object):
 
             if "X_disp" not in list(self.adata.layers.keys()):
                 self.adata.layers["X_disp"] = self.adata.X
-            save_sparse_file = None
+                save_sparse_file = None 
+                
+        else:
+            raise TypeError('Input data format not recognized.')
         self.adata.uns['path_to_file'] = filename
         self.adata_raw.uns['path_to_file'] = filename        
         if save_sparse_file is not None:
