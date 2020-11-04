@@ -1,3 +1,4 @@
+import pickle
 import colorlover as cl
 import numpy as np
 import scipy.sparse as sp
@@ -1484,6 +1485,9 @@ class SAMGUI(object):
         s = self.sams[self.stab.selected_index]
         if not np.all(selected) and selected.sum() > 0:
             self.log(('Calculating marker genes using SW method in tab {}'.format(self.stab.selected_index),self.selected_cells[self.stab.selected_index]))           
+
+            if "X_knn_avg" not in s.adata.layers.keys():
+                s.dispersion_ranking_NN(save_avgs=True)                
             l = s.adata.layers["X_knn_avg"]
             m = l.mean(0).A.flatten()
             ms = l[selected, :].mean(0).A.flatten()
