@@ -1483,7 +1483,7 @@ class SAMGUI(object):
         selected = self.selected[self.stab.selected_index]
         s = self.sams[self.stab.selected_index]
         if not np.all(selected) and selected.sum() > 0:
-            self.log(('Calculating marker genes using SW method in tab {}'.format(self.stab.selected_index)),self.selected_cells[self.stab.selected_index])            
+            self.log(('Calculating marker genes using SW method in tab {}'.format(self.stab.selected_index),self.selected_cells[self.stab.selected_index]))           
             l = s.adata.layers["X_knn_avg"]
             m = l.mean(0).A.flatten()
             ms = l[selected, :].mean(0).A.flatten()
@@ -1514,7 +1514,7 @@ class SAMGUI(object):
         selected = self.selected[self.stab.selected_index]
         s = self.sams[self.stab.selected_index]
         if not np.all(selected) and selected.sum() > 0:
-            self.log(('Calculating marker genes using RF method in tab {}'.format(self.stab.selected_index)),self.selected_cells[self.stab.selected_index])            
+            self.log(('Calculating marker genes using RF method in tab {}'.format(self.stab.selected_index),self.selected_cells[self.stab.selected_index]))            
             a = np.zeros(s.adata.shape[0])
             a[selected] = 1
             markers, _ = s.identify_marker_genes_rf(labels=a, clusters=1)
