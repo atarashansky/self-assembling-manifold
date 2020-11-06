@@ -354,8 +354,8 @@ class SAM(object):
 
         Parameters
         ----------
-        filename - string or AnnData
-            The path to the tabular raw expression counts file or an AnnData object.
+        filename - string
+            The path to the tabular raw expression counts file.
 
         sep - string, optional, default ','
             The delimeter used to read the input data table. By default
@@ -378,70 +378,44 @@ class SAM(object):
             expressions.
 
         """
-        if type(filename) is str:
-            if filename.split(".")[-1] == "p":
-                raw_data, all_cell_names, all_gene_names = pickle.load(open(filename, "rb"))
-    
-                if transpose:
-                    raw_data = raw_data.T
-                    if raw_data.getformat() == "csc":
-                        print("Converting sparse matrix to csr format...")
-                        raw_data = raw_data.tocsr()
-    
-                save_sparse_file = None
-            elif filename.split(".")[-1] != "h5ad":
-                df = pd.read_csv(filename, sep=sep, index_col=0, **kwargs)
-                if transpose:
-                    dataset = df.T
-                else:
-                    dataset = df
-    
-                raw_data = sp.csr_matrix(dataset.values)
-                all_cell_names = np.array(list(dataset.index.values))
-                all_gene_names = np.array(list(dataset.columns.values))
-    
-            if filename.split(".")[-1] != "h5ad":
-                self.adata_raw = AnnData(
-                    X=raw_data,
-                    obs={"obs_names": all_cell_names},
-                    var={"var_names": all_gene_names},
-                )
-    
-                if np.unique(all_gene_names).size != all_gene_names.size:
-                    self.adata_raw.var_names_make_unique()
-                if np.unique(all_cell_names).size != all_cell_names.size:
-                    self.adata_raw.obs_names_make_unique()
-    
-                self.adata = self.adata_raw.copy()
-                self.adata.layers["X_disp"] = raw_data
-    
+        if filename.split(".")[-1] == "p":
+            raw_data, all_cell_names, all_gene_names = pickle.load(open(filename, "rb"))
+
+            if transpose:
+                raw_data = raw_data.T
+                if raw_data.getformat() == "csc":
+                    print("Converting sparse matrix to csr format...")
+                    raw_data = raw_data.tocsr()
+
+            save_sparse_file = None
+        elif filename.split(".")[-1] != "h5ad":
+            df = pd.read_csv(filename, sep=sep, index_col=0, **kwargs)
+            if transpose:
+                dataset = df.T
             else:
-                self.adata = anndata.read_h5ad(filename, **kwargs)
-                if self.adata.raw is not None:
-                    self.adata_raw = AnnData(X=self.adata.raw.X)
-                    self.adata_raw.var_names = self.adata.raw.var_names
-                    self.adata_raw.obs_names = self.adata.obs_names
-                    self.adata_raw.obs = self.adata.obs
-    
-                    if version.parse(str(anndata.__version__)) >= version.parse("0.7rc1"):
-                        del self.adata.raw
-                    else:
-                        self.adata.raw = None
-    
-                    if (
-                        "X_knn_avg" not in self.adata.layers.keys()
-                        and "neighbors" in self.adata.uns.keys()
-                        and calculate_avg
-                    ):
-                        self.dispersion_ranking_NN()
-                else:
-                    self.adata_raw = self.adata
-    
-                if "X_disp" not in list(self.adata.layers.keys()):
-                    self.adata.layers["X_disp"] = self.adata.X
-                save_sparse_file = None
-        elif isinstance(filename,AnnData):
-            self.adata = filename
+                dataset = df
+
+            raw_data = sp.csr_matrix(dataset.values)
+            all_cell_names = np.array(list(dataset.index.values))
+            all_gene_names = np.array(list(dataset.columns.values))
+
+        if filename.split(".")[-1] != "h5ad":
+            self.adata_raw = AnnData(
+                X=raw_data,
+                obs={"obs_names": all_cell_names},
+                var={"var_names": all_gene_names},
+            )
+
+            if np.unique(all_gene_names).size != all_gene_names.size:
+                self.adata_raw.var_names_make_unique()
+            if np.unique(all_cell_names).size != all_cell_names.size:
+                self.adata_raw.obs_names_make_unique()
+
+            self.adata = self.adata_raw.copy()
+            self.adata.layers["X_disp"] = raw_data
+
+        else:
+            self.adata = anndata.read_h5ad(filename, **kwargs)
             if self.adata.raw is not None:
                 self.adata_raw = AnnData(X=self.adata.raw.X)
                 self.adata_raw.var_names = self.adata.raw.var_names
@@ -464,10 +438,7 @@ class SAM(object):
 
             if "X_disp" not in list(self.adata.layers.keys()):
                 self.adata.layers["X_disp"] = self.adata.X
-                save_sparse_file = None 
-                
-        else:
-            raise TypeError('Input data format not recognized.')
+            save_sparse_file = None
         self.adata.uns['path_to_file'] = filename
         self.adata_raw.uns['path_to_file'] = filename        
         if save_sparse_file is not None:
@@ -1065,13 +1036,12 @@ class SAM(object):
             i += 1
             old = new
             if i == 1:                
-                print('Running first iteration with HVG selection.')
-                hvg=True
+                first=True
             else:
-                hvg=False
+                first=False
             W = self.calculate_nnm(
                 n_genes=n_genes, preprocessing=preprocessing, npcs=npcs, num_norm_avg=nnas,
-                weight_PCs=weight_PCs, sparse_pca=sparse_pca,weight_mode=weight_mode,seed=seed,components=components,hvg=hvg
+                weight_PCs=weight_PCs, sparse_pca=sparse_pca,weight_mode=weight_mode,seed=seed,components=components,first=first
                 )                
             gc.collect()
             new = W
@@ -1103,7 +1073,7 @@ class SAM(object):
 
     def calculate_nnm(
         self, n_genes=3000, preprocessing='StandardScaler', npcs=150, num_norm_avg=50, weight_PCs=False, sparse_pca=False,
-        update_manifold=True,weight_mode='dispersion',seed=0,components=None,hvg=False
+        update_manifold=True,weight_mode='dispersion',seed=0,components=None,first=False
     ):
         if 'means' not in self.adata.var.keys() or 'variances' not in self.adata.var.keys():
             print('Recomputing means and variances.')
@@ -1121,11 +1091,12 @@ class SAM(object):
         if n_genes is None:
             gkeep = np.arange(W.size)
         else:
-            if hvg:
-                df = ut._hvg(self.adata_raw,n_top_genes=n_genes)
-                ge=np.array(list(self.adata.var_names))
-                tg=np.array(list(df[df['highly_variable']].index))
-                gkeep = np.sort(np.where(np.in1d(ge,tg))[0])                
+            if first:
+                mu = np.array(list(self.adata.var['means']))
+                var = np.array(list(self.adata.var['variances']))
+                mu[mu==0]=1
+                dispersions = var/mu
+                gkeep = np.sort(np.argsort(-dispersions)[:n_genes])
             else:    
                 gkeep = np.sort(np.argsort(-W)[:n_genes])
 
@@ -1515,7 +1486,7 @@ class SAM(object):
         self.adata.obs["kmeans_clusters"] = pd.Categorical(cl)
         return cl, km
 
-    def leiden_clustering(self, X=None, res=1, method="modularity"):
+    def leiden_clustering(self, X=None, res=1, method="modularity", seed = 0):
 
         if X is None:
             X = self.adata.obsp["connectivities"]
@@ -1542,10 +1513,10 @@ class SAM(object):
             pass
 
         if method == "significance":
-            cl = leidenalg.find_partition(g, leidenalg.SignificanceVertexPartition)
+            cl = leidenalg.find_partition(g, leidenalg.SignificanceVertexPartition,seed=seed)
         else:
             cl = leidenalg.find_partition(
-                g, leidenalg.RBConfigurationVertexPartition, resolution_parameter=res
+                g, leidenalg.RBConfigurationVertexPartition, resolution_parameter=res,seed=seed
             )
 
         if save:
