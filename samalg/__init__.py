@@ -1197,9 +1197,9 @@ class SAM(object):
                 edm.data[:] = 1-edm.data
                 edm = edm.tolil(); edm.setdiag(1); edm = edm.tocsr();
                 edm.data[edm.data<0]=0.001 #if negative correlation, set close to zero but not zero to preserve kNN structure
-                self.adata.uns['nnm'] = edm
+                self.adata.obsp['nnm'] = edm
             else:
-                self.adata.uns['nnm'] = EDM
+                self.adata.obsp['nnm'] = EDM
             W = self.dispersion_ranking_NN(EDM, weight_mode=weight_mode, num_norm_avg=num_norm_avg)
             self.adata.obsm["X_pca"] = g_weighted
             ge = np.array(list(self.adata.var_names[gkeep]))
