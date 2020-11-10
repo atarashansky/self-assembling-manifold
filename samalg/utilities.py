@@ -46,22 +46,6 @@ def find_corr_genes(sam, input_gene):
     pw_corr = generate_correlation_map(D_avg.T.A, D_avg[:, input_gene].T.A)
     return all_gene_names[np.argsort(-pw_corr.flatten())]
 
-
-"""
-import hnswlib
-def nearest_neighbors_hnsw(x,ef=200,M=48,n_neighbors = 100):
-    labels = np.arange(x.shape[0])
-    p = hnswlib.Index(space = 'cosine', dim = x.shape[1])
-    p.init_index(max_elements = x.shape[0], ef_construction = ef, M = M)
-    p.add_items(x, labels)
-    p.set_ef(ef)
-    idx, dist = p.knn_query(x, k = n_neighbors)
-    dist = 1-dist
-    dist[dist<0]=0
-    return idx,dist
-"""
-
-
 def _pca_with_sparse(X, npcs, solver='arpack', mu=None, seed=0):
     random_state = check_random_state(seed)
     np.random.set_state(random_state.get_state())
