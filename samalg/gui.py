@@ -786,7 +786,7 @@ class SAMGUI(object):
         if init is None:
             init = "correlation"
         distance = widgets.Dropdown(
-            options=["correlation", "euclidean"],
+            options=["correlation", "euclidean", "cosine"],
             value=init,
             description="Distance:",
             disabled=False,
