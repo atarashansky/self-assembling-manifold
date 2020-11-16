@@ -768,7 +768,7 @@ class SAM(object):
         f = nnm.sum(1).A
         f[f==0]=1
         D_avg = (nnm.multiply(1 / f)).dot(self.adata.layers["X_disp"])
-
+        keep = D_avg.max(0).A.flatten()>1
         if sp.issparse(D_avg):
             mu, var = sf.mean_variance_axis(D_avg, axis=0)
         else:
@@ -795,6 +795,7 @@ class SAM(object):
         dispersions[dispersions >= ma] = ma
 
         weights = ((dispersions / dispersions.max()) ** 0.5).flatten()
+        weights[np.invert(keep)] = 0
         return weights
 
     def calculate_regression_PCs(self, genes=None, npcs=None):
