@@ -10,6 +10,9 @@ import pandas as pd
 
 from ipyevents import Event
 from ipywidgets import Widget, Layout
+import warnings
+from numba.core.errors import NumbaWarning
+warnings.filterwarnings("ignore", category=NumbaWarning)
 
 __version__ = "0.7.7"
 
