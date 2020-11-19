@@ -1002,7 +1002,7 @@ class SAM(object):
         update_manifold=True,weight_mode='dispersion',seed=0,components=None,first=False
     ):
         if 'means' not in self.adata.var.keys() or 'variances' not in self.adata.var.keys():
-            print('Recomputing means and variances.')
+            print('Computing means and variances of genes.')
             mu,var = sf.mean_variance_axis(self.adata.X,axis=0)
             self.adata.var['means'] = mu
             self.adata.var['variances'] = var
