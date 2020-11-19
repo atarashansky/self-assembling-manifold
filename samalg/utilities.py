@@ -10,7 +10,7 @@ from sklearn.utils import check_array, check_random_state
 from scipy import sparse
 import sklearn.utils.sparsefuncs as sf
 from umap.umap_ import nearest_neighbors
-__version__ = "0.7.6"
+__version__ = "0.7.7"
 
 
 def find_corr_genes(sam, input_gene):
