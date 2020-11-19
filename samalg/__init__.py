@@ -120,11 +120,11 @@ class SAM(object):
         self,
         div=1,
         downsample=0,
-        sum_norm=None,
+        sum_norm="cell_median",
         norm="log",
         min_expression=1,
-        thresh_low=0.01,
-        thresh_high=0.99,
+        thresh_low=0.0,
+        thresh_high=0.96,
         thresh = None,
         filter_genes=True,
     ):
@@ -141,7 +141,7 @@ class SAM(object):
             The factor by which to randomly downsample the data. If 0, the
             data will not be downsampled.
 
-        sum_norm : str or float, optional, default None
+        sum_norm : str or float, optional, default "cell_median"
             If a float, the total number of transcripts in each cell will be
             normalized to this value prior to normalization and filtering.
             Otherwise, nothing happens. If 'cell_median', each cell is
@@ -161,12 +161,12 @@ class SAM(object):
             expressed. Gene expression values less than 'min_expression' are
             set to zero.
 
-        thresh_low : float, optional, default 0.01
+        thresh_low : float, optional, default 0.0
             Keep genes expressed in greater than 'thresh_low'*100 % of cells,
             where a gene is considered expressed if its expression value
             exceeds 'min_expression'.
 
-        thresh_high : float, optional, default 0.99
+        thresh_high : float, optional, default 0.96
             Keep genes expressed in less than 'thresh_high'*100 % of cells,
             where a gene is considered expressed if its expression value
             exceeds 'min_expression'.
@@ -805,10 +805,10 @@ class SAM(object):
         num_norm_avg=50,
         k=20,
         distance="correlation",
-        preprocessing="Normalizer",
+        preprocessing="StandardScaler",
         npcs=None,
         n_genes=None,
-        weight_PCs=True,
+        weight_PCs=False,
         sparse_pca=False,
         proj_kwargs={},
         seed = 0,
@@ -841,7 +841,7 @@ class SAM(object):
             If 'tsne', generates a t-SNE embedding. If 'umap', generates a UMAP
             embedding. Otherwise, no embedding will be generated.
 
-        preprocessing - str, optional, default 'Normalizer'
+        preprocessing - str, optional, default 'StandardScaler'
             If 'Normalizer', use sklearn.preprocessing.Normalizer, which
             normalizes expression data prior to PCA such that each cell has
             unit L2 norm. If 'StandardScaler', use
@@ -862,7 +862,7 @@ class SAM(object):
             This is worth setting True for large datasets, where memory
             constraints start becoming noticeable.
 
-        weight_PCs - bool, optional, default True
+        weight_PCs - bool, optional, default False
             Scale the principal components by their eigenvalues. If many
             cell populations are expected, it is recommended to set this False
             as the populations may be found on lesser-varying PCs.
