@@ -468,6 +468,12 @@ class SAM(object):
                 0
         x = self.adata
         x.raw = self.adata_raw
+        
+        # fixing weird issues when index name is an integer.
+        for y in [x.obs.columns,x.var.columns,
+                  x.obs.index,x.var.index,
+                  x.raw.var.index,x.raw.var.columns]:
+            y.name = str(y.name) if y.name is not None else None
 
         x.write_h5ad(fname, **kwargs)
         if version.parse(str(anndata.__version__)) >= version.parse("0.7rc1"):
@@ -767,20 +773,24 @@ class SAM(object):
         f = nnm.sum(1).A
         f[f==0]=1
         D_avg = (nnm.multiply(1 / f)).dot(self.adata.layers["X_disp"])
-
+        if save_avgs:
+            self.adata.layers["X_knn_avg"] = D_avg
+            
         if sp.issparse(D_avg):
-            mu, var = sf.mean_variance_axis(D_avg, axis=0)
+            mu, var = sf.mean_variance_axis(D_avg, axis=0)            
+            if weight_mode == 'rms':
+                D_avg.data[:]=D_avg.data**2
+                mu,_ =sf.mean_variance_axis(D_avg, axis=0)
+                mu=mu**0.5
         else:
             mu = D_avg.mean(0)
             var = D_avg.var(0)
 
-        if save_avgs:
-            self.adata.layers["X_knn_avg"] = D_avg
-        else:
+        if not save_avgs:        
             del D_avg
             gc.collect()
 
-        if weight_mode == 'dispersion':
+        if weight_mode == 'dispersion' or weight_mode == 'rms':
             dispersions = np.zeros(var.size)
             dispersions[mu > 0] = var[mu > 0] / mu[mu > 0]
             self.adata.var["spatial_dispersions"] = dispersions.copy()
@@ -788,7 +798,7 @@ class SAM(object):
             dispersions = var
             self.adata.var["spatial_variances"] = dispersions.copy()
         else:
-            print('`weight_mode` ',weight_mode,' not recognized.')
+            raise ValueError('`weight_mode` ',weight_mode,' not recognized.')
 
         ma = np.sort(dispersions)[-num_norm_avg:].mean()
         dispersions[dispersions >= ma] = ma
@@ -881,14 +891,14 @@ class SAM(object):
             raise ValueError(
                 "preprocessing must be 'StandardScaler', 'Normalizer', or None"
             )
-        if weight_mode not in ["dispersion", "variance"]:
+        if weight_mode not in ["dispersion", "variance", "rms"]:
             raise ValueError(
                 "weight_mode must be 'dispersion' or 'variance'"
             )
 
         if self.adata.layers['X_disp'].min() < 0 and weight_mode == 'dispersion':
-            print("`X_disp` layer contains negative values. Setting `weight_mode` to 'variance'.")
-            weight_mode = 'variance'
+            print("`X_disp` layer contains negative values. Setting `weight_mode` to 'rms'.")
+            weight_mode = 'rms'
 
         self.run_args = {
             "max_iter": max_iter,
