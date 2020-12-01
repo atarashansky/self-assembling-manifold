@@ -355,7 +355,6 @@ def nearest_neighbors_hnsw(x,ef=200,M=48,n_neighbors = 100):
     p.add_items(x, labels)
     p.set_ef(ef)
     idx, dist = p.knn_query(x, k = n_neighbors)
-    dist = (2-dist)/2
     return idx,dist
 
 
