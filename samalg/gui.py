@@ -320,7 +320,7 @@ class SAMGUI(object):
         pdata.on_click(self.preprocess_sam)
         """
         fgenes = widgets.Checkbox(
-            value=bool(self.preprocess_args.get("filter_genes", True)),
+            value=bool(self.preprocess_args.get("filter_genes", False)),
             description="Filter genes",
         )
         fgenes.observe(self.pp_filtergenes, names="value")
@@ -334,7 +334,7 @@ class SAMGUI(object):
 
         l1 = widgets.Label("Expr threshold:")
         expr_thr = widgets.FloatSlider(
-            value=float(self.preprocess_args.get("thresh", 0.01)),
+            value=float(self.preprocess_args.get("thresh", 0.0)),
             min=0,
             max=0.1,
             step=0.005,
@@ -349,7 +349,7 @@ class SAMGUI(object):
 
         l2 = widgets.Label("Min expr:")
         min_expr = widgets.FloatSlider(
-            value=float(self.preprocess_args.get("min_expression", 1)),
+            value=float(self.preprocess_args.get("min_expression", 0)),
             min=0,
             max=6.0,
             step=0.02,
@@ -369,7 +369,7 @@ class SAMGUI(object):
             init = "None"
         sumnorm = widgets.Dropdown(
             options=["cell_median", "gene_median", "None"],
-            value=init,
+            value="None",
             description="Library normalization:",
             disabled=False,
             style={"description_width": "initial"},
@@ -383,7 +383,7 @@ class SAMGUI(object):
             init = "None"
         norm = widgets.Dropdown(
             options=["log", "ftt", "None"],
-            value=init,
+            value="None",
             description="Data normalization:",
             disabled=False,
             style={"description_width": "initial"},
