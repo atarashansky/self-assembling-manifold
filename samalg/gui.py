@@ -31,9 +31,32 @@ class SAMGUI(object):
 
         if sam is not None:
             self.log('Initializing GUI from input SAM object.')
+            if not isinstance(sam,list):
+                sams=[sam]
+            else:
+                sams = sam
+                sam = sams[0]           
             self.init_from_sam(sam)
             self.create_plot(0, "Full dataset")
             items = [self.stab, self.tab]
+            
+            for i in range(1,len(sams)):
+                self.sams.append(sams[i])
+                self.selected.append(np.ones(sams[i].adata.shape[0]).astype("bool"))
+                self.selected_cells.append(np.array(list(sams[i].adata.obs_names)))
+                self.active_labels.append(np.zeros(sams[i].adata.shape[0]))
+                self.dd_opts.append(["Toggle cluster"])
+                self.gene_expressions.append(np.zeros(sams[i].adata.shape[0]))
+                self.marker_genes.append(
+                    np.array(list(sams[i].adata.var_names))[
+                        np.argsort(-sams[i].adata.var["weights"].values)
+                    ]
+                )
+                self.marker_genes_tt.append("Genes ranked by SAM weights.")
+                self.ds.append(0)                
+                title = 'Full dataset {}'.format(i)
+                self.create_plot(i, title)
+                self.update_dropdowns(i)            
         else:
             self.log('Initializing blank GUI.')
             tab = widgets.Tab(layout={"height": "95%", "width": "50%"})
@@ -1464,18 +1487,21 @@ class SAMGUI(object):
         if text != "" and text_name != "" and selected.sum() != selected.size:
             self.log(('Annotating cells with the {} label in the {} key.'.format(text,text_name),selected_cells))
             for it, s in enumerate(self.sams):
-                x1 = np.array(list(s.adata.obs_names))
-
-                if text_name in list(s.adata.obs.keys()):
-                    a = s.get_labels(text_name).copy().astype("<U100")
-                    a[np.in1d(x1, selected_cells)] = text
-                    s.adata.obs[text_name] = pd.Categorical(a)
-
-                else:
-                    a = np.zeros(s.adata.shape[0], dtype="<U100")
-                    a[:] = ""
-                    a[np.in1d(x1, selected_cells)] = text
-                    s.adata.obs[text_name] = pd.Categorical(a)
+                try:
+                    x1 = np.array(list(s.adata.obs_names))
+    
+                    if text_name in list(s.adata.obs.keys()):
+                        a = s.get_labels(text_name).copy().astype("<U100")
+                        a[np.in1d(x1, selected_cells)] = text
+                        s.adata.obs[text_name] = pd.Categorical(a)
+    
+                    else:
+                        a = np.zeros(s.adata.shape[0], dtype="<U100")
+                        a[:] = ""
+                        a[np.in1d(x1, selected_cells)] = text
+                        s.adata.obs[text_name] = pd.Categorical(a)
+                except:
+                    pass
                 
                 self.update_dropdowns(it)
 

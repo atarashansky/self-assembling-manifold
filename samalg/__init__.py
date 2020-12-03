@@ -773,9 +773,10 @@ class SAM(object):
         f = nnm.sum(1).A
         f[f==0]=1
         D_avg = (nnm.multiply(1 / f)).dot(self.adata.layers["X_disp"])
+
         if save_avgs:
             self.adata.layers["X_knn_avg"] = D_avg
-            
+
         if sp.issparse(D_avg):
             mu, var = sf.mean_variance_axis(D_avg, axis=0)            
             if weight_mode == 'rms':
@@ -804,6 +805,7 @@ class SAM(object):
         dispersions[dispersions >= ma] = ma
 
         weights = ((dispersions / dispersions.max()) ** 0.5).flatten()
+        weights[np.invert(keep)] = 0
         return weights
 
     def run(
