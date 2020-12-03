@@ -12,11 +12,10 @@ import sklearn.manifold as man
 import sklearn.utils.sparsefuncs as sf
 from packaging import version
 import warnings
-from numba.core.errors import NumbaPerformanceWarning
+from numba.core.errors import NumbaWarning
+warnings.filterwarnings("ignore", category=NumbaWarning)
 
-warnings.filterwarnings("ignore", category=NumbaPerformanceWarning)
-
-__version__ = "0.7.6"
+__version__ = "0.7.7"
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -121,11 +120,11 @@ class SAM(object):
         self,
         div=1,
         downsample=0,
-        sum_norm=None,
+        sum_norm="cell_median",
         norm="log",
         min_expression=1,
-        thresh_low=0.01,
-        thresh_high=0.99,
+        thresh_low=0.0,
+        thresh_high=0.96,
         thresh = None,
         filter_genes=True,
     ):
@@ -142,7 +141,7 @@ class SAM(object):
             The factor by which to randomly downsample the data. If 0, the
             data will not be downsampled.
 
-        sum_norm : str or float, optional, default None
+        sum_norm : str or float, optional, default "cell_median"
             If a float, the total number of transcripts in each cell will be
             normalized to this value prior to normalization and filtering.
             Otherwise, nothing happens. If 'cell_median', each cell is
@@ -162,12 +161,12 @@ class SAM(object):
             expressed. Gene expression values less than 'min_expression' are
             set to zero.
 
-        thresh_low : float, optional, default 0.01
+        thresh_low : float, optional, default 0.0
             Keep genes expressed in greater than 'thresh_low'*100 % of cells,
             where a gene is considered expressed if its expression value
             exceeds 'min_expression'.
 
-        thresh_high : float, optional, default 0.99
+        thresh_high : float, optional, default 0.96
             Keep genes expressed in less than 'thresh_high'*100 % of cells,
             where a gene is considered expressed if its expression value
             exceeds 'min_expression'.
@@ -469,6 +468,12 @@ class SAM(object):
                 0
         x = self.adata
         x.raw = self.adata_raw
+        
+        # fixing weird issues when index name is an integer.
+        for y in [x.obs.columns,x.var.columns,
+                  x.obs.index,x.var.index,
+                  x.raw.var.index,x.raw.var.columns]:
+            y.name = str(y.name) if y.name is not None else None
 
         x.write_h5ad(fname, **kwargs)
         if version.parse(str(anndata.__version__)) >= version.parse("0.7rc1"):
@@ -768,20 +773,25 @@ class SAM(object):
         f = nnm.sum(1).A
         f[f==0]=1
         D_avg = (nnm.multiply(1 / f)).dot(self.adata.layers["X_disp"])
-        keep = D_avg.max(0).A.flatten()>1
+
+        if save_avgs:
+            self.adata.layers["X_knn_avg"] = D_avg
+
         if sp.issparse(D_avg):
-            mu, var = sf.mean_variance_axis(D_avg, axis=0)
+            mu, var = sf.mean_variance_axis(D_avg, axis=0)            
+            if weight_mode == 'rms':
+                D_avg.data[:]=D_avg.data**2
+                mu,_ =sf.mean_variance_axis(D_avg, axis=0)
+                mu=mu**0.5
         else:
             mu = D_avg.mean(0)
             var = D_avg.var(0)
 
-        if save_avgs:
-            self.adata.layers["X_knn_avg"] = D_avg
-        else:
+        if not save_avgs:        
             del D_avg
             gc.collect()
 
-        if weight_mode == 'dispersion':
+        if weight_mode == 'dispersion' or weight_mode == 'rms':
             dispersions = np.zeros(var.size)
             dispersions[mu > 0] = var[mu > 0] / mu[mu > 0]
             self.adata.var["spatial_dispersions"] = dispersions.copy()
@@ -789,7 +799,7 @@ class SAM(object):
             dispersions = var
             self.adata.var["spatial_variances"] = dispersions.copy()
         else:
-            print('`weight_mode` ',weight_mode,' not recognized.')
+            raise ValueError('`weight_mode` ',weight_mode,' not recognized.')
 
         ma = np.sort(dispersions)[-num_norm_avg:].mean()
         dispersions[dispersions >= ma] = ma
@@ -797,79 +807,6 @@ class SAM(object):
         weights = ((dispersions / dispersions.max()) ** 0.5).flatten()
         weights[np.invert(keep)] = 0
         return weights
-
-    def calculate_regression_PCs(self, genes=None, npcs=None):
-        """Computes the contribution of the gene IDs in 'genes' to each
-        principal component (PC) of the filtered expression data as the mean of
-        the absolute value of the corresponding gene loadings. High values
-        correspond to PCs that are highly correlated with the features in
-        'genes'. These PCs can then be regressed out of the data using
-        'regress_genes'.
-
-
-        Parameters
-        ----------
-        genes - numpy.array or list, default None
-            Genes for which contribution to each PC will be calculated. Set to None
-            if you know ahead of time which PC you wish to remove from the data using
-            'regress_genes'.
-
-        npcs - int, optional, default None
-            How many PCs to calculate when computing PCA of the filtered and
-            log-transformed expression data. If None, calculate all PCs.
-
-        Returns:
-        -------
-        x - numpy.array
-            Scores reflecting how correlated each PC is with the genes of
-            interest (ordered by decreasing eigenvalues).
-
-        """
-        from sklearn.decomposition import PCA
-
-        if npcs is None:
-            npcs = self.adata.X.shape[0]
-
-        pca = PCA(n_components=npcs)
-        pc = pca.fit_transform(self.adata.X.toarray())
-
-        self.regression_pca = pca
-        self.regression_pcs = pc
-
-        gene_names = np.array(list(self.adata.var_names))
-        if genes is not None:
-            idx = np.where(np.in1d(gene_names, genes))[0]
-            sx = pca.components_[:, idx]
-            x = np.abs(sx).mean(1)
-            return x
-        else:
-            return
-
-    def regress_genes(self, PCs):
-        """Regress out the principal components in 'PCs' from the filtered
-        expression data ('SAM.D'). Assumes 'calculate_regression_PCs' has
-        been previously called.
-
-        Parameters
-        ----------
-        PCs - int, numpy.array, list
-            The principal components to regress out of the expression data.
-
-        """
-
-        ind = [PCs]
-        ind = np.array(ind).flatten()
-        try:
-            y = self.adata.X.toarray() - self.regression_pcs[:, ind].dot(
-                self.regression_pca.components_[ind, :]
-                * self.adata.var["weights"].values
-            )
-        except BaseException:
-            y = self.adata.X.toarray() - self.regression_pcs[:, ind].dot(
-                self.regression_pca.components_[ind, :]
-            )
-
-        self.adata.X = sp.csr_matrix(y)
 
     def run(
         self,
@@ -880,10 +817,10 @@ class SAM(object):
         num_norm_avg=50,
         k=20,
         distance="correlation",
-        preprocessing="Normalizer",
+        preprocessing="StandardScaler",
         npcs=None,
         n_genes=None,
-        weight_PCs=True,
+        weight_PCs=False,
         sparse_pca=False,
         proj_kwargs={},
         seed = 0,
@@ -916,7 +853,7 @@ class SAM(object):
             If 'tsne', generates a t-SNE embedding. If 'umap', generates a UMAP
             embedding. Otherwise, no embedding will be generated.
 
-        preprocessing - str, optional, default 'Normalizer'
+        preprocessing - str, optional, default 'StandardScaler'
             If 'Normalizer', use sklearn.preprocessing.Normalizer, which
             normalizes expression data prior to PCA such that each cell has
             unit L2 norm. If 'StandardScaler', use
@@ -937,7 +874,7 @@ class SAM(object):
             This is worth setting True for large datasets, where memory
             constraints start becoming noticeable.
 
-        weight_PCs - bool, optional, default True
+        weight_PCs - bool, optional, default False
             Scale the principal components by their eigenvalues. If many
             cell populations are expected, it is recommended to set this False
             as the populations may be found on lesser-varying PCs.
@@ -956,14 +893,14 @@ class SAM(object):
             raise ValueError(
                 "preprocessing must be 'StandardScaler', 'Normalizer', or None"
             )
-        if weight_mode not in ["dispersion", "variance"]:
+        if weight_mode not in ["dispersion", "variance", "rms"]:
             raise ValueError(
                 "weight_mode must be 'dispersion' or 'variance'"
             )
 
         if self.adata.layers['X_disp'].min() < 0 and weight_mode == 'dispersion':
-            print("`X_disp` layer contains negative values. Setting `weight_mode` to 'variance'.")
-            weight_mode = 'variance'
+            print("`X_disp` layer contains negative values. Setting `weight_mode` to 'rms'.")
+            weight_mode = 'rms'
 
         self.run_args = {
             "max_iter": max_iter,
@@ -1077,7 +1014,7 @@ class SAM(object):
         update_manifold=True,weight_mode='dispersion',seed=0,components=None,first=False
     ):
         if 'means' not in self.adata.var.keys() or 'variances' not in self.adata.var.keys():
-            print('Recomputing means and variances.')
+            print('Computing means and variances of genes.')
             mu,var = sf.mean_variance_axis(self.adata.X,axis=0)
             self.adata.var['means'] = mu
             self.adata.var['variances'] = var

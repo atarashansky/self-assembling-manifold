@@ -10,7 +10,7 @@ from sklearn.utils import check_array, check_random_state
 from scipy import sparse
 import sklearn.utils.sparsefuncs as sf
 from umap.umap_ import nearest_neighbors
-__version__ = "0.7.6"
+__version__ = "0.7.7"
 
 
 def find_corr_genes(sam, input_gene):
@@ -355,7 +355,6 @@ def nearest_neighbors_hnsw(x,ef=200,M=48,n_neighbors = 100):
     p.add_items(x, labels)
     p.set_ef(ef)
     idx, dist = p.knn_query(x, k = n_neighbors)
-    dist = (2-dist)/2
     return idx,dist
 
 
