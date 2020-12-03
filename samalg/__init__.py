@@ -805,7 +805,6 @@ class SAM(object):
         dispersions[dispersions >= ma] = ma
 
         weights = ((dispersions / dispersions.max()) ** 0.5).flatten()
-        weights[np.invert(keep)] = 0
         return weights
 
     def run(
