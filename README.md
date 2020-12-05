@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.com/atarashansky/self-assembling-manifold.svg?branch=master)](https://travis-ci.com/atarashansky/self-assembling-manifold)
 
-# self-assembling-manifold -- SAM version 0.7.7
+# self-assembling-manifold -- SAM version 0.7.8
 The Self-Assembling-Manifold (SAM) algorithm.
 
 # SAM is now on Scanpy!
