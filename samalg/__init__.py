@@ -1124,6 +1124,10 @@ class SAM(object):
 
         if update_manifold:
             edm = ut.calc_nnm(g_weighted, k, distance)
+            self.adata.obsp['distances'] = edm.tolil()
+            self.adata.obsp['distances'].setdiag(0)
+            self.adata.obsp['distances']=self.adata.obsp['distances'].tocsr()
+            
             EDM = edm.copy()
             EDM.data[:] = 1
             EDM = EDM.tolil(); EDM.setdiag(1); EDM = EDM.tocsr();
