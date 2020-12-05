@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="sam-algorithm",
-    version="0.7.7",
+    version="0.7.8",
     description="The Self-Assembling-Manifold algorithm",
     long_description="The Self-Assembling-Manifold algorithm for analyzing single-cell RNA sequencing data.",
     long_description_content_type="text/markdown",
@@ -21,6 +21,7 @@ setup(
         "numba>=0.50.1",
         "umap-learn>=0.4.6",
         "anndata>=0.7.4",
+        "h5py<=2.10.0"
     ],
     extras_require={
         "louvain": ["louvain", "cython", "python-igraph"],
