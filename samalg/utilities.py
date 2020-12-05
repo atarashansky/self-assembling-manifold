@@ -365,13 +365,7 @@ def calc_nnm(g_weighted, k, distance=None):
         else:
             nnm, dists = nearest_neighbors_wrapper(g_weighted, n_neighbors=k, metric=distance)
         EDM = gen_sparse_knn(nnm, dists)
-        EDM = EDM.tocsr()
-    else: #try removing this and only use stochastic 
-        if sp.sparse.issparse(g_weighted):
-            g_weighted = g_weighted.A
-        dist = compute_distances(g_weighted, distance)
-        nnm = dist_to_nn(dist, k)
-        EDM = sp.sparse.csr_matrix(nnm)
+        EDM = EDM.tocsr()        
     return EDM
 
 
