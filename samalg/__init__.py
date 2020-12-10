@@ -341,7 +341,7 @@ class SAM(object):
         transpose=True,
         save_sparse_file=None,
         sep=",",
-        calculate_avg=True,
+        calculate_avg=False,
         **kwargs
     ):
         """Loads the specified data file. The file can be a table of
@@ -428,10 +428,10 @@ class SAM(object):
 
                 if (
                     "X_knn_avg" not in self.adata.layers.keys()
-                    and "neighbors" in self.adata.uns.keys()
+                    and "connectivities" in self.adata.obsp.keys()
                     and calculate_avg
                 ):
-                    self.dispersion_ranking_NN()
+                    self.dispersion_ranking_NN(save_avgs=True)
             else:
                 self.adata_raw = self.adata
 
