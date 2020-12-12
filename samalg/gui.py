@@ -992,7 +992,7 @@ class SAMGUI(object):
             sam_subcluster.adata_raw.obs = sam_subcluster.adata.obs.copy()
             sam_subcluster.adata_raw.obsm = sam_subcluster.adata.obsm.copy()
 
-            sam_subcluster.preprocess_data(**self.preprocess_args)
+            #sam_subcluster.preprocess_data(**self.preprocess_args)
             
             self.out.clear_output()
             with self.out:
