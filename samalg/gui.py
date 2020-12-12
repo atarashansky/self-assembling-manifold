@@ -350,7 +350,7 @@ class SAMGUI(object):
         pdata.on_click(self.preprocess_sam)
         """
         fgenes = widgets.Checkbox(
-            value=bool(self.preprocess_args.get("filter_genes", False)),
+            value=bool(self.preprocess_args.get("filter_genes", True)),
             description="Filter genes",
         )
         fgenes.observe(self.pp_filtergenes, names="value")
@@ -364,7 +364,7 @@ class SAMGUI(object):
 
         l1 = widgets.Label("Expr threshold:")
         expr_thr = widgets.FloatSlider(
-            value=float(self.preprocess_args.get("thresh", 0.0)),
+            value=float(self.preprocess_args.get("thresh", 0.01)),
             min=0,
             max=0.1,
             step=0.005,
@@ -379,7 +379,7 @@ class SAMGUI(object):
 
         l2 = widgets.Label("Min expr:")
         min_expr = widgets.FloatSlider(
-            value=float(self.preprocess_args.get("min_expression", 0)),
+            value=float(self.preprocess_args.get("min_expression", 1)),
             min=0,
             max=6.0,
             step=0.02,
@@ -399,7 +399,7 @@ class SAMGUI(object):
             init = "None"
         sumnorm = widgets.Dropdown(
             options=["cell_median", "gene_median", "None"],
-            value="None",
+            value=init,
             description="Library normalization:",
             disabled=False,
             style={"description_width": "initial"},
@@ -413,7 +413,7 @@ class SAMGUI(object):
             init = "None"
         norm = widgets.Dropdown(
             options=["log", "ftt", "None"],
-            value="None",
+            value=init,
             description="Data normalization:",
             disabled=False,
             style={"description_width": "initial"},
@@ -993,15 +993,14 @@ class SAMGUI(object):
 
         sam = self.sams[i]
         if not np.all(selected) and selected.sum() > 0:
-            sam_subcluster = SAM(counts=sam.adata_raw[selected_cells, :].copy())
+            sam_subcluster = SAM(counts=sam.adata[selected_cells, :].copy())
+            sam_subcluster.adata_raw = sam.adata_raw[selected_cells].copy()
 
-            sam_subcluster.adata_raw.obs = sam.adata[selected_cells, :].obs.copy()
-            sam_subcluster.adata.obs = sam.adata[selected_cells, :].obs.copy()
-
-            sam_subcluster.adata_raw.obsm = sam.adata[selected_cells, :].obsm.copy()
-            sam_subcluster.adata.obsm = sam.adata[selected_cells, :].obsm.copy()
+            sam_subcluster.adata_raw.obs = sam_subcluster.adata.obs.copy()
+            sam_subcluster.adata_raw.obsm = sam_subcluster.adata.obsm.copy()
 
             sam_subcluster.preprocess_data(**self.preprocess_args)
+            
             self.out.clear_output()
             with self.out:
                 sam_subcluster.run(**self.run_args)
