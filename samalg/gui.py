@@ -333,15 +333,15 @@ class SAMGUI(object):
     """ BEGIN PREPROCESS INIT"""
 
     def init_preprocess(self):
-        """
+
         pdata = widgets.Button(
-            description = 'Process data',
+            description = 'Preprocess',
             disabled = False,
-            tooltip = 'Process data',
+            tooltip = 'Preprocess data',
             icon = ''
         )
         pdata.on_click(self.preprocess_sam)
-        """
+
         fgenes = widgets.Checkbox(
             value=bool(self.preprocess_args.get("filter_genes", True)),
             description="Filter genes",
@@ -354,7 +354,7 @@ class SAMGUI(object):
             icon="",
         )
         dfts.on_click(self.set_pp_defaults)
-
+        
         l1 = widgets.Label("Expr threshold:")
         expr_thr = widgets.FloatSlider(
             value=float(self.preprocess_args.get("thresh", 0.01)),
@@ -442,6 +442,7 @@ class SAMGUI(object):
         load_datav = widgets.Text(value="", layout={"width": "100%%"})
 
         self.ps_dict = {}
+        self.ps_dict["PDATA"] = pdata
         self.ps_dict["DFTS"] = dfts
         self.ps_dict["FGENES"] = fgenes
         self.ps_dict["NORM"] = norm
@@ -458,7 +459,7 @@ class SAMGUI(object):
         self.ps_dict["LOAD_DATAV"] = load_datav
 
         pp = widgets.VBox(
-            [  # pdata,
+            [   pdata,
                 widgets.HBox([dfts, fgenes]),
                 norm,
                 sumnorm,
