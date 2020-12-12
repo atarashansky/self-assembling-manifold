@@ -153,13 +153,6 @@ class SAMGUI(object):
         rm = list(invalidArgs(self.sams[0].preprocess_data,self.preprocess_args))
         for k in rm:
             del self.preprocess_args[k]            
-        self.preprocess_args['filter_genes']=False
-        self.preprocess_args['min_expression']=0
-        self.preprocess_args['thresh']=0
-        self.preprocess_args['thresh_low']=0
-        self.preprocess_args['thresh_high']=1
-        self.preprocess_args['sum_norm']=None
-        self.preprocess_args['norm']=None
         self.preprocess_args_init = self.preprocess_args.copy()
 
         try:
