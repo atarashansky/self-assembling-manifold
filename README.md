@@ -42,30 +42,16 @@ sam = sce.tl.sam(adata, inplace=True) #adata is your AnnData object
 
  - `scanpy`
 
-## Changelog notes 0.7.0
-Converted SAM to have package structure as oppposed to global modules. Imports change as follows:
-
-```
-from samalg import SAM
-from samalg.gui import SAMGUI
-import samalg.utilities as ut
-```
-
-## Changelog notes 0.6.17
-I added a `sparse_pca` argument to `sam.run`. Setting it to `True` will use an implementation of PCA that can accept sparse inputs, thus allowing us to not need to create a temporary dense copy of the data. This allows for improved scalability to massive datasets.
-
-## Changelog notes 0.6.12
-I removed the `sam.save` and `sam.load` pickling functions because it is difficult to unpickle the AnnData objects if the AnnData version used changes. Now, I instead store the raw data in `sam.adata.raw` when saving using `sam.save_anndata`. The raw and filtered data can be loaded from the resulting file using `sam.load_data`.
 
 ## Installation
-SAM has been most extensively tested using python3.6 but presumably should work on python>=3.6. Python can be installed using Anaconda.
+SAM requires python>=3.7. Python can be installed using Anaconda.
 
 Download Anacodna from here:
     https://www.anaconda.com/download/
 
-Create and activate a new environment with python3.6 as follows:
+Create and activate a new environment with python3.7 as follows:
 ```
-conda create -n environment_name python=3.6
+conda create -n environment_name python=3.7
 conda activate environment_name
 ```
 
