@@ -15,7 +15,7 @@ import warnings
 from numba.core.errors import NumbaWarning
 warnings.filterwarnings("ignore", category=NumbaWarning)
 
-__version__ = "0.7.8"
+__version__ = "0.7.9"
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -188,8 +188,8 @@ class SAM(object):
             "thresh_high":thresh_high,
             "filter_genes": filter_genes,
         }
-
-
+        
+        self.run_args = self.adata.uns.get('run_args',{})
         # load data
         try:
             D = self.adata_raw.X
@@ -294,6 +294,7 @@ class SAM(object):
         self.adata.var['variances'] = var
 
         self.adata.uns["preprocess_args"] = self.preprocess_args
+        self.adata.uns['run_args'] = self.run_args
 
     def get_avg_obsm(self, keym, keyl):
         clu = self.get_labels_un(keyl)
@@ -1718,3 +1719,4 @@ class SAM(object):
             from samalg.gui import SAMGUI
             self.SamGui = SAMGUI(self)
             return self.SamGui.SamPlot
+            

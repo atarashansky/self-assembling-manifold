@@ -14,7 +14,7 @@ import warnings
 from numba.core.errors import NumbaWarning
 warnings.filterwarnings("ignore", category=NumbaWarning)
 
-__version__ = "0.7.8"
+__version__ = "0.7.9"
 
 
 class SAMGUI(object):
@@ -85,6 +85,7 @@ class SAMGUI(object):
         self.pp_box = self.init_preprocess()
         self.rs_box = self.init_run_sam()
         self.cs_box = self.init_cs()
+        
         self.SAM_LOADED = True
         self.out = widgets.Output(
             layout={"border": "1px solid black", "height": "95%", "width": "100%"}
@@ -617,7 +618,7 @@ class SAMGUI(object):
         self.sams[i].preprocess_data(**self.preprocess_args)
 
     """ END PREPROCESS INIT"""
-
+    
     """ BEGIN RUN INIT"""
 
     def init_run_sam(self):
@@ -683,6 +684,13 @@ class SAMGUI(object):
             value=bool(self.run_args.get("weight_PCs", True)), description="Weight PCs"
         )
         wpca.observe(self.weightpcs)
+
+
+        spca = widgets.Checkbox(
+            value=bool(self.run_args.get("sparse_pca", True)), description="Sparse PCA"
+        )
+        spca.observe(self.sparsepca)
+        
 
         dfts = widgets.Button(
             description="Set defaults",
@@ -838,6 +846,7 @@ class SAMGUI(object):
         proj.observe(self.proj_update, "value")
 
         self.rb_dict = {}
+        self.rb_dict['SPCA'] = spca
         self.rb_dict["RUNB"] = runb
         self.rb_dict["TITLE"] = title
         self.rb_dict["DFTS"] = dfts
@@ -863,7 +872,7 @@ class SAMGUI(object):
         rs = widgets.VBox(
             [
                 widgets.HBox([runb, title]),
-                widgets.HBox([dfts, wpca]),
+                widgets.HBox([dfts, wpca, spca]),
                 widgets.HBox([l3, knn]),
                 widgets.HBox([l4, nna]),
                 norm,
@@ -948,6 +957,11 @@ class SAMGUI(object):
         self.log('Setting weight_PCs to be {}'.format(not t))
         self.run_args["weight_PCs"] = not t
 
+    def sparsepca(self, event):
+        t = self.run_args.get("sparse_pca", True)
+        self.log('Setting sparse_pca to be {}'.format(not t))
+        self.run_args["sparse_pca"] = not t
+        
     def npcs_update(self, val):
         self.log('Setting npcs to be {}'.format(int(val['new'])))
         self.run_args["npcs"] = int(val["new"])
@@ -1962,3 +1976,4 @@ def invalidArgs(func, argdict):
     import inspect
     args = inspect.getfullargspec(func).args
     return set(argdict) - set(args)
+    
