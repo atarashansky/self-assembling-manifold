@@ -33,10 +33,11 @@ RUN conda install -c plotly -c conda-forge \
                             && conda clean -afy 
                             
 RUN git clone https://github.com/atarashansky/self-assembling-manifold.git && \
-                /root/miniconda/bin/pip install hnswlib==0.4.0 self-assembling-manifold/.
+                /root/miniconda/bin/pip install self-assembling-manifold/. --no-dependencies && rm-rf ~/.cache
+RUN /root/miniconda/bin/pip install hnswlib==0.4.0 && rm -rf ~/.cache
                 
 RUN chmod ugo+rwx /root
-RUN mkdir /tmp && chmod ugo+rwx /tmp && mkdir /jupyter && mkdir /jupyter/notebooks
+RUN chmod ugo+rwx /tmp && mkdir /jupyter && mkdir /jupyter/notebooks
 WORKDIR /jupyter/
 
 ARG USER_ID
