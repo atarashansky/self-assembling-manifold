@@ -16,7 +16,7 @@ RUN wget -O /tmp/miniconda.sh \
     && bash /tmp/miniconda.sh -b -p /root/miniconda \
     && rm -f /tmp/miniconda.sh \
     && conda update -n base -c defaults conda \ 
-    && conda install python=3.7 pip \ 
+    && conda install python=3.7.8 pip \ 
     && conda clean -afy
 
 RUN conda install -c plotly -c conda-forge \ 
