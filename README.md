@@ -44,9 +44,27 @@ sam = sce.tl.sam(adata, inplace=True) #adata is your AnnData object
 
 
 ## Installation
+
+### Docker
+
+Build the Docker image with:
+```
+git clone https://github.com/atarashansky/self-assembling-manifold.git
+cd Docker
+bash build_image.sh
+```
+
+Run the Docker image with:
+```
+bash run_image.sh
+```
+It will ask you to provide the image name, container name, port to run the Jupyter notebook server on, and the path to a directory that will be mounted onto the Docker container's file system.
+
+
+### Anaconda
 SAM requires python>=3.7. Python can be installed using Anaconda.
 
-Download Anacodna from here:
+Download Anaconda from here:
     https://www.anaconda.com/download/
 
 Create and activate a new environment with python3.7 as follows:
