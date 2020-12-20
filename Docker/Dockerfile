@@ -16,7 +16,7 @@ RUN wget -O /tmp/miniconda.sh \
     && bash /tmp/miniconda.sh -b -p /root/miniconda \
     && rm -f /tmp/miniconda.sh \
     && conda update -n base -c defaults conda \ 
-    && conda install python=3.7.8 pip \ 
+    && conda install python=3.7 pip \ 
     && conda clean -afy
 
 RUN conda install -c plotly -c conda-forge \ 
@@ -33,7 +33,7 @@ RUN conda install -c plotly -c conda-forge \
                             && conda clean -afy 
                             
 RUN git clone https://github.com/atarashansky/self-assembling-manifold.git && \
-                /root/miniconda/bin/pip install self-assembling-manifold/. --no-dependencies && rm-rf ~/.cache
+                /root/miniconda/bin/pip install self-assembling-manifold/. --no-dependencies && rm -rf ~/.cache
 RUN /root/miniconda/bin/pip install hnswlib==0.4.0 && rm -rf ~/.cache
                 
 RUN chmod ugo+rwx /root
