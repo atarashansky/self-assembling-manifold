@@ -1727,3 +1727,18 @@ class SAM(object):
             self.SamGui = SAMGUI(self)
             return self.SamGui.SamPlot
             
+    def save(self,fn):
+        import dill
+        if len(fn.split('.pkl')) == 1:
+            fn = fn + '.pkl'
+        self.path_to_file = fn
+        with open(fn,'wb') as f:
+            dill.dump(self.__dict__,f)
+            
+    def load(self,fn):
+        import dill
+        if len(fn.split('.pkl')) == 1:
+            fn = fn + '.pkl'    
+        with open(fn,'rb') as f:
+            self.__dict__ = dill.load(f)
+        

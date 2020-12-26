@@ -20,6 +20,7 @@ setup(
         "packaging",
         "numba>=0.50.1",
         "umap-learn>=0.4.6",
+        "dill",
         "anndata>=0.7.4",
         "h5py<=2.10.0"
     ],
