@@ -439,6 +439,7 @@ class SAM(object):
             if "X_disp" not in list(self.adata.layers.keys()):
                 self.adata.layers["X_disp"] = self.adata.X
             save_sparse_file = None
+        filename = '.'.join(filename.split('.')[:-1])+'.h5ad'
         self.adata.uns['path_to_file'] = filename
         self.adata_raw.uns['path_to_file'] = filename        
         if save_sparse_file is not None:
@@ -447,13 +448,13 @@ class SAM(object):
             elif save_sparse_file.split(".")[-1] == "h5ad":
                 self.save_anndata(save_sparse_file)
 
-    def save_anndata(self, fname, save_knn=False, **kwargs):
+    def save_anndata(self, fname='', save_knn=False, **kwargs):
         """Saves `adata_raw` to a .h5ad file (AnnData's native file format).
 
         Parameters
         ----------
-        fname - string
-            The filename of the output file.
+        fname - string, default ''
+            The filename of the output file. If empty, defaults to `.adata.uns['path_to_file']`.
 
         save_knn - bool, optional, default = False
             If True, saves `.layers['X_knn_avg']`. If False, does not save
@@ -467,6 +468,12 @@ class SAM(object):
                 del self.adata.layers["X_knn_avg"]
             except:
                 0
+        if fname == '':
+            try:
+                fname = self.adata.uns['path_to_file']
+            except KeyError:
+                raise KeyError('Path to file not known.')
+                
         x = self.adata
         x.raw = self.adata_raw
         
@@ -776,7 +783,7 @@ class SAM(object):
         D_avg = (nnm.multiply(1 / f)).dot(self.adata.layers["X_disp"])
 
         if save_avgs:
-            self.adata.layers["X_knn_avg"] = D_avg
+            self.adata.layers["X_knn_avg"] = D_avg.copy()
 
         if sp.issparse(D_avg):
             mu, var = sf.mean_variance_axis(D_avg, axis=0)            
@@ -787,7 +794,7 @@ class SAM(object):
         else:
             mu = D_avg.mean(0)
             var = D_avg.var(0)
-
+                
         if not save_avgs:        
             del D_avg
             gc.collect()
@@ -813,7 +820,7 @@ class SAM(object):
         max_iter=10,
         verbose=True,
         projection="umap",
-        stopping_condition=5e-3,
+        stopping_condition=1e-2,
         num_norm_avg=50,
         k=20,
         distance="correlation",
