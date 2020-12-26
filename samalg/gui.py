@@ -14,17 +14,19 @@ import warnings
 from numba.core.errors import NumbaWarning
 warnings.filterwarnings("ignore", category=NumbaWarning)
 
-__version__ = "0.7.9"
+__version__ = "0.8.0"
 
 
 class SAMGUI(object):
-    def __init__(self, sam=None, close_all_widgets=False, height=600):
+    def __init__(self, sam=None,title=None, close_all_widgets=False, default_proj='X_umap',height=600):
         self.ACTION_LOG = []
         
         if close_all_widgets:
             Widget.close_all()
         self.widget_height = height
         self.log('Setting widget height to {}'.format(height))
+        
+        self.default_proj = default_proj
         
         self.stab = widgets.Tab(layout={"height": "95%", "width": "50%"})
         self.stab.observe(self.on_switch_tabs, "selected_index")
@@ -35,9 +37,23 @@ class SAMGUI(object):
                 sams=[sam]
             else:
                 sams = sam
-                sam = sams[0]           
+                sam = sams[0] 
+            if title is not None:
+                if not isinstance(title,list):
+                    titles=[title]
+                else:
+                    titles = title
+                    title = titles[0]
+            else:
+                titles = [None]*len(sams)
+            
             self.init_from_sam(sam)
-            self.create_plot(0, "Full dataset")
+            if titles[0] is None:
+                title = 'Full dataset'
+            else:
+                title = titles[0]
+                
+            self.create_plot(0, title)
             items = [self.stab, self.tab]
             
             for i in range(1,len(sams)):
@@ -53,8 +69,11 @@ class SAMGUI(object):
                     ]
                 )
                 self.marker_genes_tt.append("Genes ranked by SAM weights.")
-                self.ds.append(0)                
-                title = 'Full dataset {}'.format(i)
+                self.ds.append(0)  
+                if titles[i] is None:
+                    title = 'Full dataset {}'.format(i)
+                else:
+                    title = titles[i]
                 self.create_plot(i, title)
                 self.update_dropdowns(i)            
         else:
@@ -176,8 +195,8 @@ class SAMGUI(object):
     def create_plot(self, i, title):
         if self.SAM_LOADED:
             projs = list(self.sams[i].adata.obsm.keys())
-            if "X_umap" in projs:
-                p = "X_umap"
+            if self.default_proj in projs:
+                p = self.default_proj
             elif len(projs) > 1:
                 p = np.array(projs)[np.where(np.array(projs) != "X_pca")[0][0]]
             else:
@@ -1060,8 +1079,8 @@ class SAMGUI(object):
     def init_cs(self):
         initl = list(self.sams[0].adata.obsm.keys())
         initl = [""] + initl
-        if "X_umap" in initl:
-            init = "X_umap"
+        if self.default_proj in initl:
+            init = self.default_proj
         else:
             init = initl[0]
 
