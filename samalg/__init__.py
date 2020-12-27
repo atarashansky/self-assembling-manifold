@@ -15,7 +15,7 @@ import warnings
 from numba.core.errors import NumbaWarning
 warnings.filterwarnings("ignore", category=NumbaWarning)
 
-__version__ = "0.8.0"
+__version__ = "0.8.1"
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -1732,8 +1732,15 @@ class SAM(object):
         if len(fn.split('.pkl')) == 1:
             fn = fn + '.pkl'
         self.path_to_file = fn
+        d = {}
+        for k in self.__dict__.keys():
+            d[k] = self.__dict__[k]
+        if 'SamGui' in d.keys():
+            del d['SamGui']
         with open(fn,'wb') as f:
-            dill.dump(self.__dict__,f)
+            dill.dump(d,f)
+            if 'SamGui' in self.__dict__.keys():
+                dill.dump(self.SamGui,f)
             
     def load(self,fn):
         import dill
@@ -1741,4 +1748,7 @@ class SAM(object):
             fn = fn + '.pkl'    
         with open(fn,'rb') as f:
             self.__dict__ = dill.load(f)
-        
+            try:
+                self.__dict__['SamGui'] = dill.load(f)
+            except:
+                pass;

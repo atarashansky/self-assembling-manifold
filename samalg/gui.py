@@ -14,7 +14,7 @@ import warnings
 from numba.core.errors import NumbaWarning
 warnings.filterwarnings("ignore", category=NumbaWarning)
 
-__version__ = "0.8.0"
+__version__ = "0.8.1"
 
 
 class SAMGUI(object):
@@ -27,7 +27,7 @@ class SAMGUI(object):
         self.log('Setting widget height to {}'.format(height))
         
         self.default_proj = default_proj
-        
+        self.titles = []
         self.stab = widgets.Tab(layout={"height": "95%", "width": "50%"})
         self.stab.observe(self.on_switch_tabs, "selected_index")
 
@@ -55,7 +55,7 @@ class SAMGUI(object):
                 
             self.create_plot(0, title)
             items = [self.stab, self.tab]
-            
+            self.titles = [title]
             for i in range(1,len(sams)):
                 self.sams.append(sams[i])
                 self.selected.append(np.ones(sams[i].adata.shape[0]).astype("bool"))
@@ -74,6 +74,7 @@ class SAMGUI(object):
                     title = 'Full dataset {}'.format(i)
                 else:
                     title = titles[i]
+                self.titles.append(title)
                 self.create_plot(i, title)
                 self.update_dropdowns(i)            
         else:
@@ -85,6 +86,7 @@ class SAMGUI(object):
             tab.children = children
             tab.set_title(0, "LOAD_SAM")
             self.create_plot(0, "SAM not loaded")
+            self.titles = ["SAM not loaded"]
             items = [self.stab, tab]
 
         self.current_tab = 0
@@ -93,7 +95,29 @@ class SAMGUI(object):
         self.SamPlot = widgets.HBox(
             items, layout=Layout(width="auto", height=str(height) + "px")
         )
-    
+        
+    def __setstate__(self,d):       
+        self.__init__(sam = d['sams'],title=d['titles'],
+                      height=d['widget_height'],default_proj=d['default_proj'])
+        
+        for k in d.keys():
+            self.__dict__[k] = d[k]
+        self.__dict__['ds'] = [0]*len(self.sams)
+
+        for i in range(len(self.sams)):
+            self.create_plot(i,self.titles[i])
+        
+    def __getstate__(self):
+        d = {}
+        exclude = ['SamPlot','children','ps_dict','rb_dict','cs_dict','stab','rs_box','cs_box',
+                   'pp_box','out','tab','ds']
+        for k in self.__dict__.keys():
+            if k not in exclude:
+                d[k] = self.__dict__[k]
+        return d
+        
+
+
     def log(self,s):
         self.ACTION_LOG.append(s)
         
@@ -565,6 +589,10 @@ class SAMGUI(object):
                 self.ds[0] = 0
                 self.load_vars_from_sam(sam)
             self.create_plot(0, "Full dataset")
+            if len(self.titles) == 0:
+                self.titles = ["Full dataset"]
+            else:
+                self.titles[0] = "Full dataset"
         except FileNotFoundError:
             0
             # do nothing
@@ -1070,6 +1098,11 @@ class SAMGUI(object):
             elif title == "":
                 title = "Subcluster " + str(i)
             self.create_plot(i, title)
+            try:
+                self.titles[i] = title
+            except:
+                self.titles.append(title)
+                
             self.update_dropdowns(i)
 
     """ END RUN INIT"""
@@ -1926,70 +1959,6 @@ class SAMGUI(object):
         trace.on_selection(self.select)
         trace.on_click(self.pick_cells)
 
-
-def save_gui(x,path):
-    xd = x.__dict__
-    d = {}
-    for k in xd.keys():
-        if 'ipywidgets' not in str(type(xd[k])) and k != 'sams' and k != 'current_sam':
-            try:
-                d[k] = xd[k].copy()
-            except AttributeError:
-                d[k] = xd[k]
-    d['sams'] = []
-    for i in range(len(xd['sams'])):
-        X = xd['sams'][i].adata
-        X.raw = xd['sams'][i].adata_raw
-        d['sams'].append(X)
-        
-    del d['ds']
-    del d['ps_dict']
-    del d['rb_dict']
-    del d['cs_dict']
-    del d['children']
-            
-    pickle.dump(d,open(path,'wb'))        
-    
-def load_gui(path):
-    d = pickle.load(open(path,'rb'))
-    for i in range(len(d['sams'])):
-        d['sams'][i] = SAM(counts = d['sams'][i])
-    x = SAMGUI(d['sams'][0])        
-    for k in d.keys():
-        x.__dict__[k] = d[k]
-    
-    x.selected = []
-    x.selected_cells = []
-    x.active_labels=[]
-    x.dd_opts=[]
-    x.gene_expressions=[]
-    x.marker_genes=[]
-    x.marker_genes_tt=[]
-    
-    for i in range(len(d['sams'])):
-        if i == 0:
-            title = "Full dataset"
-        else:
-            title = "Subcluster " + str(i)
-            
-        x.selected.append(np.ones(x.sams[i].adata.shape[0]).astype('bool'))
-        x.selected_cells.append(np.array(list(x.sams[i].adata.obs_names)))
-        x.active_labels.append(np.zeros(x.sams[i].adata.shape[0]))
-        x.dd_opts.append(['Toggle cluster'])
-        x.gene_expressions.append(np.zeros(x.sams[i].adata.shape[0]))
-        x.marker_genes.append(
-                np.array(list(x.sams[i].adata.var_names))[
-                    np.argsort(-x.sams[i].adata.var["weights"].values)
-                ]
-        )
-        x.marker_genes_tt.append("Genes ranked by SAM weights.")
-        if i > 0:
-            x.ds.append(0)
-            x.create_plot(i, title)
-        
-    x.run_args = x.run_args_init.copy()
-    x.preprocess_args = x.preprocess_args_init.copy()
-    return x
     
 def invalidArgs(func, argdict):
     import inspect
