@@ -90,7 +90,13 @@ class SAM(object):
         elif isinstance(counts, AnnData):
             all_cell_names = np.array(list(counts.obs_names))
             all_gene_names = np.array(list(counts.var_names))
-            self.adata_raw = counts
+            if counts.is_view:
+                counts = counts.copy()
+                
+            if inplace:
+                self.adata_raw = counts
+            else:
+                self.adata_raw = counts.copy()            
 
         elif counts is not None:
             raise Exception(
@@ -289,13 +295,16 @@ class SAM(object):
         else:
             self.adata.layers["X_disp"] = self.adata.X
 
-        mu,var = sf.mean_variance_axis(self.adata.X,axis=0)
-        self.adata.var['means'] = mu
-        self.adata.var['variances'] = var
+        self.calculate_mean_var()
 
         self.adata.uns["preprocess_args"] = self.preprocess_args
         self.adata.uns['run_args'] = self.run_args
 
+    def calculate_mean_var(self):
+        mu,var = sf.mean_variance_axis(self.adata.X,axis=0)
+        self.adata.var['means'] = mu
+        self.adata.var['variances'] = var
+        
     def get_avg_obsm(self, keym, keyl):
         clu = self.get_labels_un(keyl)
         cl = self.get_labels(keyl)
@@ -825,8 +834,8 @@ class SAM(object):
         k=20,
         distance="correlation",
         preprocessing="StandardScaler",
-        npcs=None,
-        n_genes=None,
+        npcs=150,
+        n_genes=3000,
         weight_PCs=False,
         sparse_pca=False,
         proj_kwargs={},
@@ -869,7 +878,15 @@ class SAM(object):
             variance. Otherwise, do not normalize the expression data. We
             recommend using 'StandardScaler' for large datasets and
             'Normalizer' otherwise.
-
+        
+        npcs - int, optional, default 150
+            Sets the number of principal components to use.
+            
+        n_genes - int, optional, default 3000
+            Sets the number of genes to include prior to PCA. Genes are selected
+            based on their SAM weights. If `None`, all genes are selected.
+            In this case, it is recommended to set `sparse_pca` equal to True.
+            
         num_norm_avg - int, optional, default 50
             The top 'num_norm_avg' dispersions are averaged to determine the
             normalization factor when calculating the weights. This prevents
@@ -909,6 +926,20 @@ class SAM(object):
             print("`X_disp` layer contains negative values. Setting `weight_mode` to 'rms'.")
             weight_mode = 'rms'
 
+        numcells = D.shape[0]
+
+        if n_genes == None:
+            n_genes = self.adata.shape[1]
+            if not sparse_pca and numcells > 10000:
+                warnings.warn('All genes are being used. It is recommended '
+                              'to set `sparse_pca=False` to satisfy memory '
+                              'constraints for datasets with more than '
+                              '10,000 cells. Setting `sparse_pca` to True.')
+                sparse_pca=True
+
+        if not sparse_pca:
+            n_genes = min(n_genes, (D.sum(0) > 0).sum())
+            
         self.run_args = {
             "max_iter": max_iter,
             "verbose": verbose,
@@ -928,30 +959,8 @@ class SAM(object):
             "components": components,
         }
         self.adata.uns["run_args"] = self.run_args
-        numcells = D.shape[0]
-
-        if n_genes == None:
-            n_genes = 8000
-            if numcells > 3000 and n_genes > 3000:
-                n_genes = 3000
-            elif numcells > 2000 and n_genes > 4500:
-                n_genes = 4500
-            elif numcells > 1000 and n_genes > 6000:
-                n_genes = 6000
-            elif n_genes > 8000:
-                n_genes = 8000
-
-        n_genes = min(n_genes, (D.sum(0) > 0).sum())
-        # npcs = None
-        if npcs is None and numcells > 3000:
-            npcs = 150
-        elif npcs is None and numcells > 2000:
-            npcs = 250
-        elif npcs is None and numcells > 1000:
-            npcs = 350
-        elif npcs is None:
-            npcs = 500
-
+        
+        
         tinit = time.time()
         np.random.seed(seed)
 
@@ -1022,9 +1031,7 @@ class SAM(object):
     ):
         if 'means' not in self.adata.var.keys() or 'variances' not in self.adata.var.keys():
             print('Computing means and variances of genes.')
-            mu,var = sf.mean_variance_axis(self.adata.X,axis=0)
-            self.adata.var['means'] = mu
-            self.adata.var['variances'] = var
+            self.calculate_mean_var()
 
         numcells = self.adata.shape[0]
         D = self.adata.X
