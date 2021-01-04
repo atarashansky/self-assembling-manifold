@@ -95,6 +95,15 @@ class SAMGUI(object):
         self.SamPlot = widgets.HBox(
             items, layout=Layout(width="auto", height=str(height) + "px")
         )
+
+        x = self.stab.children[self.stab.selected_index]
+        f = x.layout.xaxis.range
+        x.layout.xaxis.range=(-1,1)
+        x.layout.xaxis.range=f        
+
+        f = x.layout.yaxis.range
+        x.layout.yaxis.range=(-1,1)
+        x.layout.yaxis.range=f
         
     def __setstate__(self,d):       
         self.__init__(sam = d['sams'],title=d['titles'],
@@ -1674,6 +1683,17 @@ class SAMGUI(object):
             self.tab.set_title(
                 i, self.names[i] + " (" + str(self.stab.selected_index) + ")"
             )
+
+        x = self.stab.children[self.stab.selected_index]
+        f = x.layout.xaxis.range
+        x.layout.xaxis.range=(-1,1)
+        x.layout.xaxis.range=f        
+
+        f = x.layout.yaxis.range
+        x.layout.yaxis.range=(-1,1)
+        x.layout.yaxis.range=f
+
+            
 
     def display_var_annotation(self, event):
         self.GENE_KEY = self.cs_dict["DVM"].value
