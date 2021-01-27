@@ -840,7 +840,7 @@ class SAM(object):
         sparse_pca=False,
         proj_kwargs={},
         seed = 0,
-        weight_mode='dispersion',
+        weight_mode='rms',
         components=None
     ):
         """Runs the Self-Assembling Manifold algorithm.
@@ -902,6 +902,20 @@ class SAM(object):
             Scale the principal components by their eigenvalues. If many
             cell populations are expected, it is recommended to set this False
             as the populations may be found on lesser-varying PCs.
+            
+        weight_mode - str, optional, default 'rms'
+            Can be one of 'dispersion', 'variance', 'rms'.
+                'dispersion' - Gene weights are calculated as the fano factors
+                (variance / mean) of kNN-averaged expressions.
+                
+                'variance' - Gene weights are calculated as the variances of
+                kNN-averaged expressions.
+                
+                'rms' - Gene weights are calculated as a modified fano factor
+                (variance / root-mean square) of kNN-averaged expressions.
+                This makes the weight more robust to genes with extremely low
+                mean expressions.
+                
 
         proj_kwargs - dict, optional, default {}
             A dictionary of keyword arguments to pass to the projection
