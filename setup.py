@@ -10,7 +10,7 @@ setup(
     author="Alexander J. Tarashansky",
     author_email="tarashan@stanford.edu",
     keywords="scrnaseq analysis manifold reconstruction",
-    python_requires=">=3.7",
+    python_requires=">=3.6",
     # py_modules=["SAM", "utilities", "SAMGUI"],
     install_requires=[
         "numpy>=1.19.0",
