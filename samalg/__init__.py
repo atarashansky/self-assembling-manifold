@@ -1125,7 +1125,8 @@ class SAM(object):
                 v = self.adata.var['variances'].values[gkeep]
                 v[v==0]=1
                 m = self.adata.var['means'].values[gkeep]*W[gkeep]
-                output = ut._pca_with_sparse(D_sub, npcs,mu = (m/v**0.5)[None,:], seed = seed)
+                no = (m/v**0.5) if preprocessing=='StandardScaler' else D_sub.mean(0).A.flatten()
+                output = ut._pca_with_sparse(D_sub, npcs,mu = (no)[None,:], seed = seed)
                 self.components = output['components']
                 g_weighted = output['X_pca']
 
