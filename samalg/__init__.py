@@ -1139,7 +1139,7 @@ class SAM(object):
             v = self.adata.var['variances'].values[gkeep]
             v[v==0]=1
             m = self.adata.var['means'].values[gkeep]*W[gkeep]
-            ns = m/v**0.5
+            ns = (m/v**0.5) if preprocessing=='StandardScaler' else D_sub.mean(0).A.flatten()
             if sp.issparse(D_sub):
                 g_weighted = D_sub.dot(self.components.T) - ns.flatten().dot(self.components.T)
             else:
