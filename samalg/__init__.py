@@ -765,7 +765,7 @@ class SAM(object):
 
         return axes, a
 
-    def dispersion_ranking_NN(self, nnm=None, num_norm_avg=50, weight_mode='dispersion',save_avgs=False):
+    def dispersion_ranking_NN(self, nnm=None, num_norm_avg=50, weight_mode='combined',save_avgs=False):
         """Computes the spatial dispersion factors for each gene.
 
         Parameters
@@ -800,6 +800,11 @@ class SAM(object):
                 D_avg.data[:]=D_avg.data**2
                 mu,_ =sf.mean_variance_axis(D_avg, axis=0)
                 mu=mu**0.5
+                
+            if weight_mode == 'combined':
+                D_avg.data[:]=D_avg.data**2
+                mu2,_ =sf.mean_variance_axis(D_avg, axis=0)
+                mu2=mu2**0.5                
         else:
             mu = D_avg.mean(0)
             var = D_avg.var(0)
@@ -808,10 +813,16 @@ class SAM(object):
             del D_avg
             gc.collect()
 
-        if weight_mode == 'dispersion' or weight_mode == 'rms':
+        if weight_mode == 'dispersion' or weight_mode == 'rms' or weight_mode == 'combined':
             dispersions = np.zeros(var.size)
             dispersions[mu > 0] = var[mu > 0] / mu[mu > 0]
             self.adata.var["spatial_dispersions"] = dispersions.copy()
+            
+            if weight_mode == 'combined':
+                dispersions2 = np.zeros(var.size)
+                dispersions2[mu2 > 0] = var[mu2 > 0] / mu2[mu2 > 0]
+                
+
         elif weight_mode == 'variance':
             dispersions = var
             self.adata.var["spatial_variances"] = dispersions.copy()
@@ -822,6 +833,14 @@ class SAM(object):
         dispersions[dispersions >= ma] = ma
 
         weights = ((dispersions / dispersions.max()) ** 0.5).flatten()
+        
+        if weight_mode == 'combined':
+            ma = np.sort(dispersions2)[-num_norm_avg:].mean()
+            dispersions2[dispersions2 >= ma] = ma
+
+            weights2 = ((dispersions2 / dispersions2.max()) ** 0.5).flatten()
+            weights = np.vstack((weights,weights2)).max(0)
+
         return weights
 
     def run(
@@ -840,7 +859,7 @@ class SAM(object):
         sparse_pca=False,
         proj_kwargs={},
         seed = 0,
-        weight_mode='rms',
+        weight_mode='combined',
         components=None
     ):
         """Runs the Self-Assembling Manifold algorithm.
@@ -931,9 +950,9 @@ class SAM(object):
             raise ValueError(
                 "preprocessing must be 'StandardScaler', 'Normalizer', or None"
             )
-        if weight_mode not in ["dispersion", "variance", "rms"]:
+        if weight_mode not in ["dispersion", "variance", "rms", "combined"]:
             raise ValueError(
-                "weight_mode must be 'dispersion' or 'variance'"
+                "weight_mode must be 'dispersion', 'variance', 'rms', or 'combined'."
             )
 
         if self.adata.layers['X_disp'].min() < 0 and weight_mode == 'dispersion':
