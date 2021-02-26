@@ -922,8 +922,8 @@ class SAM(object):
             cell populations are expected, it is recommended to set this False
             as the populations may be found on lesser-varying PCs.
             
-        weight_mode - str, optional, default 'rms'
-            Can be one of 'dispersion', 'variance', 'rms'.
+        weight_mode - str, optional, default 'combined'
+            Can be one of 'dispersion', 'variance', 'rms', 'combined'.
                 'dispersion' - Gene weights are calculated as the fano factors
                 (variance / mean) of kNN-averaged expressions.
                 
@@ -934,6 +934,9 @@ class SAM(object):
                 (variance / root-mean square) of kNN-averaged expressions.
                 This makes the weight more robust to genes with extremely low
                 mean expressions.
+                
+                'combined' - Gene weights are calculated as the maximum of the 
+                weights calculated from 'dispersion' and 'rms' modes.
                 
 
         proj_kwargs - dict, optional, default {}
