@@ -15,7 +15,7 @@ import warnings
 from numba.core.errors import NumbaWarning
 warnings.filterwarnings("ignore", category=NumbaWarning)
 
-__version__ = "0.8.4"
+__version__ = "0.8.5"
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
