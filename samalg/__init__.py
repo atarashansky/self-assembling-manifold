@@ -859,7 +859,7 @@ class SAM(object):
         sparse_pca=False,
         proj_kwargs={},
         seed = 0,
-        weight_mode='combined',
+        weight_mode='rms',
         components=None
     ):
         """Runs the Self-Assembling Manifold algorithm.
