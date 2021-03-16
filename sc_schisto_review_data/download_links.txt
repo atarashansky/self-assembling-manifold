@@ -1,3 +1,3 @@
-Juvenile stem cells: https://www.mediafire.com/file/6te6ckc9vt28f82/som_eso_123120.h5ad/file
+Schistosomulum atlas: https://www.mediafire.com/file/6te6ckc9vt28f82/som_eso_123120.h5ad/file
 Adult male stem cells: https://www.mediafire.com/file/8lp90c7e9b83q9z/sc_male_annotated_123120.h5ad/file
 Immature female stem cells: https://www.mediafire.com/file/ggwb38ajo5phqsq/sc_im_female_annotated_123120.h5ad/file
