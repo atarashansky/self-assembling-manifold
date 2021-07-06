@@ -851,7 +851,7 @@ class SAM(object):
         stopping_condition=1e-2,
         num_norm_avg=50,
         k=20,
-        distance="correlation",
+        distance="cosine",
         preprocessing="StandardScaler",
         npcs=150,
         n_genes=3000,
