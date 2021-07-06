@@ -128,13 +128,6 @@ Please see the plotting tutorial for more information about the GUI interface.
 
 ![SAM GUI example image](samgui.png)
 
-## Tutorial
-Please see the Jupyter notebooks in the 'tutorial' folder for basic tutorials. If you installed a fresh environment, do not forget to install jupyter into that environment! Please run
-```
-pip install jupyter
-```
-in your conda environment. The tutorial assumes that all optional dependencies are installed.
-
 # Basic usage
 
 There are a number of different ways to load data into the SAM object. 
