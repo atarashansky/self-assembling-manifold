@@ -14,7 +14,7 @@ import warnings
 from numba.core.errors import NumbaWarning
 warnings.filterwarnings("ignore", category=NumbaWarning)
 
-__version__ = "0.8.5"
+__version__ = "0.8.6"
 
 
 class SAMGUI(object):
