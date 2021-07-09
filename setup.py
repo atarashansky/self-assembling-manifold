@@ -17,7 +17,7 @@ setup(
         "scipy>=1.3.1",
         "pandas>1.0.0",
         "scikit-learn>=0.23.1",
-        "packaging",
+        "packaging>=0.20.0",
         "numba>=0.50.1",
         "umap-learn>=0.4.6",
         "dill",
