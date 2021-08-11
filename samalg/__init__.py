@@ -1248,7 +1248,7 @@ class SAM(object):
             umap_obj = umap.UMAP(metric=metric,random_state=seed, **kwargs)
             umap2d = umap_obj.fit_transform(X)
             self.adata.obsm["X_umap"] = umap2d
-            self.umap_obj = umap_obj
+            return umap_obj
         else:
             umap_obj = umap.UMAP(metric=metric,random_state=seed, **kwargs)
             dt = umap_obj.fit_transform(X)
