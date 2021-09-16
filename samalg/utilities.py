@@ -10,7 +10,7 @@ from sklearn.utils import check_array, check_random_state
 from scipy import sparse
 import sklearn.utils.sparsefuncs as sf
 from umap.umap_ import nearest_neighbors
-__version__ = "0.8.6"
+__version__ = "0.8.7"
 
 
 def find_corr_genes(sam, input_gene):
@@ -418,8 +418,8 @@ def gen_sparse_knn(knni, knnd, shape=None):
     D1 = sp.sparse.lil_matrix(shape)
 
     D1[
-        np.tile(np.arange(knni.shape[0])[:, None], (1, knni.shape[1])).flatten(),
-        knni.flatten(),
+        np.tile(np.arange(knni.shape[0])[:, None], (1, knni.shape[1])).flatten().astype('int32'),
+        knni.flatten().astype('int32'),
     ] = knnd.flatten()
     D1 = D1.tocsr()
     return D1
