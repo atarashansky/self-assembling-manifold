@@ -808,6 +808,11 @@ class SAM(object):
         else:
             mu = D_avg.mean(0)
             var = D_avg.var(0)
+            if weight_mode == 'rms':
+                mu =(D_avg**2).mean(0)**0.5
+            if weight_mode == 'combined':
+                mu2 =(D_avg**2).mean(0)**0.5
+            
                 
         if not save_avgs:        
             del D_avg
