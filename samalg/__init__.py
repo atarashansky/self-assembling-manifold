@@ -15,7 +15,7 @@ import warnings
 from numba.core.errors import NumbaWarning
 warnings.filterwarnings("ignore", category=NumbaWarning)
 
-__version__ = "0.8.7"
+__version__ = "0.8.9"
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -301,7 +301,12 @@ class SAM(object):
         self.adata.uns['run_args'] = self.run_args
 
     def calculate_mean_var(self):
-        mu,var = sf.mean_variance_axis(self.adata.X,axis=0)
+        if sp.issparse(self.adata.X):
+            mu,var = sf.mean_variance_axis(self.adata.X,axis=0)
+        else:
+            mu = self.adata.X.mean(0)
+            var = self.adata.X.var(0)
+            
         self.adata.var['means'] = mu
         self.adata.var['variances'] = var
         
