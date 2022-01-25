@@ -15,7 +15,7 @@ import warnings
 from numba.core.errors import NumbaWarning
 warnings.filterwarnings("ignore", category=NumbaWarning)
 
-__version__ = "0.8.9"
+__version__ = "0.9.0"
 
 """
 Copyright 2018, Alexander J. Tarashansky, All rights reserved.
@@ -432,7 +432,7 @@ class SAM(object):
             self.adata = anndata.read_h5ad(filename, **kwargs)
             if self.adata.raw is not None:
                 self.adata_raw = AnnData(X=self.adata.raw.X)
-                self.adata_raw.var_names = self.adata.raw.var_names
+                self.adata_raw.var_names = self.adata.var_names
                 self.adata_raw.obs_names = self.adata.obs_names
                 self.adata_raw.obs = self.adata.obs
 
