@@ -46,35 +46,63 @@ def find_corr_genes(sam, input_gene):
     pw_corr = generate_correlation_map(D_avg.T.A, D_avg[:, input_gene].T.A)
     return all_gene_names[np.argsort(-pw_corr.flatten())]
 
-def _pca_with_sparse(X, npcs, solver='arpack', mu=None, seed=0):
+def _pca_with_sparse(X, npcs, solver='arpack', mu=None, seed=0, mu_axis=0):
     random_state = check_random_state(seed)
     np.random.set_state(random_state.get_state())
     random_init = np.random.rand(np.min(X.shape))
     X = check_array(X, accept_sparse=['csr', 'csc'])
 
     if mu is None:
-        mu = X.mean(0).A.flatten()[None, :]
-    mdot = mu.dot
-    mmat = mdot
-    mhdot = mu.T.dot
-    mhmat = mu.T.dot
-    Xdot = X.dot
-    Xmat = Xdot
-    XHdot = X.T.conj().dot
-    XHmat = XHdot
-    ones = np.ones(X.shape[0])[None, :].dot
+        if mu_axis == 0:
+            mu = X.mean(0).A.flatten()[None, :]
+        else:
+            mu = X.mean(1).A.flatten()[:, None]
+    
+    if mu_axis == 0:
+        mdot = mu.dot
+        mmat = mdot
+        mhdot = mu.T.dot
+        mhmat = mu.T.dot
+        Xdot = X.dot
+        Xmat = Xdot
+        XHdot = X.T.conj().dot
+        XHmat = XHdot
+        ones = np.ones(X.shape[0])[None, :].dot
 
-    def matvec(x):
-        return Xdot(x) - mdot(x)
+        def matvec(x):
+            return Xdot(x) - mdot(x)
 
-    def matmat(x):
-        return Xmat(x) - mmat(x)
+        def matmat(x):
+            return Xmat(x) - mmat(x)
 
-    def rmatvec(x):
-        return XHdot(x) - mhdot(ones(x))
+        def rmatvec(x):
+            return XHdot(x) - mhdot(ones(x))
 
-    def rmatmat(x):
-        return XHmat(x) - mhmat(ones(x))
+        def rmatmat(x):
+            return XHmat(x) - mhmat(ones(x))
+
+    else:
+        mdot = mu.dot
+        mmat = mdot
+        mhdot = mu.T.dot
+        mhmat = mu.T.dot
+        Xdot = X.dot
+        Xmat = Xdot
+        XHdot = X.T.conj().dot
+        XHmat = XHdot
+        ones = np.ones(X.shape[1])[None, :].dot        
+
+        def matvec(x):
+            return Xdot(x) - mdot(ones(x))
+
+        def matmat(x):
+            return Xmat(x) - mmat(ones(x))
+
+        def rmatvec(x):
+            return XHdot(x) - mhdot(x)
+
+        def rmatmat(x):
+            return XHmat(x) - mhmat(x)
 
     XL = sp.sparse.linalg.LinearOperator(
         matvec=matvec,
