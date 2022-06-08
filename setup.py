@@ -22,7 +22,8 @@ setup(
         "umap-learn>=0.4.6",
         "dill",
         "anndata>=0.7.4",
-        "h5py<=2.10.0"
+        "h5py<=2.10.0",
+        "harmonypy",
     ],
     extras_require={
         "louvain": ["louvain", "cython", "python-igraph"],
