@@ -880,10 +880,7 @@ class SAM(object):
         seed = 0,
         weight_mode='rms',
         components=None,
-        batch_key=None,
-        gnpcs=150,
-        solver='arpack',
-        alpha=0.5,
+        batch_key=None
     ):
         """Runs the Self-Assembling Manifold algorithm.
 
