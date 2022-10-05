@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="sam-algorithm",
-    version="1.0.0",
+    version="1.0.1",
     description="The Self-Assembling-Manifold algorithm",
     long_description="The Self-Assembling-Manifold algorithm for analyzing single-cell RNA sequencing data.",
     long_description_content_type="text/markdown",
@@ -22,7 +22,7 @@ setup(
         "umap-learn>=0.4.6",
         "dill",
         "anndata>=0.7.4",
-        "h5py<=2.10.0",
+        "h5py",
         "harmonypy",
     ],
     extras_require={
