@@ -24,6 +24,7 @@ setup(
         "anndata>=0.7.4",
         "h5py",
         "harmonypy",
+        "hnswlib"
     ],
     extras_require={
         "louvain": ["louvain", "cython", "python-igraph"],
