@@ -359,7 +359,7 @@ class SAM(object):
     def load_data(
         self,
         filename,
-        transpose=True,
+        transpose=False,
         save_sparse_file=None,
         sep=",",
         calculate_avg=False,
