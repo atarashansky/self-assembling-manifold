@@ -103,12 +103,21 @@ select = [
 ignore = [
     "E501",   # line too long (handled by formatter)
     "B008",   # do not perform function calls in argument defaults
+    "B028",   # no stacklevel in warnings
     "C901",   # too complex
+    "NPY002", # legacy numpy random (too noisy to fix)
+    "SIM101", # multiple isinstance calls
+    "SIM102", # nested if statements
+    "SIM105", # use contextlib.suppress
     "SIM108", # Use ternary operator instead of if-else-block
+    "SIM113", # use enumerate
+    "SIM115", # use context manager for open
+    "SIM118", # use key in dict instead of key in dict.keys()
+    "UP038",  # use X | Y in isinstance
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101"]  # Allow assert in tests
+"tests/*" = ["S101", "NPY002"]  # Allow assert and legacy numpy random in tests
 "__init__.py" = ["F401"]  # Allow unused imports in __init__.py
 
 [tool.ruff.lint.isort]

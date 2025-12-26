@@ -43,6 +43,7 @@ from .utilities import (
 __version__ = "2.0.0"
 
 __all__ = [
+    "SAM",
     "ClusteringError",
     "ConvergenceError",
     "DataNotLoadedError",
@@ -52,7 +53,6 @@ __all__ = [
     "InvalidParameterError",
     "PreprocessingError",
     "ProcessingError",
-    "SAM",
     "SAMError",
     "calc_nnm",
     "find_corr_genes",

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 import scipy.sparse as sp
 
 from samalg import utilities as ut
@@ -208,12 +207,7 @@ class TestDistToNN:
     def test_basic_dist_to_nn(self) -> None:
         """Test basic distance matrix to k-NN conversion."""
         # Simple 4x4 distance matrix
-        dist = np.array([
-            [0, 1, 2, 3],
-            [1, 0, 1.5, 2.5],
-            [2, 1.5, 0, 1],
-            [3, 2.5, 1, 0]
-        ])
+        dist = np.array([[0, 1, 2, 3], [1, 0, 1.5, 2.5], [2, 1.5, 0, 1], [3, 2.5, 1, 0]])
 
         nn = ut.dist_to_nn(dist, K=2)
 
@@ -242,12 +236,7 @@ class TestHelperFunctions:
 
     def test_isolate(self) -> None:
         """Test point isolation in rectangular region."""
-        coords = np.array([
-            [0, 0],
-            [1, 1],
-            [5, 5],
-            [10, 10]
-        ])
+        coords = np.array([[0, 0], [1, 1], [5, 5], [10, 10]])
 
         # Get points in region (0.5, 6) x (0.5, 6)
         idx = ut.isolate(coords, 0.5, 6, 0.5, 6)

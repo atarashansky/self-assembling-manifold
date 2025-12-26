@@ -15,6 +15,7 @@ import time
 import warnings
 from typing import TYPE_CHECKING, Any, Literal
 
+import anndata
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
@@ -415,9 +416,7 @@ class SAM:
         if key not in list(self.adata.obs.keys()):
             logger.warning("Key '%s' does not exist in `obs`.", key)
             return np.array([])
-        return np.array(
-            list(self.adata.obs_names[np.array(list(self.adata.obs[key])) == label])
-        )
+        return np.array(list(self.adata.obs_names[np.array(list(self.adata.obs[key])) == label]))
 
     def load_data(
         self,
@@ -652,9 +651,7 @@ class SAM:
 
             if isinstance(projection, str):
                 if projection not in self.adata.obsm:
-                    logger.error(
-                        "Please create a projection first using run_umap or run_tsne"
-                    )
+                    logger.error("Please create a projection first using run_umap or run_tsne")
                     return None
                 dt = self.adata.obsm[projection]
 
@@ -1289,13 +1286,14 @@ class SAM:
         if batch_key is not None:
             try:
                 import harmonypy
+
                 harmony_out = harmonypy.run_harmony(g_weighted, adata.obs, batch_key, verbose=False)
                 g_weighted = harmony_out.Z_corr.T
-            except ImportError:
+            except ImportError as err:
                 raise ImportError(
                     "harmonypy is required for batch correction. "
                     "Install it with: pip install harmonypy"
-                )
+                ) from err
 
         if update_manifold:
             edm = ut.calc_nnm(g_weighted, k, distance)
@@ -1439,9 +1437,7 @@ class SAM:
 
         k = self.adata.uns["run_args"].get("k", 20)
         distance = self.adata.uns["run_args"].get("distance", "correlation")
-        sc.pp.neighbors(
-            self.adata, use_rep=use_rep, n_neighbors=k, metric=distance, method=method
-        )
+        sc.pp.neighbors(self.adata, use_rep=use_rep, n_neighbors=k, metric=distance, method=method)
         sc.tl.diffmap(self.adata, n_comps=n_comps)
         sc.pp.neighbors(
             self.adata,
@@ -1488,9 +1484,7 @@ class SAM:
 
         k = self.adata.uns["run_args"].get("k", 20)
         distance = self.adata.uns["run_args"].get("distance", "correlation")
-        sc.pp.neighbors(
-            self.adata, use_rep=use_rep, n_neighbors=k, metric=distance, method=method
-        )
+        sc.pp.neighbors(self.adata, use_rep=use_rep, n_neighbors=k, metric=distance, method=method)
         sc.tl.diffmap(self.adata, n_comps=n_comps + 1)
         self.adata.obsm["X_diffmap"] = self.adata.obsm["X_diffmap"][:, 1:]
 

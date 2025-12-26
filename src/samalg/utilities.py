@@ -341,9 +341,7 @@ def weighted_PCA(
     return reduced_weighted, pca
 
 
-def transform_wPCA(
-    mat: NDArray[np.floating[Any]], pca: PCA
-) -> NDArray[np.floating[Any]]:
+def transform_wPCA(mat: NDArray[np.floating[Any]], pca: PCA) -> NDArray[np.floating[Any]]:
     """Transform data using a fitted weighted PCA model.
 
     Parameters
@@ -730,9 +728,7 @@ def calc_nnm(
     return EDM
 
 
-def compute_distances(
-    A: NDArray[np.floating[Any]], dm: str
-) -> NDArray[np.floating[Any]]:
+def compute_distances(A: NDArray[np.floating[Any]], dm: str) -> NDArray[np.floating[Any]]:
     """Compute pairwise distance matrix.
 
     Parameters

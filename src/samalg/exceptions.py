@@ -39,9 +39,7 @@ class DataNotLoadedError(SAMError):
 
     def __init__(self, message: str | None = None) -> None:
         if message is None:
-            message = (
-                "No data has been loaded. Use load_data() or pass data to the constructor."
-            )
+            message = "No data has been loaded. Use load_data() or pass data to the constructor."
         super().__init__(message)
 
 
