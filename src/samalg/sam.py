@@ -22,7 +22,6 @@ import sklearn.manifold as man
 import sklearn.utils.sparsefuncs as sf
 from anndata import AnnData
 from numba.core.errors import NumbaWarning
-from packaging import version
 from sklearn.preprocessing import Normalizer
 
 from . import utilities as ut
@@ -451,8 +450,6 @@ class SAM:
         **kwargs
             Additional arguments passed to file loading functions.
         """
-        import anndata
-
         if filename.split(".")[-1] == "p":
             raw_data, all_cell_names, all_gene_names = pickle.load(open(filename, "rb"))
 
@@ -497,10 +494,7 @@ class SAM:
                 self.adata_raw.obs_names = self.adata.obs_names
                 self.adata_raw.obs = self.adata.obs
 
-                if version.parse(str(anndata.__version__)) >= version.parse("0.7rc1"):
-                    del self.adata.raw
-                else:
-                    self.adata.raw = None
+                del self.adata.raw
 
                 if (
                     "X_knn_avg" not in self.adata.layers.keys()
@@ -537,8 +531,6 @@ class SAM:
         **kwargs
             Additional arguments passed to AnnData.write_h5ad().
         """
-        import anndata
-
         Xknn = None
         if not save_knn:
             if "X_knn_avg" in self.adata.layers:
@@ -565,10 +557,7 @@ class SAM:
             y.name = str(y.name) if y.name is not None else None
 
         x.write_h5ad(fname, **kwargs)
-        if version.parse(str(anndata.__version__)) >= version.parse("0.7rc1"):
-            del x.raw
-        else:
-            x.raw = None
+        del x.raw
 
         if Xknn is not None:
             self.adata.layers["X_knn_avg"] = Xknn

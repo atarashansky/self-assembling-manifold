@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "sam-algorithm"
+name = "sc-sam"
 version = "2.0.0"
 description = "The Self-Assembling-Manifold algorithm for single-cell RNA sequencing analysis"
 readme = "README.md"
@@ -61,7 +61,7 @@ dev = [
     "pre-commit>=3.6",
 ]
 all = [
-    "sam-algorithm[clustering,viz,hdbscan,harmony,dev]",
+    "sc-sam[clustering,viz,hdbscan,harmony,dev]",
 ]
 
 [project.urls]
