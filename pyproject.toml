@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sc-sam"
-version = "2.0.1"
+version = "2.0.2"
 description = "The Self-Assembling-Manifold algorithm for single-cell RNA sequencing analysis"
 readme = "README.md"
 license = "MIT"
