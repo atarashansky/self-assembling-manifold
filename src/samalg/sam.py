@@ -734,15 +734,22 @@ class SAM:
                         colorbar = False
                     i = c
 
+                    # Only pass cmap if c is numeric data (not color specs)
+                    scatter_kwargs: dict[str, Any] = {
+                        "c": i,
+                        "s": s,
+                        "linewidth": linewidth,
+                        "edgecolor": edgecolor,
+                        **kwargs,
+                    }
+                    # Check if c is numeric array data suitable for colormapping
+                    if isinstance(i, np.ndarray) and np.issubdtype(i.dtype, np.number):
+                        scatter_kwargs["cmap"] = cmap
+
                     cax = axes.scatter(
                         dt[:, 0],
                         dt[:, 1],
-                        c=i,
-                        cmap=cmap,
-                        s=s,
-                        linewidth=linewidth,
-                        edgecolor=edgecolor,
-                        **kwargs,
+                        **scatter_kwargs,
                     )
 
                     if colorbar:
