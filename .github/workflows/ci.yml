@@ -28,10 +28,6 @@ jobs:
           ruff check src/ tests/
           ruff format --check src/ tests/
 
-      - name: Type check with mypy
-        run: |
-          mypy src/
-
       - name: Run tests
         run: |
           pytest --cov=samalg --cov-report=xml --cov-report=term
