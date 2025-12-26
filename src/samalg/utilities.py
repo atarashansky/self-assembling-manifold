@@ -231,7 +231,7 @@ def knndist(
     tuple
         (indices, distances) arrays.
     """
-    x, y = nnma.nonzero()
+    _, y = nnma.nonzero()
     data = nnma.data
     knn = y.reshape((nnma.shape[0], nnma[0, :].data.size))
     val = data.reshape(knn.shape)

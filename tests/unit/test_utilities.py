@@ -33,7 +33,7 @@ class TestWeightedPCA:
     def test_pca_npcs_limit(self, dense_matrix: np.ndarray) -> None:
         """Test that npcs is correctly bounded."""
         max_npcs = min(dense_matrix.shape)
-        reduced, pca = ut.weighted_PCA(dense_matrix, npcs=max_npcs + 100)
+        reduced, _pca = ut.weighted_PCA(dense_matrix, npcs=max_npcs + 100)
 
         assert reduced.shape[1] <= max_npcs
 
@@ -152,7 +152,7 @@ class TestSearchString:
         """Test case-sensitive search."""
         vec = np.array(["Gene_A", "Gene_B", "gene_c"])
 
-        matches, indices = ut.search_string(vec, "Gene", case_sensitive=True)
+        matches, _indices = ut.search_string(vec, "Gene", case_sensitive=True)
 
         assert len(matches) == 2  # Only Gene_A, Gene_B
         assert "gene_c" not in matches
@@ -161,7 +161,7 @@ class TestSearchString:
         """Test inverted (non-matching) search."""
         vec = np.array(["Gene_A", "Gene_B", "Other_C"])
 
-        matches, indices = ut.search_string(vec, "Gene", invert=True)
+        matches, _indices = ut.search_string(vec, "Gene", invert=True)
 
         assert len(matches) == 1
         assert matches[0] == "Other_C"

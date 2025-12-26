@@ -202,7 +202,7 @@ class TestClustering:
         sam = SAM(counts=(X, genes, cells))
         sam.preprocess_data(filter_genes=False, min_expression=0)
         sam.run(max_iter=2, projection=None, verbose=False)
-        cl, km = sam.kmeans_clustering(numc=5)
+        cl, _km = sam.kmeans_clustering(numc=5)
 
         assert "kmeans_clusters" in sam.adata.obs
         assert len(np.unique(cl)) == 5
