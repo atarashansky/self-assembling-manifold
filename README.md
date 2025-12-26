@@ -68,14 +68,14 @@ Having activated the environment, SAM can be downloaded from the PyPI repository
 
 PIP install:
 ```
-pip install sam-algorithm
+pip install sc-sam
 ```
 
 Development version install:
 ```
 git clone https://github.com/atarashansky/self-assembling-manifold.git
 cd self-assembling-manifold
-python setup.py install
+pip install -e .
 ```
 For plotting, install `matplotlib`:
 
